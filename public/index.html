@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#faf8f6" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>ER Atlas — خريطة قاعدة البيانات</title>
+    <link rel="stylesheet" href="/assets/fonts/fonts.css" />
+    <link rel="stylesheet" href="/graph.css" />
+    <link rel="stylesheet" href="/figma.css" />
+    <link rel="stylesheet" href="/assets/figma/quiet-atlas.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#map">الانتقال إلى الخريطة</a>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="topbar-identity">
+          <div class="brand-wrap">
+            <img
+              class="brand-mark"
+              src="/assets/figma/main-context-aca14.svg"
+              alt=""
+            />
+            <h1 dir="ltr">ER Atlas</h1>
+          </div>
+          <div class="workspace-switcher">
+            <button
+              id="workspaceSwitchButton"
+              class="workspace-switch-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="workspaceMenu"
+            >
+              <span class="switch-copy"
+                ><strong id="workspaceCurrentName">مساحة العمل</strong></span
+              ><img
+                id="workspaceStatus"
+                src="/assets/figma/main-context-3b36a.svg"
+                alt=""
+              /><span data-icon="chevron"></span>
+            </button>
+            <div id="workspaceMenu" class="workspace-menu" hidden>
+              <div class="workspace-menu-head">
+                <h2>مساحات العمل</h2>
+                <span id="workspaceMenuCount">0</span>
+              </div>
+              <nav
+                id="workspaceTabs"
+                class="workspace-list"
+                aria-label="اختر مساحة العمل"
+              ></nav>
+              <div class="workspace-menu-actions">
+                <button id="newWorkspaceButton" type="button">
+                  مساحة جديدة</button
+                ><button id="renameWorkspaceButton" type="button">
+                  إعادة تسمية الحالية
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="topbar-search">
+          <button
+            id="searchToggleButton"
+            class="header-button search-toggle"
+            type="button"
+            aria-label="فتح البحث"
+            aria-expanded="false"
+            aria-controls="navbarSearch"
+            title="البحث عن جدول أو عمود"
+          >
+            <span data-icon="search"></span>
+          </button>
+          <div id="navbarSearch" class="search-wrap" role="search">
+            <span data-icon="search"></span
+            ><input
+              id="searchInput"
+              type="search"
+              placeholder="ابحث عن جدول أو عمود…"
+              aria-label="ابحث عن جدول أو عمود"
+            /><kbd>/</kbd>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div class="header-menu">
+            <button
+              id="aiMenuButton"
+              class="header-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="aiMenu"
+              aria-label="مساعد AI"
+              title="مساعد AI"
+            >
+              <span data-icon="ai"></span
+              ><span class="header-label">مساعد AI</span>
+              <span data-icon="chevron"></span>
+            </button>
+            <div id="aiMenu" class="header-popover" hidden>
+              <button id="aiButton" type="button">اسأل عن المخطط</button
+              ><button id="aiArrangeButton" type="button">رتّب بالـAI</button
+              ><button id="aiSettingsButton" type="button">
+                إعدادات المساعد
+              </button>
+            </div>
+          </div>
+          <div class="header-menu">
+            <button
+              id="toolsButton"
+              class="header-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="toolsMenu"
+              aria-label="الأدوات"
+              title="الأدوات"
+            >
+              <span data-icon="tools"></span
+              ><span class="header-label">الأدوات</span>
+              <span data-icon="chevron"></span>
+            </button>
+            <div id="toolsMenu" class="header-popover" hidden>
+              <button id="codeSourceButton" class="source-button" type="button" title="تحليل كود المشروع">
+                <span data-icon="source"></span><span>كود المشروع <small id="sourceName" dir="ltr">مصدر المخطط</small></span>
+              </button>
+              <button id="topicManageButton" type="button">
+                تنظيم المواضيع</button
+              ><button id="changesButton" type="button">
+                مراجعة المسودة <span id="pendingCount">0</span></button
+              ><button id="connectionButton" type="button">
+                <span id="connectionLabel">اتصال PostgreSQL</span></button
+              ><button id="refreshButton" type="button">تحديث المخطط</button
+              ><button id="quickActionsButton" type="button">
+                الأوامر السريعة <kbd>Ctrl K</kbd>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="workspace-bar">
+        <div class="workspace-actions">
+          <div class="canvas-tabs" role="group" aria-label="مساحة العمل">
+            <button id="mapTabButton" class="canvas-tab active" type="button" aria-pressed="true">الخريطة</button>
+            <button id="tablesTabButton" class="canvas-tab" type="button" aria-pressed="false">الجداول</button>
+          </div>
+          <div class="topic-switcher">
+            <button
+              id="topicSwitchButton"
+              class="header-button topic-trigger"
+              type="button"
+              aria-expanded="false"
+              aria-controls="topics"
+            >
+              <span data-icon="tableWhite"></span
+              ><span id="currentTopicLabel">كل الجداول</span
+              ><span data-icon="chevron"></span>
+            </button>
+            <nav
+              id="topics"
+              class="topics"
+              aria-label="مواضيع قاعدة البيانات"
+              hidden
+            ></nav>
+          </div>
+          <div class="view-switcher">
+            <button
+              id="viewModeButton"
+              class="header-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="viewModeMenu"
+              aria-label="خيارات عرض المخطط"
+              title="خيارات عرض المخطط"
+            >
+              <span data-icon="table"></span
+              ><span id="viewModeLabel">الخريطة</span
+              ><span data-icon="chevron"></span>
+            </button>
+            <div id="viewModeMenu" class="view-mode-menu" hidden>
+              <h3>طريقة العرض</h3>
+              <div
+                id="viewModeOptions"
+                role="group"
+                aria-label="طريقة عرض المخطط"
+              ></div>
+            </div>
+          </div>
+          <button
+            id="backTopicsButton"
+            class="workspace-button"
+            type="button"
+            hidden
+          >
+            كل المواضيع</button
+          ><button
+            id="chooseFocusButton"
+            class="workspace-button"
+            type="button"
+            hidden
+          >
+            اختيار جدول
+          </button>
+        </div>
+        <button id="addTableButton" class="primary-button canvas-add" type="button" aria-label="إضافة جدول" title="إضافة جدول">
+          <span data-icon="add"></span><span>إضافة جدول</span>
+        </button>
+        <div class="workspace-title sr-only">
+          <strong id="mapTitle"></strong><span id="mapSubtitle"></span>
+        </div>
+      </div>
+      <main id="map" class="map-area" tabindex="-1" aria-label="خريطة الجداول">
+        <div class="canvas-grid" aria-hidden="true"></div>
+        <div id="viewport" class="viewport">
+          <canvas
+            id="edgeCanvas"
+            class="edge-canvas"
+            aria-hidden="true"
+          ></canvas>
+          <div id="world" class="world">
+            <svg id="edges" class="edges" aria-hidden="true"></svg>
+            <div id="nodes" class="nodes"></div>
+          </div>
+        </div>
+        <section id="viewOverlay" class="view-overlay" hidden></section>
+        <div class="editing-palette" role="group" aria-label="أدوات الخريطة">
+          <button id="selectionModeButton" type="button" aria-pressed="true" title="تحديد جدول" aria-label="تحديد جدول">
+            <span class="palette-icon" data-icon="pointer"></span><span>تحديد</span>
+          </button>
+          <button id="linkModeButton" type="button" aria-haspopup="dialog" title="إضافة علاقة" aria-label="إضافة علاقة">
+            <span class="palette-icon" data-icon="link"></span
+            ><span>علاقة</span></button
+          ><button id="arrangeButton" type="button" aria-label="ترتيب الجداول" title="ترتيب الجداول">
+            <span class="palette-icon" data-icon="arrange"></span
+            ><span>ترتيب</span></button
+          >
+        </div>
+        <div class="map-controls" aria-label="التحكم بالتكبير">
+          <button id="zoomIn" type="button" aria-label="تكبير">
+            <span data-icon="plus"></span></button
+          ><button id="zoomOut" type="button" aria-label="تصغير">
+            <span data-icon="minus"></span></button
+          ><span class="control-divider"></span><button id="readableViewButton" type="button" title="عرض بحجم مقروء" aria-label="عرض بحجم مقروء"><span id="zoomLabel">100%</span></button>
+          <button
+            id="fitButton"
+            type="button"
+            aria-label="إظهار كامل المخطط"
+            title="إظهار كامل المخطط"
+          >
+            <span data-icon="fit"></span>
+          </button>
+        </div>
+        <div class="map-status" aria-live="polite">
+          <span id="tableCount"></span><span id="relationCount"></span>
+        </div>
+        <aside
+          id="details"
+          class="details-panel"
+          aria-label="تفاصيل العنصر"
+          hidden
+        >
+          <button
+            id="closeDetails"
+            class="dialog-close"
+            type="button"
+            aria-label="إغلاق التفاصيل"
+          >
+            <span data-icon="close"></span>
+          </button>
+          <div id="detailsBody"></div>
+        </aside>
+        <div id="contextMenu" class="context-menu" role="menu" hidden></div>
+        <section id="emptyWorkspace" class="empty-workspace" hidden>
+          <span id="emptyWorkspaceKicker" class="sr-only"></span>
+          <h2 id="emptyWorkspaceTitle">ابدأ من هنا</h2>
+          <p id="emptyWorkspaceText"></p>
+          <div class="empty-workspace-actions">
+            <button
+              id="emptyPrimaryButton"
+              class="primary-button"
+              type="button"
+            ></button
+            ><button id="emptyAiButton" class="workspace-button" type="button">
+              ناقش الفكرة مع AI
+            </button>
+          </div>
+        </section>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </main>
+    </div>
+    <dialog
+      id="connectDialog"
+      class="connect-dialog"
+      aria-labelledby="connectTitle"
+    >
+      <form id="connectForm" autocomplete="off">
+        <div class="modal-header">
+          <button
+            id="closeDialog"
+            class="dialog-close"
+            type="button"
+            aria-label="إغلاق"
+          >
+            <span data-icon="close"></span>
+          </button>
+          <h2 id="connectTitle">اتصال PostgreSQL</h2>
+          <p>نقرأ بنية الجداول والعلاقات. التعديلات تُحفظ في مسودة.</p>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <label
+              >الخادم<input
+                name="host"
+                value="localhost"
+                required
+                spellcheck="false"
+                dir="ltr" /></label
+            ><label
+              >المنفذ<input
+                name="port"
+                type="number"
+                value="5432"
+                min="1"
+                max="65535"
+                required
+                dir="ltr" /></label
+            ><label
+              >اسم قاعدة البيانات<input
+                name="database"
+                placeholder="my_database"
+                required
+                spellcheck="false"
+                dir="ltr" /></label
+            ><label
+              >المستخدم<input
+                name="user"
+                placeholder="postgres"
+                required
+                spellcheck="false"
+                dir="ltr" /></label
+            ><label class="full"
+              >كلمة المرور<input
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                dir="ltr"
+            /></label>
+          </div>
+          <label class="choice ssl-choice"
+            ><input name="ssl" type="checkbox" /><span
+              ><strong>استخدام اتصال SSL</strong
+              ><small>فعّله إذا كان الخادم يتطلب اتصالًا مشفرًا.</small></span
+            ></label
+          >
+          <p id="connectError" class="notice error" role="alert" hidden></p>
+        </div>
+        <div class="modal-footer">
+          <div class="footer-actions">
+            <button id="submitConnection" class="primary-button" type="submit">
+              اتصال وعرض الخريطة</button
+            ><button id="demoButton" class="secondary-button" type="button">
+              فتح التجربة
+            </button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      id="workspaceDialog"
+      class="workspace-dialog"
+      aria-labelledby="workspaceDialogTitle"
+    >
+      <form id="workspaceForm">
+        <div class="modal-header">
+          <button
+            id="closeWorkspaceDialog"
+            class="dialog-close"
+            type="button"
+            aria-label="إغلاق"
+          >
+            <span data-icon="close"></span>
+          </button>
+          <h2 id="workspaceDialogTitle">مساحة عمل جديدة</h2>
+          <p>لكل مساحة خريطتها ومسودتها ومحادثتها المستقلة.</p>
+        </div>
+        <div class="modal-body">
+          <label class="workspace-field"
+            >اسم المساحة<input
+              id="workspaceName"
+              maxlength="48"
+              required
+              placeholder="مثلًا: Sufra أو Edux"
+          /></label>
+          <div id="workspaceKinds" class="workspace-kinds">
+            <label class="choice"
+              ><input type="radio" name="kind" value="database" checked /><span
+                ><strong>قاعدة بيانات</strong
+                ><small>اتصال PostgreSQL وخريطة مستقلة</small></span
+              ></label
+            ><label class="choice"
+              ><input type="radio" name="kind" value="ideas" /><span
+                ><strong>أفكار</strong
+                ><small>مساحة فارغة للرسم والنقاش مع AI</small></span
+              ></label
+            >
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="footer-actions">
+            <button
+              id="saveWorkspaceButton"
+              class="primary-button"
+              type="submit"
+            >
+              إنشاء المساحة</button
+            ><button
+              class="secondary-button"
+              type="button"
+              data-close="workspaceDialog"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="editDialog" class="editor-dialog" aria-labelledby="editTitle">
+      <form id="editForm">
+        <div class="modal-header">
+          <button
+            id="closeEditDialog"
+            class="dialog-close"
+            type="button"
+            aria-label="إغلاق"
+          >
+            <span data-icon="close"></span>
+          </button>
+          <h2 id="editTitle">تعديل</h2>
+          <p id="editDescription"></p>
+        </div>
+        <div class="modal-body">
+          <div id="editFields" class="edit-fields"></div>
+          <div id="editPreview" class="code-block" dir="ltr"></div>
+          <p id="editError" class="notice error" role="alert" hidden></p>
+        </div>
+        <div class="modal-footer">
+          <p>يُحفظ التغيير في المسودة ويمكن التراجع عنه.</p>
+          <div class="footer-actions">
+            <button id="editSubmit" class="primary-button" type="submit">
+              حفظ في المسودة</button
+            ><button
+              class="secondary-button"
+              type="button"
+              data-close="editDialog"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="planDialog" class="plan-dialog" aria-labelledby="planTitle">
+      <div class="modal-header">
+        <button
+          id="closePlanDialog"
+          class="dialog-close"
+          type="button"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="planTitle">سلّم المسودة إلى AI</h2>
+        <p id="planSummary"></p>
+      </div>
+      <div class="modal-body">
+        <pre id="planPrompt" class="code-block" dir="ltr"></pre>
+        <div id="handoffResult" class="handoff-result" hidden></div>
+        <p id="planError" class="notice error" role="alert" hidden></p>
+      </div>
+      <div class="modal-footer">
+        <div class="footer-actions">
+          <button id="sendToAiButton" class="primary-button" type="button">
+            إرسال إلى AI</button
+          ><button id="copyPromptButton" class="secondary-button" type="button">
+            نسخ الطلب
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="changesPanel" class="draft-dialog" aria-labelledby="draftTitle">
+      <div class="modal-header">
+        <button
+          id="closeChanges"
+          class="dialog-close"
+          type="button"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="draftTitle">مراجعة المسودة</h2>
+        <p id="draftSummary">
+          التغييرات المحلية جاهزة للمراجعة والتسليم إلى المساعد.
+        </p>
+      </div>
+      <div class="modal-body">
+        <div id="changeList" class="change-list"></div>
+        <div class="panel-actions">
+          <button id="undoButton" class="secondary-button" type="button">
+            تراجع</button
+          ><button id="redoButton" class="secondary-button" type="button">
+            إعادة</button
+          ><button
+            id="discardDraftButton"
+            class="ghost-button danger"
+            type="button"
+          >
+            تجاهل المسودة
+          </button>
+        </div>
+        <div class="notice">
+          كل تعديل محفوظ محليًا. يُراجع SQL قبل تسليمه إلى المساعد.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="footer-actions">
+          <button id="reviewButton" class="primary-button" type="button">
+            تجهيز طلب AI</button
+          ><button
+            class="secondary-button"
+            type="button"
+            data-close="changesPanel"
+          >
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="topicsDialog"
+      class="topics-dialog"
+      aria-labelledby="topicsTitle"
+    >
+      <div class="modal-header">
+        <button
+          id="closeTopicsDialog"
+          class="dialog-close"
+          type="button"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="topicsTitle">تنظيم المواضيع</h2>
+        <p>
+          تنظيم حسب وظائف الكود. الجدول نفسه يمكن أن ينتمي إلى أكثر من موضوع.
+        </p>
+      </div>
+      <div class="modal-body">
+        <div id="topicEditor"></div>
+        <div class="notice">
+          <strong>مصدر التصنيف: وظائف الكود</strong>
+          <p>
+            استخدم تحليل المشروع لإظهار سبب العضوية ومسار المصدر، ثم راجع
+            الاقتراح.
+          </p>
+          <button id="topicAnalysisButton" class="text-button" type="button">
+            تحليل كود المشروع
+          </button>
+        </div>
+        <p id="topicAiStatus" class="status-message" aria-live="polite"></p>
+        <button id="resetTopicsButton" class="text-button" type="button">
+          استعادة التقسيم التلقائي
+        </button>
+      </div>
+      <div class="modal-footer">
+        <p>
+          تُحفظ عضويات المواضيع تلقائيًا. الاقتراح الجديد يُراجع قبل اعتماده.
+        </p>
+        <div class="footer-actions">
+          <button id="suggestTopicsButton" class="primary-button" type="button">
+            اقتراح بالـAI</button
+          ><button
+            class="secondary-button"
+            type="button"
+            data-close="topicsDialog"
+          >
+            تم
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="codeDialog" class="code-dialog" aria-labelledby="codeTitle">
+      <div class="modal-header">
+        <button
+          class="dialog-close"
+          type="button"
+          data-close="codeDialog"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="codeTitle">تحليل كود المشروع</h2>
+        <p>المصدر الذي يشرح كيف تُستخدم الجداول داخل وظائف التطبيق.</p>
+      </div>
+      <div class="modal-body">
+        <details id="topicCodeSettings" open>
+          <summary class="sr-only">مصدر التحليل</summary>
+          <label for="topicSourceRoot">مجلد المشروع</label
+          ><input
+            id="topicSourceRoot"
+            dir="ltr"
+            placeholder="C:/projects/my-api"
+            autocomplete="off"
+          />
+          <p class="field-hint">مسار مشروع Laravel المحلي على جهازك.</p>
+          <label for="topicAiProvider">المساعد</label
+          ><select id="topicAiProvider">
+            <option value="codex-cli">Codex على الجهاز · دون مفتاح</option>
+            <option value="claude-cli">
+              Claude Code على الجهاز · دون مفتاح
+            </option>
+            <option value="settings">خدمة أخرى من إعدادات AI</option>
+          </select>
+        </details>
+        <p
+          id="topicSourceSummary"
+          class="notice"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <div id="codeResults"></div>
+      </div>
+      <div class="modal-footer">
+        <div class="footer-actions">
+          <button
+            id="analyzeTopicCodeButton"
+            class="primary-button"
+            type="button"
+          >
+            تحليل الكود</button
+          ><button
+            class="secondary-button"
+            type="button"
+            data-close="codeDialog"
+          >
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="aiDialog"
+      class="ai-dialog drawer-dialog"
+      aria-labelledby="aiDialogTitle"
+    >
+      <div class="modal-header">
+        <button
+          id="closeAiDialog"
+          class="dialog-close"
+          type="button"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="aiDialogTitle">اسأل عن المخطط</h2>
+        <p id="aiContext">مساعد بجانب الخريطة، مع سياق واضح لكل سؤال.</p>
+        <button
+          id="conversationSettingsButton"
+          class="text-button"
+          type="button"
+        >
+          إعدادات المساعد
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="aiResponse" class="ai-response" aria-live="polite"></div>
+        <form id="aiForm">
+          <label for="aiQuestion">متابعة المحادثة</label
+          ><textarea
+            id="aiQuestion"
+            rows="4"
+            placeholder="اكتب سؤالك عن الجداول والعلاقات…"
+            required
+          ></textarea>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <p id="aiFootnote">
+          استخدام تسجيل الدخول على الجهاز · الطلب ضمن حدود الاشتراك.
+        </p>
+        <div class="footer-actions">
+          <button
+            id="askAiButton"
+            class="primary-button"
+            type="submit"
+            form="aiForm"
+          >
+            إرسال السؤال</button
+          ><button
+            id="stopAiButton"
+            class="secondary-button"
+            type="button"
+            hidden
+          >
+            إيقاف الطلب</button
+          ><button class="secondary-button" type="button" data-close="aiDialog">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="aiSettingsDialog"
+      class="ai-settings-dialog"
+      aria-labelledby="aiSettingsTitle"
+    >
+      <div class="modal-header">
+        <button
+          class="dialog-close"
+          type="button"
+          data-close="aiSettingsDialog"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="aiSettingsTitle">إعدادات المساعد</h2>
+        <p>استخدم تسجيل الدخول الموجود على جهازك.</p>
+      </div>
+      <div class="modal-body">
+        <div id="localProviderChoices" class="provider-choices"></div>
+        <div class="ai-settings">
+          <label
+            >الخدمة<select id="aiProvider">
+              <option value="codex-cli">Codex على الجهاز · الاشتراك</option>
+              <option value="claude-cli">
+                Claude Code على الجهاز · الاشتراك
+              </option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="compatible">OpenAI Compatible / محلي</option>
+            </select></label
+          ><label
+            >النموذج<input
+              id="aiModel"
+              dir="ltr"
+              placeholder="تلقائي من إعدادات المساعد" /></label
+          ><label id="aiEndpointWrap" hidden
+            >رابط الخدمة<input
+              id="aiEndpoint"
+              dir="ltr"
+              placeholder="http://127.0.0.1:11434/v1" /></label
+          ><label id="aiKeyWrap" hidden
+            >مفتاح API<input
+              id="aiKey"
+              type="password"
+              dir="ltr"
+              placeholder="يبقى في الذاكرة فقط"
+          /></label>
+        </div>
+        <p
+          id="aiLocalStatus"
+          class="notice success"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <p class="field-hint">
+          Codex وClaude Code يستخدمان تسجيل الدخول على الجهاز دون API key. تُرسل
+          البنية والمحادثة دون صفوف البيانات أو كلمة مرور PostgreSQL.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <div class="footer-actions">
+          <button
+            id="saveAiSettingsButton"
+            class="primary-button"
+            type="button"
+          >
+            حفظ الإعدادات</button
+          ><button
+            class="secondary-button"
+            type="button"
+            data-close="aiSettingsDialog"
+          >
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="arrangeDialog"
+      class="arrange-dialog"
+      aria-labelledby="arrangeTitle"
+    >
+      <div class="modal-header">
+        <button
+          class="dialog-close"
+          type="button"
+          data-close="arrangeDialog"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="arrangeTitle">ترتيب الجداول</h2>
+        <p>رتّب النطاق الظاهر ثم راجع النتيجة قبل تطبيقها.</p>
+      </div>
+      <div class="modal-body">
+        <div
+          id="arrangeModes"
+          class="ui-tabs"
+          role="tablist"
+          aria-label="طريقة الترتيب"
+        ></div>
+        <div class="arrange-scope">
+          <label>النطاق<input id="arrangeScope" readonly /></label
+          ><label>المساعد<input id="arrangeProvider" readonly /></label>
+        </div>
+        <div class="layout-comparison">
+          <section>
+            <h3>الترتيب الحالي</h3>
+            <div id="currentLayoutPreview" class="layout-preview"></div>
+          </section>
+          <section>
+            <h3>الترتيب المقترح</h3>
+            <div id="proposedLayoutPreview" class="layout-preview"></div>
+          </section>
+        </div>
+        <p
+          id="arrangeStatus"
+          class="notice"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <label class="choice"
+          ><input id="persistArrangement" type="checkbox" checked /><span
+            ><strong>احفظ ترتيب هذا العرض</strong
+            ><small>يبقى ترتيب المواضيع الأخرى مستقلًا.</small></span
+          ></label
+        ><button
+          id="arrangeWithAiButton"
+          type="button"
+          class="text-button"
+          hidden
+        >
+          اقتراح ترتيب بالـAI
+        </button>
+        <div id="arrangeErrorActions" hidden>
+          <button
+            id="arrangeSettingsButton"
+            type="button"
+            class="secondary-button"
+          >
+            إعدادات المساعد
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="footer-actions">
+          <button
+            id="applyArrangementButton"
+            type="button"
+            class="primary-button"
+          >
+            تطبيق الترتيب</button
+          ><button
+            id="stopArrangementButton"
+            type="button"
+            class="secondary-button"
+            hidden
+          >
+            إيقاف الطلب</button
+          ><button
+            class="secondary-button"
+            type="button"
+            data-close="arrangeDialog"
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="tableDialog"
+      class="table-dialog"
+      aria-labelledby="expandedTableTitle"
+    >
+      <div id="expandedTableContent"></div>
+    </dialog>
+    <dialog
+      id="relationshipDialog"
+      class="relationship-dialog"
+      aria-labelledby="relationshipTitle"
+    >
+      <div id="relationshipContent"></div>
+    </dialog>
+    <dialog
+      id="topicSettingsDialog"
+      class="topic-settings-dialog"
+      aria-labelledby="topicSettingsTitle"
+    >
+      <div id="topicSettingsContent"></div>
+    </dialog>
+    <dialog
+      id="topicProposalDialog"
+      class="topic-proposal-dialog"
+      aria-labelledby="topicProposalTitle"
+    >
+      <div id="topicProposalContent"></div>
+    </dialog>
+    <dialog
+      id="confirmationDialog"
+      class="confirmation-dialog"
+      aria-labelledby="confirmationTitle"
+    >
+      <div id="confirmationContent"></div>
+    </dialog>
+    <dialog
+      id="quickActionsDialog"
+      class="quick-actions-dialog"
+      aria-labelledby="quickTitle"
+    >
+      <div class="modal-header">
+        <button
+          class="dialog-close"
+          type="button"
+          data-close="quickActionsDialog"
+          aria-label="إغلاق"
+        >
+          <span data-icon="close"></span>
+        </button>
+        <h2 id="quickTitle">الأوامر السريعة</h2>
+        <p>الوصول للأدوات من مكان واحد دون ازدحام الشريط.</p>
+      </div>
+      <div class="modal-body">
+        <input
+          id="quickSearch"
+          type="search"
+          placeholder="ابحث عن أمر…"
+          aria-label="ابحث عن أمر"
+        />
+        <div id="quickActionList"></div>
+      </div>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

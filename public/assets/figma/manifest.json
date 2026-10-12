@@ -1,0 +1,79 @@
+{
+  "add-column": {
+    "imgGroup": "/assets/figma/add-column-41175.svg"
+  },
+  "add-relationship": {
+    "imgGroup": "/assets/figma/add-relationship-38604.svg",
+    "imgGroup1": "/assets/figma/add-relationship-41175.svg",
+    "imgGroup2": "/assets/figma/add-relationship-2626a.svg"
+  },
+  "add-table": {
+    "imgGroup": "/assets/figma/add-table-41175.svg",
+    "imgGroup1": "/assets/figma/add-table-7b30a.svg"
+  },
+  "ai-conversation": {
+    "imgGroup": "/assets/figma/ai-conversation-41175.svg"
+  },
+  "code-analysis": {
+    "imgGroup": "/assets/figma/code-analysis-38604.svg",
+    "imgGroup1": "/assets/figma/code-analysis-41175.svg",
+    "imgGroup2": "/assets/figma/code-analysis-2626a.svg"
+  },
+  "connect-database": {
+    "imgGroup": "/assets/figma/connect-database-41175.svg"
+  },
+  "edit-column": {
+    "imgGroup": "/assets/figma/edit-column-41175.svg"
+  },
+  "main-context": {
+    "imgGroup": "/assets/figma/main-context-03a3a.svg",
+    "imgGroup1": "/assets/figma/main-context-0fdd0.svg",
+    "imgGroup2": "/assets/figma/main-context-daafe.svg",
+    "imgGroup3": "/assets/figma/main-context-25196.svg",
+    "imgGroup4": "/assets/figma/main-context-1ada5.svg",
+    "imgGroup5": "/assets/figma/main-context-7c0a3.svg",
+    "imgGroup6": "/assets/figma/main-context-3fe06.svg",
+    "imgGroup7": "/assets/figma/main-context-65531.svg",
+    "imgGroup8": "/assets/figma/main-context-71774.svg",
+    "imgGroup9": "/assets/figma/main-context-46da4.svg",
+    "imgGroup10": "/assets/figma/main-context-93bef.svg",
+    "imgGroup11": "/assets/figma/main-context-cdbec.svg",
+    "imgGroup12": "/assets/figma/main-context-7a999.svg",
+    "imgGroup13": "/assets/figma/main-context-e5ddb.svg",
+    "imgConnectionStatus": "/assets/figma/main-context-3b36a.svg",
+    "imgOriginalNetworkLogo": "/assets/figma/main-context-aca14.svg",
+    "imgEditableDotGrid": "/assets/figma/main-context-ccf94.svg",
+    "imgFkMealsStoreIdStoresId": "/assets/figma/main-context-74643.svg",
+    "imgFkConsumptionItemsMealIdMealsId": "/assets/figma/main-context-11b81.svg",
+    "imgFkConsumptionItemsInventoryItemIdInventoryItemsId": "/assets/figma/main-context-70497.svg",
+    "imgFkInventoryItemsStoreIdStoresId": "/assets/figma/main-context-5597e.svg",
+    "imgFkInventoryItemsUnitIdMeasurementUnitsId": "/assets/figma/main-context-3b4ea.svg",
+    "imgFkStockMovementsInventoryItemIdInventoryItemsId": "/assets/figma/main-context-6e7d8.svg"
+  },
+  "organize-topics": {
+    "imgGroup": "/assets/figma/organize-topics-41175.svg",
+    "imgGroup1": "/assets/figma/organize-topics-ce7c7.svg",
+    "imgGroup2": "/assets/figma/organize-topics-7b30a.svg"
+  },
+  "relationship-details": {
+    "imgGroup": "/assets/figma/relationship-details-41175.svg"
+  },
+  "rename-table": {
+    "imgGroup": "/assets/figma/rename-table-41175.svg"
+  },
+  "table-code-details": {
+    "imgGroup": "/assets/figma/table-code-details-41175.svg"
+  },
+  "table-expanded": {
+    "imgGroup": "/assets/figma/table-expanded-41175.svg",
+    "imgGroup1": "/assets/figma/table-expanded-7b30a.svg"
+  },
+  "table-inspector": {
+    "imgGroup": "/assets/figma/table-inspector-41175.svg",
+    "imgGroup1": "/assets/figma/table-inspector-7b30a.svg"
+  },
+  "table-relationships": {
+    "imgGroup": "/assets/figma/table-relationships-41175.svg",
+    "imgGroup1": "/assets/figma/table-relationships-7b30a.svg"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+.playwright-cli/
+output/
+preview.png
+preview-focus.png
+*.log
+.env
+.DS_Store
+Thumbs.db
