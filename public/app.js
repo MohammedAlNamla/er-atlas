@@ -18,6 +18,32 @@ const state = {
   inspectorTab: 'columns', topicEditorId: null, arrangement: null, arrangementMode: 'relations', aiController: null, layoutController: null
 };
 const WORKSPACES_KEY = 'eratlas.workspaces.v1';
+const THEME_KEY = 'eratlas.theme';
+const THEME_LABELS = { auto: 'تلقائي', light: 'فاتح', dark: 'ليلي' };
+// Canvas edges are painted in JS, so they read the same CSS tokens as the DOM does.
+let themeColors = null;
+function readThemeColors() {
+  const fallback = { wire: '#9288af', focus: '#6d58c6', trace: '#5d45c3', selected: '#6551c7', proposed: '#8164d2', label: '#5f5674', halo: '#fcfbfd' };
+  if (typeof getComputedStyle !== 'function' || typeof document.documentElement?.nodeType !== 'number') return fallback;
+  const style = getComputedStyle(document.documentElement), read = (name, value) => style.getPropertyValue(name).trim() || value;
+  return { wire: read('--wire', fallback.wire), focus: read('--wire-focus', fallback.focus), trace: read('--wire-trace', fallback.trace),
+    selected: read('--wire-selected', fallback.selected), proposed: read('--wire-proposed', fallback.proposed), label: read('--wire-label', fallback.label), halo: read('--paper', fallback.halo) };
+}
+const edgeColors = () => themeColors ||= readThemeColors();
+function applyTheme(mode) {
+  const root = document.documentElement;
+  if (mode === 'light' || mode === 'dark') root.dataset.theme = mode; else root.removeAttribute('data-theme');
+  const label = $('themeLabel'); if (label) label.textContent = THEME_LABELS[mode] || THEME_LABELS.auto;
+  themeColors = null;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--paper').trim() || '#fcfbfd');
+  if (state.schema) updateEdgeEmphasis();
+}
+function currentTheme() { const saved = store.getItem(THEME_KEY); return saved === 'light' || saved === 'dark' ? saved : 'auto'; }
+function cycleTheme() {
+  const order = ['auto', 'light', 'dark'], next = order[(order.indexOf(currentTheme()) + 1) % order.length];
+  store.setItem(THEME_KEY, next); applyTheme(next);
+  showToast(`المظهر: ${THEME_LABELS[next]}`);
+}
 const LEGACY_SUFRA_ID = 'sufra-products-2026-09-27';
 const activeWorkspace = () => state.workspaces.find(item => item.id === state.workspaceId);
 const blankSchema = name => ({ database: name, tables: [], relations: [], readOnly: true });
@@ -959,7 +985,7 @@ function updateEdgeEmphasis() {
       ref.line.classList.toggle('dimmed', Boolean(dimmed && !selected));
       const proposed = ref.line.classList.contains('proposed');
       ref.canvasStyle = {
-        stroke: selected ? '#6551c7' : incident ? '#5d45c3' : focused ? '#6d58c6' : proposed ? '#8164d2' : '#9288af',
+        stroke: selected ? edgeColors().selected : incident ? edgeColors().trace : focused ? edgeColors().focus : proposed ? edgeColors().proposed : edgeColors().wire,
         opacity: dimmed && !selected ? .55 : selected || incident ? 1 : proposed ? .88 : focused ? .8 : .75,
         width: selected ? 2.5 : incident ? 2.25 : focused ? 1.7 : 1.6,
         proposed
@@ -1054,8 +1080,8 @@ function drawCanvasEdges() {
     }
     context.font = '600 13px "Roboto Mono", monospace';
     context.textAlign = 'center';
-    context.fillStyle = '#5f5674';
-    context.strokeStyle = '#fcfbfd'; context.lineWidth = 4;
+    context.fillStyle = edgeColors().label;
+    context.strokeStyle = edgeColors().halo; context.lineWidth = 4;
     context.globalAlpha = 1;
     for (const annotation of ref.annotations || []) {
       context.strokeText(annotation.text, annotation.x, annotation.y);
@@ -2005,7 +2031,7 @@ function openCodeDialog() {
 }
 function openQuickActions() {
   closeHeaderMenus();
-  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
+  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
   const root = $('quickActionList'); root.replaceChildren();
   for (const [label, action] of commands) root.append(uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'));
   $('quickSearch').value = ''; openDialog($('quickActionsDialog')); $('quickSearch').focus();
@@ -2041,6 +2067,8 @@ function installEvents() {
     $('selectionModeButton').setAttribute('aria-pressed', 'true'); renderNodes(); showToast('اختر جدولًا أو علاقة لعرض التفاصيل');
   });
   $('quickActionsButton').addEventListener('click', openQuickActions);
+  $('themeButton').addEventListener('click', cycleTheme);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (currentTheme() === 'auto') applyTheme('auto'); });
   $('quickSearch').addEventListener('input', event => { for (const item of $('quickActionList').children) item.hidden = !item.textContent.includes(event.target.value.trim()); });
   $('applyArrangementButton').addEventListener('click', () => {
     if (!state.arrangement?.proposed) { arrangeWithAi(); return; }
@@ -2407,6 +2435,7 @@ function sameConnection(saved, live) {
 
 async function bootstrap() {
   await initStore();
+  applyTheme(currentTheme());
   installEvents();
   let serverSchema = null;
   try {

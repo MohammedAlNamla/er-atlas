@@ -128,7 +128,7 @@ Arabic controls share the workspace with English database identifiers. Keep ER A
 - Thin separators, modest corners and restrained overlay depth.
 - Compact navigation around a pannable data canvas.
 
-This document merges the approved direction with the shipped cascade: graph.css, then figma.css, then assets/figma/quiet-atlas.css; ui.js owns matching node geometry. It records implementation evidence. Formal measured-comp state was not established before implementation, so this document does not certify a formal comp gate.
+This document merges the approved direction with the shipped stylesheet: public/atlas.css (tokens first, then layout, components and the final surface; every color is a token with a light and a dark value, dark following the system unless data-theme pins it); ui.js owns matching node geometry. It records implementation evidence. Formal measured-comp state was not established before implementation, so this document does not certify a formal comp gate.
 
 ## Colors
 
@@ -195,6 +195,8 @@ Tables are flat at rest and on hover. Header tint, fine dividers, outlines and i
 - **Selection inset:** an inner purple outline on selected nodes and focused fields.
 
 Exact shadows and focus treatments live in the sidecar extensions and component snippets.
+
+**The Topic Band Rule.** Each table header carries a 3px band in its topic color (an inset shadow, so node geometry is unchanged). Below 42% zoom columns hide and each table becomes a labelled tile with an 8px band.
 
 **The Flat Tables Rule.** Table cards use separators and state outlines for hierarchy; reserve ambient elevation for tools and overlays.
 

@@ -3,13 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#faf8f6" />
+    <meta name="theme-color" content="#fcfbfd" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      /* Apply a pinned theme before first paint so dark mode never flashes light. */
+      try {
+        var pinned = localStorage.getItem("eratlas.theme");
+        if (pinned === "light" || pinned === "dark") document.documentElement.dataset.theme = pinned;
+      } catch (error) {}
+    </script>
     <title>ER Atlas — خريطة قاعدة البيانات</title>
     <link rel="stylesheet" href="/assets/fonts/fonts.css" />
-    <link rel="stylesheet" href="/graph.css" />
-    <link rel="stylesheet" href="/figma.css" />
-    <link rel="stylesheet" href="/assets/figma/quiet-atlas.css" />
+    <link rel="stylesheet" href="/atlas.css" />
   </head>
   <body>
     <a class="skip-link" href="#map">الانتقال إلى الخريطة</a>
@@ -136,6 +142,8 @@
               ><button id="connectionButton" type="button">
                 <span id="connectionLabel">اتصال PostgreSQL</span></button
               ><button id="refreshButton" type="button">تحديث المخطط</button
+              ><button id="themeButton" type="button" title="تبديل المظهر بين تلقائي وفاتح وليلي">
+                المظهر: <span id="themeLabel">تلقائي</span></button
               ><button id="quickActionsButton" type="button">
                 الأوامر السريعة <kbd>Ctrl K</kbd>
               </button>
