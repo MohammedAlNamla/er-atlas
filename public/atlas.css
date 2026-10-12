@@ -3609,7 +3609,23 @@ body .modal-header h2 { font-size: 21px; line-height: 32px; min-height: 32px; }
 .details-panel .modal-footer { padding: 12px 20px; }
 .drawer-dialog { width: min(440px, calc(100vw - 32px)); height: calc(100dvh - 172px); max-height: calc(100dvh - 172px); margin: 156px 16px auto auto; border-radius: 10px; }
 .footer-actions { flex-wrap: wrap; gap: 8px; }
-.toast { bottom: 86px; border-radius: 8px; font-size: 13px; }
+/* Toast: a compact pill above the tool strip; never stretched by top+bottom. */
+.toast {
+  top: auto;
+  bottom: 92px;
+  right: auto;
+  left: 50%;
+  width: max-content;
+  max-width: min(520px, calc(100% - 32px));
+  transform: translate(-50%, 12px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / .28);
+}
+.toast.show { transform: translate(-50%, 0); }
 @media (min-width: 881px) and (max-width: 1150px) {
   .app-shell > .topbar { gap: 16px; grid-template-columns: auto minmax(160px, 1fr) auto; }
   .topbar .workspace-switch-button { width: 170px; max-width: 170px; }
@@ -3736,3 +3752,29 @@ body .modal-header h2 { font-size: 21px; line-height: 32px; min-height: 32px; }
    shadow keeps node geometry identical to the measurements in ui.js. */
 .node-head { box-shadow: inset 0 3px 0 var(--node-color, var(--teal)); border-radius: 7px 7px 0 0; }
 .table-node.dimmed .node-head { box-shadow: inset 0 3px 0 var(--line); }
+
+/* Overview cards carry their topic: color band, member count and the first tables. */
+.topic-overview-card { position: relative; overflow: hidden; gap: 14px; min-height: 176px; transition: border-color .15s, transform .15s, box-shadow .15s; }
+.topic-overview-card::before { content: ""; position: absolute; inset-inline: 0; top: 0; height: 4px; background: var(--topic-color, var(--teal)); }
+.topic-overview-card:hover { border-color: var(--topic-color, var(--teal)); transform: translateY(-2px); box-shadow: 0 10px 28px rgb(var(--shadow-rgb) / .1); }
+.topic-overview-count { min-width: 30px; height: 28px; padding: 0 8px; border-radius: 999px; display: grid; place-items: center; font: 600 13px/1 var(--mono); color: var(--ink); background: color-mix(in srgb, var(--topic-color, var(--teal)) 18%, transparent); }
+.topic-overview-tables { display: flex; flex-wrap: wrap; gap: 6px; }
+.topic-overview-table { font: 12px/20px var(--mono); padding: 0 8px; border-radius: 6px; background: var(--context); border: 1px solid var(--line); color: var(--muted); }
+.topic-overview-table.more { background: transparent; border-style: dashed; }
+.topic-overview-meta { margin-top: auto; }
+@media (prefers-reduced-motion: reduce) { .topic-overview-card:hover { transform: none; } }
+
+/* Catalog: sortable list, topic chips with their colors, room above the floor of the page. */
+.catalog-tools { display: flex; align-items: center; gap: 12px; }
+.catalog-sort { height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+.catalog-sort:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.catalog-total { margin: -12px 0 12px; font-size: 13px; color: var(--muted); }
+.catalog-count { font-variant-numeric: tabular-nums; }
+.catalog-topics { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
+.catalog-topic { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 24px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 12px; white-space: nowrap; }
+.catalog-topic::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--topic-color, var(--faint)); }
+.catalog-topic.none::before { display: none; }
+.table-catalog { margin-bottom: 104px; }
+.catalog-row:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
+.map-area.show-view-overlay .editing-palette { display: none; }
+@media (max-width: 600px) { .catalog-tools { flex-direction: column; align-items: stretch; width: 100%; } .catalog-sort { width: 100%; } .catalog-total { margin-top: -4px; } }
