@@ -1,0 +1,3203 @@
+{
+ "format": "eratlas.workspace",
+ "version": 1,
+ "exportedAt": "2026-10-12T13:25:15.264Z",
+ "name": "Sufra · Products",
+ "kind": "ideas",
+ "schema": {
+  "database": "Sufra Products / Billing · current + proposed devices",
+  "tables": [
+   {
+    "id": "billing_products",
+    "schema": "public",
+    "name": "billing_products",
+    "description": "كتالوج ما تبيعه Sufra. unit_price وسعر الفترة في جدول الأسعار مصدران حاليان مختلفان.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "code",
+      "type": "varchar(80)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 4,
+      "name": "name",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "name_ar",
+      "type": "varchar",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "name_en",
+      "type": "varchar",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "description",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "description_ar",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "description_en",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "kind",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 11,
+      "name": "unit_price",
+      "type": "numeric(12,2)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 12,
+      "name": "monthly_price",
+      "type": "numeric(12,2)",
+      "nullable": true,
+      "default": null,
+      "description": "حقل قديم ما زال في البنية",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 13,
+      "name": "annual_price",
+      "type": "numeric(12,2)",
+      "nullable": true,
+      "default": null,
+      "description": "حقل قديم ما زال في البنية",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "one_time_price",
+      "type": "numeric(12,2)",
+      "nullable": true,
+      "default": null,
+      "description": "حقل قديم ما زال في البنية",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "capabilities",
+      "type": "jsonb",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 16,
+      "name": "quantity_key",
+      "type": "varchar(40)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 17,
+      "name": "is_active",
+      "type": "boolean",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 18,
+      "name": "sort_order",
+      "type": "integer",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 19,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 20,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "billing_product_prices",
+    "schema": "public",
+    "name": "billing_product_prices",
+    "description": "أسعار المنتج حسب العملة والفترة وتاريخ بدء السريان.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "billing_product_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "currency_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 5,
+      "name": "billing_interval",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "unit_price",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "is_active",
+      "type": "boolean",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "effective_from",
+      "type": "date",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "currencies",
+    "schema": "public",
+    "name": "currencies",
+    "description": "جدول مرجعي للعملات المستخدمة في السعر والعرض والاشتراك والدفع.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "code",
+      "type": "varchar(3)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 4,
+      "name": "name",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "symbol",
+      "type": "varchar(10)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "is_active",
+      "type": "boolean",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "prospects",
+    "schema": "public",
+    "name": "prospects",
+    "description": "عميل محتمل قبل إنشاء المتجر؛ لا يصبح متجرًا حتى تأكيد الدفع.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "store_name",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 4,
+      "name": "phone",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "address",
+      "type": "varchar",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "owner_name",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "owner_email",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "owner_phone",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "source",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "sales_stage",
+      "type": "varchar(30)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 11,
+      "name": "assigned_admin_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 12,
+      "name": "sales_notes",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 13,
+      "name": "lost_reason",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "converted_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "created_store_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 16,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 17,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "quotes",
+    "schema": "public",
+    "name": "quotes",
+    "description": "عقد البيع قبل الدفع، ويمكن ربطه بمتجر قائم عند التجديد.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "quote_number",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 4,
+      "name": "prospect_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 5,
+      "name": "store_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 6,
+      "name": "custom_plan_name",
+      "type": "varchar",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "status",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "currency_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 9,
+      "name": "billing_interval",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "valid_until",
+      "type": "date",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 11,
+      "name": "subtotal",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 12,
+      "name": "discount_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 13,
+      "name": "discount_reason",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "tax_rate",
+      "type": "numeric(6,3)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "tax_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 16,
+      "name": "grand_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 17,
+      "name": "notes",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 18,
+      "name": "customer_notes",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 19,
+      "name": "sent_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 20,
+      "name": "sent_by_admin_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 21,
+      "name": "sent_via",
+      "type": "varchar(20)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 22,
+      "name": "accepted_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 23,
+      "name": "accepted_by_admin_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 24,
+      "name": "acceptance_note",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 25,
+      "name": "cancelled_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 26,
+      "name": "payment_confirmed_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 27,
+      "name": "payment_confirmed_by_admin_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 28,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 29,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "quote_items",
+    "schema": "public",
+    "name": "quote_items",
+    "description": "بنود العرض مع نسخ الاسم والقدرات والسعر وقت التعاقد.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "quote_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "billing_product_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 5,
+      "name": "product_code_snapshot",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "name_snapshot",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "description_snapshot",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "kind_snapshot",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "capabilities_snapshot",
+      "type": "jsonb",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "quantity_key_snapshot",
+      "type": "varchar(40)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 11,
+      "name": "billing_interval_snapshot",
+      "type": "varchar(20)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 12,
+      "name": "quantity",
+      "type": "integer",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 13,
+      "name": "list_unit_price",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "unit_price",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "discount_type",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 16,
+      "name": "discount_value",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 17,
+      "name": "discount_amount",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 18,
+      "name": "line_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 19,
+      "name": "sort_order",
+      "type": "integer",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 20,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 21,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "quote_events",
+    "schema": "public",
+    "name": "quote_events",
+    "description": "تاريخ أحداث عرض السعر وتغييرات الحالة.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "quote_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 3,
+      "name": "actor_admin_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "event",
+      "type": "varchar(30)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "before",
+      "type": "jsonb",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "after",
+      "type": "jsonb",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "subscriptions",
+    "schema": "public",
+    "name": "subscriptions",
+    "description": "فترة اشتراك ناتجة عن عرض مدفوع؛ قد تكون نشطة أو مجدولة.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "store_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "quote_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": true
+     },
+     {
+      "number": 5,
+      "name": "status",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "currency_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 7,
+      "name": "billing_interval",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "starts_at",
+      "type": "timestamptz",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "ends_at",
+      "type": "timestamptz",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "subtotal",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 11,
+      "name": "discount_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 12,
+      "name": "tax_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 13,
+      "name": "grand_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "capabilities",
+      "type": "jsonb",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "quantities",
+      "type": "jsonb",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 16,
+      "name": "custom_plan_name",
+      "type": "varchar",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 17,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 18,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "subscription_items",
+    "schema": "public",
+    "name": "subscription_items",
+    "description": "نسخة تعاقدية للبنود المتكررة، بلا FK مباشر إلى المنتج.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "subscription_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "product_code_snapshot",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "name_snapshot",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "description_snapshot",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "kind_snapshot",
+      "type": "varchar(20)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "billing_interval_snapshot",
+      "type": "varchar(20)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "quantity_key_snapshot",
+      "type": "varchar(40)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "quantity",
+      "type": "integer",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 11,
+      "name": "current_quantity",
+      "type": "integer",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 12,
+      "name": "list_unit_price",
+      "type": "numeric(12,2)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 13,
+      "name": "unit_price",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "discount_type",
+      "type": "varchar(20)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "discount_value",
+      "type": "numeric(12,2)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 16,
+      "name": "discount_amount",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 17,
+      "name": "line_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 18,
+      "name": "capabilities_snapshot",
+      "type": "jsonb",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 19,
+      "name": "sort_order",
+      "type": "integer",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 20,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 21,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "subscription_adjustments",
+    "schema": "public",
+    "name": "subscription_adjustments",
+    "description": "تغيير مدفوع أثناء الفترة؛ البنود والتغيرات محفوظة داخل changes JSONB.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "subscription_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "currency_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 5,
+      "name": "status",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "changes",
+      "type": "jsonb",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "priced_at",
+      "type": "timestamptz",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "valid_until",
+      "type": "timestamptz",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "subtotal",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "discount_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 11,
+      "name": "discount_reason",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 12,
+      "name": "tax_rate",
+      "type": "numeric(5,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 13,
+      "name": "tax_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "grand_total",
+      "type": "numeric(12,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "reason",
+      "type": "text",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 16,
+      "name": "customer_notes",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 17,
+      "name": "created_by_admin_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 18,
+      "name": "applied_by_admin_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 19,
+      "name": "cancelled_by_admin_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 20,
+      "name": "effective_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 21,
+      "name": "cancelled_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 22,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 23,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "platform_payments",
+    "schema": "public",
+    "name": "platform_payments",
+    "description": "دفعة يثبتها مسؤول، مرتبطة بالعرض أو تعديل الاشتراك.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "store_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "currency_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 5,
+      "name": "recorded_by",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 6,
+      "name": "amount",
+      "type": "numeric(10,2)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "payment_method",
+      "type": "varchar(30)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "notes",
+      "type": "text",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "idempotency_key",
+      "type": "varchar(64)",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "quote_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 11,
+      "name": "subscription_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 12,
+      "name": "subscription_adjustment_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": true
+     },
+     {
+      "number": 13,
+      "name": "payment_reference",
+      "type": "varchar",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "stores",
+    "schema": "public",
+    "name": "stores",
+    "description": "جدول طرفي مختصر: المتجر الذي يمتلك الاشتراك، وليس كامل نطاق المتجر.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "owner_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 4,
+      "name": "identifier",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "name",
+      "type": "varchar",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "status",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "currency_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 8,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "deleted_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "administrators",
+    "schema": "public",
+    "name": "administrators",
+    "description": "جدول طرفي مختصر: من أنشأ أو اعتمد العرض والتعديل والدفعة.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "name",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 4,
+      "name": "email",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "role",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "is_active",
+      "type": "boolean",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "users",
+    "schema": "public",
+    "name": "users",
+    "description": "مرجع مختصر للمستخدم الذي يعتمد الجهاز أو يلغي تفعيله من لوحة Partner.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "name",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 4,
+      "name": "email",
+      "type": "varchar",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "is_active",
+      "type": "boolean",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ]
+   },
+   {
+    "id": "store_devices",
+    "schema": "public",
+    "name": "store_devices",
+    "description": "مقترح: طلب الجهاز واعتماده ونوعه في جدول واحد. POS الرئيسي لا يُلغى إلا بالاستبدال.",
+    "approxRows": 0,
+    "columns": [
+     {
+      "number": 1,
+      "name": "id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": true,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 2,
+      "name": "uuid",
+      "type": "uuid",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 3,
+      "name": "store_id",
+      "type": "bigint",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 4,
+      "name": "name",
+      "type": "varchar(120)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 5,
+      "name": "platform",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 6,
+      "name": "device_key_hash",
+      "type": "varchar(255)",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": true,
+      "foreign": false
+     },
+     {
+      "number": 7,
+      "name": "mode",
+      "type": "varchar(10)",
+      "nullable": true,
+      "default": null,
+      "description": "POS / KDS / Waiter؛ يحدد عند الاعتماد",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 8,
+      "name": "status",
+      "type": "varchar(20)",
+      "nullable": false,
+      "default": null,
+      "description": "pending / approved / deactivated / replaced",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 9,
+      "name": "is_primary_pos",
+      "type": "boolean",
+      "nullable": false,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 10,
+      "name": "approved_by_user_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 11,
+      "name": "approved_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 12,
+      "name": "deactivated_by_user_id",
+      "type": "bigint",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": true
+     },
+     {
+      "number": 13,
+      "name": "deactivated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 14,
+      "name": "last_seen_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 15,
+      "name": "created_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     },
+     {
+      "number": 16,
+      "name": "updated_at",
+      "type": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "description": "",
+      "primary": false,
+      "unique": false,
+      "foreign": false
+     }
+    ],
+    "kind": "proposed"
+   }
+  ],
+  "relations": [
+   {
+    "id": "billing_product_prices.billing_product_id",
+    "name": "billing_product_prices_billing_product_id_foreign",
+    "source": "billing_product_prices",
+    "target": "billing_products",
+    "pairs": [
+     {
+      "source": "billing_product_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "billing_product_prices.currency_id",
+    "name": "billing_product_prices_currency_id_foreign",
+    "source": "billing_product_prices",
+    "target": "currencies",
+    "pairs": [
+     {
+      "source": "currency_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "prospects.assigned_admin_id",
+    "name": "prospects_assigned_admin_id_foreign",
+    "source": "prospects",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "assigned_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "prospects.created_store_id",
+    "name": "prospects_created_store_id_foreign",
+    "source": "prospects",
+    "target": "stores",
+    "pairs": [
+     {
+      "source": "created_store_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quotes.prospect_id",
+    "name": "quotes_prospect_id_foreign",
+    "source": "quotes",
+    "target": "prospects",
+    "pairs": [
+     {
+      "source": "prospect_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quotes.store_id",
+    "name": "quotes_store_id_foreign",
+    "source": "quotes",
+    "target": "stores",
+    "pairs": [
+     {
+      "source": "store_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quotes.currency_id",
+    "name": "quotes_currency_id_foreign",
+    "source": "quotes",
+    "target": "currencies",
+    "pairs": [
+     {
+      "source": "currency_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quotes.sent_by_admin_id",
+    "name": "quotes_sent_by_admin_id_foreign",
+    "source": "quotes",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "sent_by_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quotes.accepted_by_admin_id",
+    "name": "quotes_accepted_by_admin_id_foreign",
+    "source": "quotes",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "accepted_by_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quotes.payment_confirmed_by_admin_id",
+    "name": "quotes_payment_confirmed_by_admin_id_foreign",
+    "source": "quotes",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "payment_confirmed_by_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quote_items.quote_id",
+    "name": "quote_items_quote_id_foreign",
+    "source": "quote_items",
+    "target": "quotes",
+    "pairs": [
+     {
+      "source": "quote_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quote_items.billing_product_id",
+    "name": "quote_items_billing_product_id_foreign",
+    "source": "quote_items",
+    "target": "billing_products",
+    "pairs": [
+     {
+      "source": "billing_product_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quote_events.quote_id",
+    "name": "quote_events_quote_id_foreign",
+    "source": "quote_events",
+    "target": "quotes",
+    "pairs": [
+     {
+      "source": "quote_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "quote_events.actor_admin_id",
+    "name": "quote_events_actor_admin_id_foreign",
+    "source": "quote_events",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "actor_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscriptions.store_id",
+    "name": "subscriptions_store_id_foreign",
+    "source": "subscriptions",
+    "target": "stores",
+    "pairs": [
+     {
+      "source": "store_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscriptions.quote_id",
+    "name": "subscriptions_quote_id_foreign",
+    "source": "subscriptions",
+    "target": "quotes",
+    "pairs": [
+     {
+      "source": "quote_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscriptions.currency_id",
+    "name": "subscriptions_currency_id_foreign",
+    "source": "subscriptions",
+    "target": "currencies",
+    "pairs": [
+     {
+      "source": "currency_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscription_items.subscription_id",
+    "name": "subscription_items_subscription_id_foreign",
+    "source": "subscription_items",
+    "target": "subscriptions",
+    "pairs": [
+     {
+      "source": "subscription_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscription_adjustments.subscription_id",
+    "name": "subscription_adjustments_subscription_id_foreign",
+    "source": "subscription_adjustments",
+    "target": "subscriptions",
+    "pairs": [
+     {
+      "source": "subscription_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscription_adjustments.currency_id",
+    "name": "subscription_adjustments_currency_id_foreign",
+    "source": "subscription_adjustments",
+    "target": "currencies",
+    "pairs": [
+     {
+      "source": "currency_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscription_adjustments.created_by_admin_id",
+    "name": "subscription_adjustments_created_by_admin_id_foreign",
+    "source": "subscription_adjustments",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "created_by_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscription_adjustments.applied_by_admin_id",
+    "name": "subscription_adjustments_applied_by_admin_id_foreign",
+    "source": "subscription_adjustments",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "applied_by_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "subscription_adjustments.cancelled_by_admin_id",
+    "name": "subscription_adjustments_cancelled_by_admin_id_foreign",
+    "source": "subscription_adjustments",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "cancelled_by_admin_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "platform_payments.store_id",
+    "name": "platform_payments_store_id_foreign",
+    "source": "platform_payments",
+    "target": "stores",
+    "pairs": [
+     {
+      "source": "store_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "platform_payments.currency_id",
+    "name": "platform_payments_currency_id_foreign",
+    "source": "platform_payments",
+    "target": "currencies",
+    "pairs": [
+     {
+      "source": "currency_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "platform_payments.recorded_by",
+    "name": "platform_payments_recorded_by_foreign",
+    "source": "platform_payments",
+    "target": "administrators",
+    "pairs": [
+     {
+      "source": "recorded_by",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "platform_payments.quote_id",
+    "name": "platform_payments_quote_id_foreign",
+    "source": "platform_payments",
+    "target": "quotes",
+    "pairs": [
+     {
+      "source": "quote_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "platform_payments.subscription_id",
+    "name": "platform_payments_subscription_id_foreign",
+    "source": "platform_payments",
+    "target": "subscriptions",
+    "pairs": [
+     {
+      "source": "subscription_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "platform_payments.subscription_adjustment_id",
+    "name": "platform_payments_subscription_adjustment_id_foreign",
+    "source": "platform_payments",
+    "target": "subscription_adjustments",
+    "pairs": [
+     {
+      "source": "subscription_adjustment_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "stores.currency_id",
+    "name": "stores_currency_id_foreign",
+    "source": "stores",
+    "target": "currencies",
+    "pairs": [
+     {
+      "source": "currency_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "actual"
+   },
+   {
+    "id": "store_devices.store_id",
+    "name": "store_devices_store_id_foreign",
+    "source": "store_devices",
+    "target": "stores",
+    "pairs": [
+     {
+      "source": "store_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "proposed"
+   },
+   {
+    "id": "store_devices.approved_by_user_id",
+    "name": "store_devices_approved_by_user_id_foreign",
+    "source": "store_devices",
+    "target": "users",
+    "pairs": [
+     {
+      "source": "approved_by_user_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "proposed"
+   },
+   {
+    "id": "store_devices.deactivated_by_user_id",
+    "name": "store_devices_deactivated_by_user_id_foreign",
+    "source": "store_devices",
+    "target": "users",
+    "pairs": [
+     {
+      "source": "deactivated_by_user_id",
+      "target": "id"
+     }
+    ],
+    "onDelete": "a",
+    "kind": "proposed"
+   }
+  ],
+  "readOnly": true
+ },
+ "topics": [
+  {
+   "id": "catalog",
+   "label": "الكتالوج والأسعار",
+   "color": "#6551C7",
+   "ids": [
+    "billing_products",
+    "billing_product_prices",
+    "currencies"
+   ]
+  },
+  {
+   "id": "quotes",
+   "label": "المبيعات والعروض",
+   "color": "#C67966",
+   "ids": [
+    "prospects",
+    "quotes",
+    "quote_items",
+    "quote_events",
+    "billing_products"
+   ]
+  },
+  {
+   "id": "subscriptions",
+   "label": "الاشتراكات والتعديلات",
+   "color": "#7B9A78",
+   "ids": [
+    "stores",
+    "subscriptions",
+    "subscription_items",
+    "subscription_adjustments"
+   ]
+  },
+  {
+   "id": "payments",
+   "label": "المدفوعات والمسؤولون",
+   "color": "#B69060",
+   "ids": [
+    "platform_payments",
+    "administrators",
+    "quotes",
+    "subscription_adjustments"
+   ]
+  },
+  {
+   "id": "devices",
+   "label": "أجهزة التشغيل · مقترح",
+   "color": "#8B68CE",
+   "ids": [
+    "store_devices",
+    "users",
+    "stores",
+    "subscriptions"
+   ]
+  }
+ ],
+ "positions": {},
+ "operations": [],
+ "cursor": 0
+}

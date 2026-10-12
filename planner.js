@@ -3,7 +3,7 @@ import { applyOperation } from './public/model.js';
 
 const q = value => `"${String(value).replaceAll('"', '""')}"`;
 const tableSql = table => `${q(table.schema)}.${q(table.name)}`;
-const typePattern = /^(?:smallint|integer|bigint|boolean|text|uuid|date|time(?: without time zone)?|timestamp(?: with(?:out)? time zone)?|timestamptz|numeric(?:\(\d{1,3}(?:,\s*\d{1,3})?\))?|decimal(?:\(\d{1,3}(?:,\s*\d{1,3})?\))?|varchar(?:\(\d{1,5}\))?|character varying(?:\(\d{1,5}\))?|char(?:\(\d{1,5}\))?|double precision|real|jsonb?|bytea|inet|citext)$/i;
+const typePattern = /^(?:smallint|integer|bigint|boolean|text|uuid|date|time(?:\(\d\))?(?: with(?:out)? time zone)?|timestamp(?:\(\d\))?(?: with(?:out)? time zone)?|timestamptz(?:\(\d\))?|smallserial|serial|bigserial|numeric(?:\(\d{1,3}(?:,\s*\d{1,3})?\))?|decimal(?:\(\d{1,3}(?:,\s*\d{1,3})?\))?|varchar(?:\(\d{1,5}\))?|character varying(?:\(\d{1,5}\))?|char(?:\(\d{1,5}\))?|double precision|real|jsonb?|bytea|inet|citext)(?:\[\])?$/i;
 function safeType(value) {
   const type = String(value || '').trim();
   if (!typePattern.test(type)) throw new Error(`نوع عمود غير مدعوم: ${type}`);
@@ -15,6 +15,13 @@ function safeDefault(value) {
   if (/^(?:-?\d+(?:\.\d+)?|true|false|null|now\(\)|gen_random_uuid\(\)|current_timestamp|current_date)$/i.test(text)) return text;
   if (/^'(?:[^']|'')*'$/.test(text)) return text;
   throw new Error('القيمة الافتراضية يجب أن تكون قيمة ثابتة أو now() أو gen_random_uuid()');
+}
+const deleteActions = { a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL', d: 'SET DEFAULT' };
+function deleteClause(code) {
+  if (code === undefined || code === null || code === '' || code === 'a') return '';
+  const action = deleteActions[code];
+  if (!action) throw new Error('إجراء الحذف غير مدعوم');
+  return ` ON DELETE ${action}`;
 }
 function getTable(schema, id) {
   const table = schema.tables.find(item => item.id === id);
@@ -60,11 +67,12 @@ export function planChanges(base, operations) {
       }
       case 'updateColumn': {
         const table = getTable(schema, operation.tableId);
-        const before = table.columns.find(c => c.name === operation.columnName), after = next.tables.find(t => t.id === table.id).columns.find(c => c.name === operation.patch.name);
+        const before = table.columns.find(c => c.name === operation.columnName);
+        const name = operation.patch.name || operation.columnName;
+        const after = next.tables.find(t => t.id === table.id).columns.find(c => c.name === name);
         if (!before || !after) throw new Error('العمود غير موجود');
-        const name = operation.patch.name || before.name;
         if (name !== before.name) statements.push(`ALTER TABLE ${tableSql(table)} RENAME COLUMN ${q(before.name)} TO ${q(name)};`);
-        if (after.type !== before.type) statements.push(`ALTER TABLE ${tableSql(table)} ALTER COLUMN ${q(name)} TYPE ${safeType(after.type)};`);
+        if (after.type !== before.type) statements.push(`ALTER TABLE ${tableSql(table)} ALTER COLUMN ${q(name)} TYPE ${safeType(after.type)} USING ${q(name)}::${safeType(after.type)};`);
         if (after.nullable !== before.nullable) statements.push(`ALTER TABLE ${tableSql(table)} ALTER COLUMN ${q(name)} ${after.nullable ? 'DROP' : 'SET'} NOT NULL;`);
         if (after.default !== before.default) {
           const defaultSql = safeDefault(after.default);
@@ -84,7 +92,7 @@ export function planChanges(base, operations) {
       }
       case 'addRelation': {
         const relation = operation.relation, source = getTable(schema, relation.source), target = getTable(schema, relation.target);
-        statements.push(`ALTER TABLE ${tableSql(source)} ADD CONSTRAINT ${q(relation.name)} FOREIGN KEY (${relation.pairs.map(p => q(p.source)).join(', ')}) REFERENCES ${tableSql(target)} (${relation.pairs.map(p => q(p.target)).join(', ')});`);
+        statements.push(`ALTER TABLE ${tableSql(source)} ADD CONSTRAINT ${q(relation.name)} FOREIGN KEY (${relation.pairs.map(p => q(p.source)).join(', ')}) REFERENCES ${tableSql(target)} (${relation.pairs.map(p => q(p.target)).join(', ')})${deleteClause(relation.onDelete)};`);
         break;
       }
       case 'dropRelation': {

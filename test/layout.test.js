@@ -17,7 +17,7 @@ function harness(mode = 'map') {
       if (!elements.has(id)) elements.set(id, { clientWidth: 1400, clientHeight: 800 });
       return elements.get(id);
     } },
-    localStorage: { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) },
+    store: { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) },
     requestAnimationFrame: callback => callback(),
     notify: message => messages.push(message)
   });

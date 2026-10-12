@@ -8,7 +8,15 @@ const cache = new Map();
 const textName = node => typeof node === 'string' ? node : node?.name || '';
 const tail = name => name.split('\\').at(-1);
 const snake = name => name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/([A-Z])([A-Z][a-z])/g, '$1_$2').toLowerCase();
-const plural = name => /[^aeiou]y$/.test(name) ? `${name.slice(0, -1)}ies` : /(?:s|x|z|ch|sh)$/.test(name) ? `${name}es` : `${name}s`;
+const irregular = { person: 'people', child: 'children', man: 'men', woman: 'women', mouse: 'mice', goose: 'geese', foot: 'feet', tooth: 'teeth', ox: 'oxen', criterion: 'criteria', analysis: 'analyses', datum: 'data', leaf: 'leaves', life: 'lives' };
+const uncountable = new Set(['equipment', 'information', 'rice', 'money', 'species', 'series', 'fish', 'sheep', 'news']);
+// Laravel pluralizes only the last word of the snake_case model name.
+const plural = name => {
+  const cut = name.lastIndexOf('_') + 1, head = name.slice(0, cut), word = name.slice(cut);
+  if (uncountable.has(word)) return name;
+  if (irregular[word]) return head + irregular[word];
+  return head + (/[^aeiou]y$/.test(word) ? `${word.slice(0, -1)}ies` : /(?:s|x|z|ch|sh)$/.test(word) ? `${word}es` : `${word}s`);
+};
 
 function walk(node, visitor) {
   if (!node || typeof node !== 'object') return;
@@ -61,6 +69,7 @@ function modelArgument(node, namespace, imports) {
   return node?.kind === 'staticlookup' && textName(node.offset) === 'class' ? resolveName(node.what, namespace, imports) : null;
 }
 
+export { plural as laravelPlural };
 export function extractPhpFacts(code, file, tables) {
   const ast = parser.parseCode(code, file);
   const lookup = tableLookup(tables), symbols = [], migrations = [], routes = [];

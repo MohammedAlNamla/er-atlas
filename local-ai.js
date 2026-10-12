@@ -67,7 +67,15 @@ export function run(command, args, { cwd, input = '', timeout = 150000, includeS
   });
 }
 
-export async function cliStatus(provider) {
+const statusCache = new Map();
+export async function cliStatus(provider, { fresh = false } = {}) {
+  const cached = statusCache.get(provider);
+  if (!fresh && cached && Date.now() - cached.at < 60000) return cached.value;
+  const value = await readCliStatus(provider);
+  if (value.ready) statusCache.set(provider, { at: Date.now(), value }); else statusCache.delete(provider);
+  return value;
+}
+async function readCliStatus(provider) {
   try {
     const cli = await findCli(provider);
     const output = await run(cli.command, [...cli.prefix, ...(provider === 'codex-cli' ? ['login', 'status'] : ['auth', 'status'])], { timeout: 10000, includeStderr: provider === 'codex-cli' });

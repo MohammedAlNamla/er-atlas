@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check code-context.js && node --check local-ai.js && node --check planner.js && node --check public/app.js && node --check public/ui.js && node --check public/topics.js && node --check public/router.js && node --check public/route-worker.js && node --test test/*.test.js"
+    "check": "node --check server.js && node --check code-context.js && node --check local-ai.js && node --check planner.js && node --check public/app.js && node --check public/storage.js && node --check public/workspace-io.js && node --check public/ui.js && node --check public/topics.js && node --check public/router.js && node --check public/route-worker.js && node --test test/*.test.js"
   },
   "dependencies": {
     "pg": "^8.16.3",

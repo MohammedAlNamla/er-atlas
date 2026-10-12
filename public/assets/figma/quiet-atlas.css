@@ -331,3 +331,9 @@ body .modal-header h2 { font-size: 21px; line-height: 32px; min-height: 32px; }
 .edge.dimmed, .edge.trace.dimmed { opacity: .55; }
 .edge.hit { opacity: 1; stroke: transparent; stroke-width: 16px; }
 .edge-cardinality { fill: #5f5674; font: 600 13px/1 var(--mono); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
+
+/* Semantic zoom: below ~42% the column rows are unreadable, so show names only. */
+.viewport.overview .node-columns,
+.viewport.overview .node-expand { visibility: hidden; }
+.viewport.overview .node-name { font-size: 30px; line-height: 40px; }
+.viewport.overview .node-head .node-more { visibility: hidden; }

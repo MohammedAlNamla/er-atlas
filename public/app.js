@@ -1,6 +1,7 @@
 import { applyOperation, replay, describeOperation, clone } from './model.js';
 import { routeConnections } from './router.js';
-import { sufraProductsSchema, sufraProductTopics } from './sufra-products-schema.js';
+import { store, initStore } from './storage.js';
+import { buildExport, parseExport, recoverOperations } from './workspace-io.js';
 import { normalizeTopics, parseTopicSuggestions as readTopicSuggestions, topicColors } from './topics.js';
 import { icon, button as uiButton, notice, codeBlock, tabs as uiTabs, dataTable, modalHeader, modalFooter, openDialog, initOverlays, renderMiniMap } from './ui.js';
 import { NODE_WIDTH, HEADER_HEIGHT, ROW_HEIGHT, previewColumns, nodeHeight as measureNode, columnOffset, fitCamera, relationCardinality } from './ui.js';
@@ -17,44 +18,11 @@ const state = {
   inspectorTab: 'columns', topicEditorId: null, arrangement: null, arrangementMode: 'relations', aiController: null, layoutController: null
 };
 const WORKSPACES_KEY = 'eratlas.workspaces.v1';
-const SUFRA_PRODUCTS_ID = 'sufra-products-2026-09-27';
+const LEGACY_SUFRA_ID = 'sufra-products-2026-09-27';
 const activeWorkspace = () => state.workspaces.find(item => item.id === state.workspaceId);
 const blankSchema = name => ({ database: name, tables: [], relations: [], readOnly: true });
-function sufraProductsWorkspace() {
-  return {
-    id: SUFRA_PRODUCTS_ID,
-    name: 'Sufra · Products الحالي',
-    kind: 'ideas',
-    schema: sufraProductsSchema(),
-    topic: 'all',
-    connection: null
-  };
-}
-
-function includeProposedDevices(workspace) {
-  const snapshot = sufraProductsSchema();
-  const schema = workspace.schema || snapshot;
-  const deviceTables = new Set(['store_devices', 'users']);
-  const existingTables = new Set(schema.tables.map(table => table.id));
-  const existingRelations = new Set(schema.relations.map(relation => relation.id));
-
-  for (const table of snapshot.tables) {
-    if (deviceTables.has(table.id) && !existingTables.has(table.id)) {
-      schema.tables.push(table);
-    }
-  }
-
-  for (const relation of snapshot.relations) {
-    if (relation.source === 'store_devices' && !existingRelations.has(relation.id)) {
-      schema.relations.push(relation);
-    }
-  }
-
-  schema.database = snapshot.database;
-  workspace.schema = schema;
-}
 function saveWorkspaces() {
-  localStorage.setItem(WORKSPACES_KEY, JSON.stringify({ activeId: state.workspaceId, items: state.workspaces }));
+  store.setItem(WORKSPACES_KEY, JSON.stringify({ activeId: state.workspaceId, items: state.workspaces }));
 }
 function closeWorkspaceMenu({ focus = false } = {}) {
   $('workspaceMenu').hidden = true;
@@ -74,22 +42,18 @@ function renderWorkspaces() {
   $('workspaceSwitchButton').title = state.connectionLive ? 'اتصال PostgreSQL نشط' : 'مخطط محفوظ على الجهاز';
   $('workspaceMenuCount').textContent = String(state.workspaces.length);
   for (const workspace of state.workspaces) {
-    const isSufraProducts = workspace.id === SUFRA_PRODUCTS_ID;
     const button = el('button', `workspace-option${workspace.id === state.workspaceId ? ' active' : ''}`);
     button.type = 'button';
-    button.title = isSufraProducts
-      ? 'مخطط منتجات Sufra الحالي من الكود'
-      : workspace.kind === 'ideas' ? 'مساحة أفكار' : 'خريطة قاعدة بيانات';
+    button.title = workspace.kind === 'ideas' ? 'مساحة أفكار' : 'خريطة قاعدة بيانات';
     if (workspace.id === state.workspaceId) button.setAttribute('aria-current', 'page');
     const mark = icon(workspace.kind === 'ideas' ? 'ai' : 'table'); mark.classList.add('workspace-option-icon');
     const copy = el('span', 'workspace-option-copy');
-    const description = isSufraProducts
-      ? `${workspace.schema?.tables?.length || 0} جدول · الحالي + الأجهزة المقترحة`
-      : workspace.kind === 'ideas'
-        ? 'أفكار ومخطط حر'
-        : workspace.kind === 'demo'
-          ? 'الخريطة النموذجية'
-          : `${workspace.schema?.tables?.length || 0} جدول · PostgreSQL`;
+    const tableTotal = workspace.schema?.tables?.length || 0;
+    const description = workspace.kind === 'ideas'
+      ? (tableTotal ? `${tableTotal} جدول · أفكار ومخطط حر` : 'أفكار ومخطط حر')
+      : workspace.kind === 'demo'
+        ? 'الخريطة النموذجية'
+        : `${tableTotal} جدول · PostgreSQL`;
     copy.append(el('strong', '', workspace.name), el('small', '', description));
     button.append(mark, copy);
     if (workspace.id === state.workspaceId) button.append(icon('check'));
@@ -129,7 +93,7 @@ function renderAiMessages(status = '', failed = false) {
   if (failed) box.append(uiButton('إعدادات المساعد', () => openDialog($('aiSettingsDialog'))), uiButton('إعادة المحاولة', () => $('aiForm').requestSubmit()));
   box.scrollTop = box.scrollHeight;
 }
-function saveAiMessages() { localStorage.setItem(`${storageKey()}.conversation`, JSON.stringify(state.aiMessages)); }
+function saveAiMessages() { store.setItem(`${storageKey()}.conversation`, JSON.stringify(state.aiMessages)); }
 async function activateWorkspace(id, { initial = false, live = false } = {}) {
   const next = state.workspaces.find(item => item.id === id);
   if (!next || (!initial && id === state.workspaceId)) return;
@@ -149,7 +113,7 @@ async function activateWorkspace(id, { initial = false, live = false } = {}) {
   if (next.topic && state.groups.some(group => group.id === next.topic) && state.viewMode === 'topics') {
     state.topic = next.topic; buildTopicPositions(); renderTopics(); renderView(); renderNodes(); requestAnimationFrame(() => fitView(true));
   }
-  try { const messages = JSON.parse(localStorage.getItem(`${storageKey()}.conversation`) || '[]'); if (Array.isArray(messages)) state.aiMessages = messages.filter(m => ['user','assistant'].includes(m.role) && typeof m.content === 'string').slice(-30); } catch { /* old chat ignored */ }
+  try { const messages = JSON.parse(store.getItem(`${storageKey()}.conversation`) || '[]'); if (Array.isArray(messages)) state.aiMessages = messages.filter(m => ['user','assistant'].includes(m.role) && typeof m.content === 'string').slice(-30); } catch { /* old chat ignored */ }
   renderAiMessages(); renderWorkspaces(); renderEmptyWorkspace(); saveWorkspaces();
   syncCodeSource();
 }
@@ -210,7 +174,7 @@ function buildFocusPositions() {
   });
   state.focusPositions = positions;
   try {
-    const saved = JSON.parse(localStorage.getItem(`${storageKey()}.focusLayout.${state.focusTable}`) || '{}');
+    const saved = JSON.parse(store.getItem(`${storageKey()}.focusLayout.${state.focusTable}`) || '{}');
     for (const [id] of positions) {
       const point = saved[id];
       if (Number.isFinite(point?.x) && Number.isFinite(point?.y)) positions.set(id, point);
@@ -243,7 +207,7 @@ function buildTopicPositions() {
   state.topicPositions = new Map(assignments.map(item => [item.table.id,
     { x: 80 + item.col * 440, y: rowTops[item.row] + Math.round((rowHeights[item.row] - nodeHeight(item.table)) / 2) }]));
   try {
-    const saved = JSON.parse(localStorage.getItem(`${storageKey()}.topicLayout.${state.topic}`) || '{}');
+    const saved = JSON.parse(store.getItem(`${storageKey()}.topicLayout.${state.topic}`) || '{}');
     for (const table of tables) {
       const point = saved[table.id];
       if (Number.isFinite(point?.x) && Number.isFinite(point?.y)) state.topicPositions.set(table.id, point);
@@ -311,17 +275,6 @@ function buildGroups() {
     if (!state.groups.some(group => group.id === state.topic)) state.topic = 'all';
     return;
   }
-  if (state.workspaceId === SUFRA_PRODUCTS_ID) {
-    const allIds = new Set(state.schema.tables.map(table => table.id));
-    state.groups = [
-      { id: 'all', label: 'الكل', color: '#746C8D', ids: allIds },
-      ...sufraProductTopics.map(topic => ({
-        ...topic,
-        ids: new Set(topic.ids.filter(id => allIds.has(id)))
-      }))
-    ];
-    return;
-  }
   const memberships = new Map(state.schema.tables.map(table => [table.id, topicIds(table)]));
   const groups = [{ id: 'all', label: 'الكل', color: '#746C8D', ids: new Set(state.schema.tables.map(table => table.id)) }];
   for (const definition of groupDefinitions) {
@@ -344,6 +297,9 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
   const tables = [...schema.tables];
   if (!tables.length) return new Map();
   const byId = new Map(tables.map(table => [table.id, table]));
+  // Heights are fixed for a given render; computing them per pair made large graphs freeze.
+  const heights = new Map(tables.map(table => [table.id, nodeHeight(table)]));
+  const h = table => heights.get(table.id);
   const links = [];
   const adjacency = new Map(tables.map(table => [table.id, new Map()]));
   for (const relation of schema.relations) {
@@ -422,6 +378,7 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
         const b = ordered[bIndex], bp = points.get(b.id);
         let dx = bp.x - ap.x, dy = bp.y - ap.y;
         if (!dx && !dy) dx = .01;
+        if (Math.abs(dx) > 1500 || Math.abs(dy) > 1500) continue;
         const distance2 = Math.max(100, dx * dx + dy * dy);
         const distance = Math.sqrt(distance2);
         const force = Math.min(54, 185000 / distance2);
@@ -429,7 +386,7 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
         ap.vx -= fx; ap.vy -= fy; bp.vx += fx; bp.vy += fy;
 
         const overlapX = (NODE_WIDTH + 94) - Math.abs(dx);
-        const overlapY = ((nodeHeight(a) + nodeHeight(b)) / 2 + 70) - Math.abs(dy);
+        const overlapY = ((h(a) + h(b)) / 2 + 70) - Math.abs(dy);
         if (overlapX > 0 && overlapY > 0) {
           if (overlapX < overlapY) {
             const push = overlapX * .12 * (dx >= 0 ? 1 : -1);
@@ -473,7 +430,7 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
         const b = ordered[bIndex], bp = points.get(b.id);
         const dx = bp.x - ap.x || .01, dy = bp.y - ap.y || .01;
         const overlapX = NODE_WIDTH + 86 - Math.abs(dx);
-        const overlapY = (nodeHeight(a) + nodeHeight(b)) / 2 + 62 - Math.abs(dy);
+        const overlapY = (h(a) + h(b)) / 2 + 62 - Math.abs(dy);
         if (overlapX <= 0 || overlapY <= 0) continue;
         moved = true;
         if (overlapX < overlapY) {
@@ -488,10 +445,10 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
     if (!moved) break;
   }
   const minX = Math.min(...ordered.map(table => points.get(table.id).x - NODE_WIDTH / 2));
-  const minY = Math.min(...ordered.map(table => points.get(table.id).y - nodeHeight(table) / 2));
+  const minY = Math.min(...ordered.map(table => points.get(table.id).y - h(table) / 2));
   const result = new Map(ordered.map(table => [table.id, {
     x: Math.round(points.get(table.id).x - NODE_WIDTH / 2 - minX + 110),
-    y: Math.round(points.get(table.id).y - nodeHeight(table) / 2 - minY + 110)
+    y: Math.round(points.get(table.id).y - h(table) / 2 - minY + 110)
   }]));
 
   // Match the graph footprint to the actual canvas. Large schemas previously
@@ -502,7 +459,7 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
     const left = Math.min(...ordered.map(table => result.get(table.id).x));
     const right = Math.max(...ordered.map(table => result.get(table.id).x + NODE_WIDTH));
     const top = Math.min(...ordered.map(table => result.get(table.id).y));
-    const bottom = Math.max(...ordered.map(table => result.get(table.id).y + nodeHeight(table)));
+    const bottom = Math.max(...ordered.map(table => result.get(table.id).y + h(table)));
     const graphWidth = right - left, graphHeight = bottom - top;
     const desiredAspect = Math.max(1.55, Math.min(2.75, viewAspect * .94));
     const desiredWidth = graphHeight * desiredAspect;
@@ -525,52 +482,23 @@ function storageKey() {
   return `eratlas.v4.${state.demo ? 'demo' : 'db'}.${state.base.database}.${signature}`;
 }
 function aiLayoutKey() { return `${storageKey()}.ai-layout`; }
-function saveAiLayout() { localStorage.setItem(aiLayoutKey(), JSON.stringify(state.aiLayout)); }
+function saveAiLayout() { store.setItem(aiLayoutKey(), JSON.stringify(state.aiLayout)); }
 
 function loadPositions() {
   state.positions = layoutTables();
   let saved = {};
   try {
-    saved = JSON.parse(localStorage.getItem(storageKey()) || '{}') || {};
+    saved = JSON.parse(store.getItem(storageKey()) || '{}') || {};
     for (const table of state.schema.tables) {
       const point = saved[table.id];
       if (point && Number.isFinite(point.x) && Number.isFinite(point.y)) state.positions.set(table.id, point);
     }
   } catch { /* invalid old layout is ignored */ }
 
-  if (state.workspaceId === SUFRA_PRODUCTS_ID) {
-    positionProposedDevices(saved);
-  }
-}
-
-function positionProposedDevices(saved) {
-  const deviceIds = new Set(['store_devices', 'users']);
-  const currentTables = state.schema.tables.filter(table => !deviceIds.has(table.id));
-  const rightEdge = Math.max(
-    0,
-    ...currentTables.map(table => state.positions.get(table.id).x + NODE_WIDTH)
-  );
-  const storePosition = state.positions.get('stores');
-  const x = Math.round(rightEdge + 520);
-  const y = Math.round(storePosition?.y || 0);
-
-  if (!saved.store_devices) {
-    state.positions.set('store_devices', { x, y });
-  }
-
-  if (!saved.users) {
-    const device = state.schema.tables.find(table => table.id === 'store_devices');
-    const devicePosition = state.positions.get('store_devices');
-    const gap = device ? nodeHeight(device) + 120 : 680;
-    state.positions.set('users', {
-      x: devicePosition?.x ?? x,
-      y: (devicePosition?.y ?? y) + gap
-    });
-  }
 }
 
 function savePositions() {
-  localStorage.setItem(storageKey(), JSON.stringify(Object.fromEntries(state.positions)));
+  store.setItem(storageKey(), JSON.stringify(Object.fromEntries(state.positions)));
 }
 
 function el(tag, className, text) {
@@ -747,6 +675,13 @@ function chooseFocusTable(id) {
   renderView(); renderNodes(); fitView(false);
 }
 
+let involvedColumns = new Map();
+function indexInvolvedColumns() {
+  const index = new Map();
+  const add = (tableId, column) => { if (!index.has(tableId)) index.set(tableId, new Set()); index.get(tableId).add(column); };
+  for (const relation of state.schema.relations) for (const pair of relation.pairs) { add(relation.source, pair.source); add(relation.target, pair.target); }
+  return index;
+}
 function makeNode(table) {
   const card = el('article', `table-node${table.kind === 'proposed' ? ' proposed' : ''}`);
   card.dataset.table = table.id;
@@ -761,14 +696,7 @@ function makeNode(table) {
   head.append(icon('table'), name, more);
   head.addEventListener('pointerdown', event => startDrag(event, table.id, card));
   const columns = el('div', 'node-columns');
-  const involved = new Set(state.schema.relations.flatMap(relation => {
-    const values = [];
-    for (const pair of relation.pairs) {
-      if (relation.source === table.id) values.push(pair.source);
-      if (relation.target === table.id) values.push(pair.target);
-    }
-    return values;
-  }));
+  const involved = involvedColumns.get(table.id) || new Set();
   for (const column of previewColumns(table, nodeExpanded(table))) {
     const row = el('div', `column${involved.has(column.name) ? ' has-line' : ''}${column.kind === 'proposed' ? ' proposed' : ''}`);
     row.dataset.column = column.name;
@@ -818,6 +746,7 @@ function makeNode(table) {
 function renderNodes() {
   const container = $('nodes');
   const tables = visibleTables();
+  involvedColumns = indexInvolvedColumns();
   $('viewport').classList.toggle('canvas-edges', tables.length > 35);
   container.replaceChildren(...tables.map(makeNode));
   state.edgeRoutes = null;
@@ -1157,7 +1086,7 @@ function scheduleView() {
   if (state.viewFrame) return;
   state.viewFrame = requestAnimationFrame(() => {
     state.viewFrame = null;
-    $('viewport').classList.toggle('overview', visibleTables().length > 35 && state.scale < .42);
+    $('viewport').classList.toggle('overview', state.scale < .42);
     $('world').style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
     $('zoomLabel').textContent = `${Math.round(state.scale * 100)}%`;
     updateVisible();
@@ -1244,7 +1173,7 @@ function openRelationDetails(id) {
   if (columns.length) tags.append(el('span', 'chip', [...new Set(columns.map(column => column.type))].join(' / ')));
   for (const topic of state.groups.filter(topic => topic.id !== 'all' && topic.ids.has(from.id) && topic.ids.has(to.id))) tags.append(el('span', 'chip', topic.label));
   body.append(tags);
-  const sql = `FOREIGN KEY (${relation.pairs.map(pair => pair.source).join(', ')})\nREFERENCES ${to.schema}.${to.name} (${relation.pairs.map(pair => pair.target).join(', ')})\nON DELETE ${({ a:'NO ACTION',r:'RESTRICT',c:'CASCADE',n:'SET NULL',d:'SET DEFAULT' })[relation.onDelete] || 'NO ACTION'}`;
+  const sql = `FOREIGN KEY (${relation.pairs.map(pair => pair.source).join(', ')})\nREFERENCES ${to.schema}.${to.name} (${relation.pairs.map(pair => pair.target).join(', ')})\nON DELETE ${({ a:'NO ACTION',r:'RESTRICT',c:'CASCADE',n:'SET NULL',d:'SET DEFAULT' })[relation.onDelete] || 'NO ACTION'}${relation.onUpdate ? `\nON UPDATE ${({ a:'NO ACTION',r:'RESTRICT',c:'CASCADE',n:'SET NULL',d:'SET DEFAULT' })[relation.onUpdate] || 'NO ACTION'}` : ''}`;
   body.append(codeBlock(sql, relation.name), uiButton('حذف العلاقة من المسودة', () => confirmAction('حذف العلاقة من المسودة؟', `${from.name} → ${to.name}`, 'سيُسجل حذف العلاقة ضمن التغييرات المقترحة.', () => { stage({type:'dropRelation',relationId:id}); dialog.close(); }), 'text-button danger'));
   root.append(body, modalFooter([uiButton('إظهار على الخريطة', () => { dialog.close(); setViewMode('focus'); chooseFocusTable(from.id); }), uiButton('إغلاق', () => dialog.close())]));
   openDialog(dialog);
@@ -1255,6 +1184,7 @@ function tableSql(table) {
   const primary = table.columns.filter(column => column.primary);
   const lines = table.columns.map(column => `  ${quote(column.name)} ${column.type}${column.primary && primary.length === 1 ? ' PRIMARY KEY' : ''}${!column.nullable && !(column.primary && primary.length === 1) ? ' NOT NULL' : ''}${column.default ? ` DEFAULT ${column.default}` : ''}${column.unique && !column.primary ? ' UNIQUE' : ''}`);
   if (primary.length > 1) lines.push(`  PRIMARY KEY (${primary.map(column => quote(column.name)).join(', ')})`);
+  for (const key of (table.uniqueKeys || []).filter(key => key.length > 1)) lines.push(`  UNIQUE (${key.map(name => quote(name)).join(', ')})`);
   return `CREATE TABLE ${quote(table.schema)}.${quote(table.name)} (\n${lines.join(',\n')}\n);`;
 }
 function sourceEvidence(tableId) {
@@ -1264,13 +1194,13 @@ function sourceEvidence(tableId) {
 function closeInspector() {
   state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis();
 }
-function confirmAction(title, description, message, apply, label = 'حذف من المسودة') {
+function confirmAction(title, description, message, apply, label = 'حذف من المسودة', danger = true, detail = 'يمكن التراجع عن هذا التغيير من مراجعة المسودة.') {
   const dialog = $('confirmationDialog'), root = $('confirmationContent'); root.replaceChildren();
   const workspaceId = state.workspaceId;
   root.append(modalHeader(title, description, () => dialog.close(), 'confirmationTitle'));
-  const body = el('div', 'modal-body'); body.append(notice(message, 'يمكن التراجع عن هذا التغيير من مراجعة المسودة.', 'warning')); root.append(body);
+  const body = el('div', 'modal-body'); body.append(notice(message, detail, 'warning')); root.append(body);
   root.append(modalFooter([
-    uiButton(label, () => { if (workspaceId !== state.workspaceId) { dialog.close(); return; } apply(); dialog.close(); }, 'primary-button danger'),
+    uiButton(label, () => { if (workspaceId !== state.workspaceId) { dialog.close(); return; } apply(); dialog.close(); }, danger ? 'primary-button danger' : 'primary-button'),
     uiButton('إلغاء', () => dialog.close())
   ])); openDialog(dialog);
 }
@@ -1321,7 +1251,7 @@ function renderDetails() {
   root.append(modalHeader(`${table.schema}.${table.name}`, 'بنية الجدول وعلاقاته في مكان واحد، والخريطة تبقى ظاهرة.', closeInspector));
   const body = el('div', 'modal-body'), chips = el('div', 'chip-row');
   const membership = state.groups.find(group => group.id !== 'all' && group.ids.has(table.id));
-  chips.append(el('span', 'chip', `${table.columns.length} أعمدة`), el('span', 'chip', `${relevant.length} علاقات`), el('span', 'chip', table.kind === 'proposed' ? 'مسودة' : membership?.label || table.schema));
+  chips.append(el('span', 'chip', `${table.columns.length} أعمدة`), el('span', 'chip', `${relevant.length} علاقات`), ...(table.approxRows > 0 ? [el('span', 'chip', `≈ ${table.approxRows.toLocaleString('en-US')} صف`)] : []), el('span', 'chip', table.kind === 'proposed' ? 'مسودة' : membership?.label || table.schema));
   body.append(chips, uiTabs([['details', 'التفاصيل'], ['relations', 'العلاقات'], ['columns', 'الأعمدة']], state.inspectorTab,
     tab => { state.inspectorTab = tab; renderDetails(); }));
   const groups = state.groups.filter(group => group.id !== 'all' && group.ids.has(table.id));
@@ -1428,12 +1358,12 @@ function showContextMenu(event) {
 function arrangeTables() {
   state.hoveredTable = null;
   if (state.viewMode === 'focus' && state.focusTable) {
-    localStorage.removeItem(`${storageKey()}.focusLayout.${state.focusTable}`);
+    store.removeItem(`${storageKey()}.focusLayout.${state.focusTable}`);
     buildFocusPositions(); renderNodes(); requestAnimationFrame(() => fitView(false));
     showToast('أُعيد ترتيب الجدول وعلاقاته'); return;
   }
   if (state.viewMode === 'topics' && state.topic !== 'all') {
-    localStorage.removeItem(`${storageKey()}.topicLayout.${state.topic}`);
+    store.removeItem(`${storageKey()}.topicLayout.${state.topic}`);
     buildTopicPositions(); renderNodes(); requestAnimationFrame(() => fitView(true));
     showToast('أُعيد ترتيب جداول الموضوع'); return;
   }
@@ -1442,11 +1372,11 @@ function arrangeTables() {
 }
 function draftKey() { return `${storageKey()}.draft${state.workspaceId !== 'legacy' && state.base.fingerprint ? `.${state.base.fingerprint}` : ''}`; }
 function topicKey() { return `${storageKey()}.topics`; }
-function saveDraft() { localStorage.setItem(draftKey(), JSON.stringify({ operations: state.operations, cursor: state.cursor })); }
+function saveDraft() { store.setItem(draftKey(), JSON.stringify({ operations: state.operations, cursor: state.cursor })); }
 function saveTopics() {
   state.customGroups = state.groups.slice(1).map(group => ({ id: group.id, label: group.label, color: group.color, ids: [...group.ids],
     ...(group.reason ? { reason: group.reason } : {}), ...(group.moduleIds ? { moduleIds: group.moduleIds } : {}), ...(group.evidence ? { evidence: group.evidence } : {}) }));
-  localStorage.setItem(topicKey(), JSON.stringify(state.customGroups));
+  store.setItem(topicKey(), JSON.stringify(state.customGroups));
 }
 function updateDraftView() {
   $('pendingCount').textContent = String(state.cursor);
@@ -1570,10 +1500,11 @@ function openEditor(kind, context = {}) {
     if (kind === 'addRelation') {
       const source = state.schema.tables.find(table => table.id === read('source')), target = state.schema.tables.find(table => table.id === read('target'));
       const sourceColumn = source?.columns.find(column => column.name === read('sourceColumn')), targetColumn = target?.columns.find(column => column.name === read('targetColumn'));
-      const status = $('relationshipCompatibility'), compatible = sourceColumn && targetColumn && sourceColumn.type === targetColumn.type;
+      const status = $('relationshipCompatibility'), targetIsKey = Boolean(targetColumn && (targetColumn.primary || targetColumn.unique || (target.uniqueKeys || []).some(key => key.length === 1 && key[0] === targetColumn.name)));
+      const compatible = sourceColumn && targetColumn && sourceColumn.type === targetColumn.type && targetIsKey;
       if (status) {
         status.className = `notice full ${compatible ? 'success' : 'warning'}`;
-        status.replaceChildren(icon(compatible ? 'check' : 'info'), el('div', 'notice-copy', compatible ? `النوعان متوافقان: ${sourceColumn.type} · ${source.name}.${sourceColumn.name} → ${target.name}.${targetColumn.name}` : 'راجع الأعمدة ونوعيها قبل إضافة العلاقة إلى المسودة.'));
+        status.replaceChildren(icon(compatible ? 'check' : 'info'), el('div', 'notice-copy', compatible ? `النوعان متوافقان: ${sourceColumn.type} · ${source.name}.${sourceColumn.name} → ${target.name}.${targetColumn.name}` : sourceColumn && targetColumn && !targetIsKey ? `العمود ${target.name}.${targetColumn.name} ليس مفتاحًا أساسيًا أو فريدًا؛ سيرفض PostgreSQL هذه العلاقة.` : 'راجع الأعمدة ونوعيها قبل إضافة العلاقة إلى المسودة.'));
       }
       $('editSubmit').disabled = !sourceColumn || !targetColumn;
       sql = `ALTER TABLE ${source?.schema}.${source?.name}\nADD FOREIGN KEY (${read('sourceColumn')})\nREFERENCES ${target?.schema}.${target?.name} (${read('targetColumn')})\nON DELETE ${({ a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL' })[read('onDelete')] || 'NO ACTION'};`;
@@ -1711,7 +1642,7 @@ function updateAiSettings({ save = false } = {}) {
   $('aiContext').textContent = `${state.schema?.tables?.find(table => table.id === state.selectedTable)?.name || state.groups.find(group => group.id === state.topic)?.label || 'المخطط'} · ${providerLabel()}`;
   $('aiFootnote').textContent = local ? 'استخدام تسجيل الدخول على الجهاز · الطلب ضمن حدود الاشتراك.' : 'يستخدم المزوّد المحدد في إعدادات المساعد.';
   renderProviderChoices();
-  if (save) localStorage.setItem('eratlas.ai.settings.v1', JSON.stringify({ provider, model: $('aiModel').value.trim(), endpoint: $('aiEndpoint').value.trim() }));
+  if (save) store.setItem('eratlas.ai.settings.v1', JSON.stringify({ provider, model: $('aiModel').value.trim(), endpoint: $('aiEndpoint').value.trim() }));
 }
 let localAiStatuses = [];
 let defaultSourceRoot = '';
@@ -1768,7 +1699,7 @@ async function loadLocalAiStatus() {
     const response = await fetch('/api/ai/local-status');
     if (!response.ok) throw new Error();
     localAiStatuses = (await response.json()).providers || [];
-    if (!localStorage.getItem('eratlas.ai.settings.v1')) {
+    if (!store.getItem('eratlas.ai.settings.v1')) {
       $('aiProvider').value = localAiStatuses.find(item => item.ready)?.provider || 'codex-cli';
     }
     updateAiSettings();
@@ -1853,10 +1784,10 @@ function applyArrangement() {
   const persist = $('persistArrangement').checked !== false;
   if (proposal.viewMode === 'topics') {
     state.topicPositions = proposal.proposed;
-    if (persist) localStorage.setItem(`${storageKey()}.topicLayout.${proposal.topic}`, JSON.stringify(Object.fromEntries(proposal.proposed)));
+    if (persist) store.setItem(`${storageKey()}.topicLayout.${proposal.topic}`, JSON.stringify(Object.fromEntries(proposal.proposed)));
   } else if (proposal.viewMode === 'focus') {
     state.focusPositions = proposal.proposed;
-    if (persist) localStorage.setItem(`${storageKey()}.focusLayout.${proposal.focusTable}`, JSON.stringify(Object.fromEntries(proposal.proposed)));
+    if (persist) store.setItem(`${storageKey()}.focusLayout.${proposal.focusTable}`, JSON.stringify(Object.fromEntries(proposal.proposed)));
   } else {
     state.aiLayout = proposal.layout; state.positions = proposal.proposed;
     if (persist) { saveAiLayout(); savePositions(); }
@@ -1923,7 +1854,7 @@ function setSchema(schema, demo = false) {
   state.base = clone(schema); state.schema = clone(schema); state.demo = demo; state.topic = 'all';
   state.operations = []; state.cursor = 0; state.customGroups = null; state.aiLayout = null;
   try {
-    const draft = JSON.parse(localStorage.getItem(draftKey()) || '{}');
+    const draft = JSON.parse(store.getItem(draftKey()) || '{}');
     if (Array.isArray(draft.operations)) {
       const cursor = Math.max(0, Math.min(draft.operations.length, Number(draft.cursor) || 0));
       replay(state.base, draft.operations.slice(0, cursor));
@@ -1931,19 +1862,17 @@ function setSchema(schema, demo = false) {
     }
   } catch { showToast('تعذّر تحميل المسودة السابقة'); }
   try {
-    const groups = JSON.parse(localStorage.getItem(topicKey()) || 'null');
+    const groups = JSON.parse(store.getItem(topicKey()) || 'null');
     if (Array.isArray(groups)) state.customGroups = normalizeTopics(groups, replay(state.base, state.operations.slice(0, state.cursor)).tables.map(table => table.id));
   } catch { /* invalid topic settings */ }
   try {
-    const savedLayout = JSON.parse(localStorage.getItem(aiLayoutKey()) || 'null');
+    const savedLayout = JSON.parse(store.getItem(aiLayoutKey()) || 'null');
     if (savedLayout) state.aiLayout = normalizeAiLayout(savedLayout);
   } catch { /* invalid saved AI layout is ignored */ }
   state.selectedTable = null; state.selectedRelation = null; state.hoveredTable = null;
   $('details').hidden = true;
   const kind = activeWorkspace()?.kind;
-  if (state.workspaceId === SUFRA_PRODUCTS_ID) {
-    $('connectionLabel').textContent = 'لقطة من الكود';
-  } else if (kind === 'ideas') {
+  if (kind === 'ideas') {
     $('connectionLabel').textContent = 'مساحة أفكار';
   } else if (state.connectionLive) {
     $('connectionLabel').textContent = schema.database;
@@ -1956,10 +1885,7 @@ function setSchema(schema, demo = false) {
   }
   $('connectionButton').classList.toggle('connected', state.connectionLive);
   $('mapTitle').textContent = kind === 'ideas' ? activeWorkspace().name : demo ? 'خريطة نموذجية' : schema.database;
-  if (state.workspaceId === SUFRA_PRODUCTS_ID) {
-    $('mapSubtitle').textContent =
-      'المنتجات · الاشتراكات · المدفوعات · أجهزة التشغيل المقترحة';
-  } else if (kind === 'ideas') {
+  if (kind === 'ideas') {
     $('mapSubtitle').textContent = 'فكرة ومخطط في مساحة مستقلة';
   } else if (state.connectionLive) {
     $('mapSubtitle').textContent = 'عرض مباشر لبنية PostgreSQL';
@@ -1976,6 +1902,66 @@ function setSchema(schema, demo = false) {
   activeWorkspace().schema = clone(schema);
   buildGroups();
   loadPositions(); refreshDraft({ fit: true });
+  offerStaleDraft();
+}
+// A draft is keyed by the schema fingerprint, so a database change used to hide it silently.
+function offerStaleDraft() {
+  if (state.operations.length || state.demo || !state.base.fingerprint) return;
+  const current = draftKey(), workspaceId = state.workspaceId;
+  const stale = store.keys(`${storageKey()}.draft.`).filter(key => key !== current).map(key => {
+    try { return { key, ...JSON.parse(store.getItem(key)) }; } catch { return null; }
+  }).filter(item => Array.isArray(item?.operations) && item.operations.length);
+  if (!stale.length) return;
+  const newest = stale.at(-1);
+  const { kept, skipped } = recoverOperations(state.base, newest.operations.slice(0, Number.isInteger(newest.cursor) ? newest.cursor : newest.operations.length), applyOperation);
+  const message = kept.length
+    ? `تغيّرت بنية القاعدة بعد حفظ هذه المسودة. يمكن إعادة تطبيق ${kept.length} تغيير${skipped ? ` وسيُتجاوز ${skipped} لم يعد ينطبق` : ''}.`
+    : 'تغيّرت بنية القاعدة ولم يعد أي تغيير من هذه المسودة ينطبق على المخطط الحالي.';
+  confirmAction('مسودة من نسخة سابقة للمخطط', `${newest.operations.length} تغييرات محفوظة`, message, () => {
+    if (workspaceId !== state.workspaceId) return;
+    if (kept.length) { state.operations = kept; state.cursor = kept.length; saveDraft(); refreshDraft(); showToast(`استُعيدت ${kept.length} تغييرات في المسودة`); }
+    for (const item of stale) store.removeItem(item.key);
+  }, kept.length ? 'استعادة المسودة' : 'تجاهل المسودة', false, kept.length ? 'يمكن إلغاء أي تغيير بعد الاستعادة من مراجعة المسودة.' : 'ستُحذف المسودة القديمة من هذا الجهاز.');
+}
+function slug(name) { return String(name).trim().replace(/[^\w\u0600-\u06FF-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'workspace'; }
+function exportWorkspace() {
+  closeWorkspaceMenu();
+  const workspace = activeWorkspace();
+  const topics = state.groups.slice(1).map(group => ({ id: group.id, label: group.label, color: group.color, ids: [...group.ids], ...(group.reason ? { reason: group.reason } : {}) }));
+  const file = buildExport({ name: workspace.name, kind: workspace.kind, schema: clone(state.base), topics, positions: Object.fromEntries(state.positions), operations: state.operations, cursor: state.cursor });
+  const link = document.createElement('a'), url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }));
+  link.href = url; link.download = `${slug(workspace.name)}.eratlas.json`; document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  showToast('صُدّرت المساحة. الملف لا يحتوي كلمات مرور ولا مسارات الكود.');
+}
+function importWorkspace() {
+  closeWorkspaceMenu();
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json,application/json';
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0]; if (!file) return;
+    try {
+      const data = parseExport(await file.text());
+      const id = crypto.randomUUID(), prefix = `eratlas.v4.ws.${id}`;
+      store.setItem(prefix, JSON.stringify(data.positions));
+      if (data.topics.length) store.setItem(`${prefix}.topics`, JSON.stringify(data.topics));
+      if (data.operations.length) store.setItem(`${prefix}.draft${data.schema.fingerprint ? `.${data.schema.fingerprint}` : ''}`, JSON.stringify({ operations: data.operations, cursor: data.cursor }));
+      state.workspaces.push({ id, name: data.name, kind: data.kind, schema: data.schema, topic: 'all', connection: null });
+      await activateWorkspace(id);
+      showToast(`استُوردت مساحة «${data.name}» (${data.schema.tables.length} جدول)`);
+    } catch (error) { showToast(error.message); }
+  });
+  input.click();
+}
+function deleteWorkspace() {
+  closeWorkspaceMenu();
+  const workspace = activeWorkspace();
+  if (state.workspaces.length < 2) { showToast('لا يمكن حذف آخر مساحة عمل. أنشئ مساحة أخرى أولًا.'); return; }
+  const prefix = storageKey();
+  confirmAction('حذف مساحة العمل؟', workspace.name, 'ستُحذف الخريطة والمواضيع والمسودة ومحادثة AI لهذه المساحة من هذا الجهاز. لا تتغير قاعدة البيانات.', () => {
+    for (const key of store.keys(prefix)) if (key === prefix || key.startsWith(`${prefix}.`)) store.removeItem(key);
+    state.workspaces = state.workspaces.filter(item => item.id !== workspace.id);
+    activateWorkspace(state.workspaces[0].id).then(() => showToast('حُذفت مساحة العمل'));
+  }, 'حذف المساحة', true, 'لا يمكن التراجع عن حذف مساحة العمل. صدّرها أولًا إن كنت تريد نسخة.');
 }
 function openConnectionDialog() {
   const settings = activeWorkspace()?.connection;
@@ -2019,7 +2005,7 @@ function openCodeDialog() {
 }
 function openQuickActions() {
   closeHeaderMenus();
-  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
+  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
   const root = $('quickActionList'); root.replaceChildren();
   for (const [label, action] of commands) root.append(uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'));
   $('quickSearch').value = ''; openDialog($('quickActionsDialog')); $('quickSearch').focus();
@@ -2085,6 +2071,21 @@ function installEvents() {
   document.addEventListener('pointerdown', event => { if (!event.target.closest('.workspace-switcher')) closeWorkspaceMenu(); });
   $('newWorkspaceButton').addEventListener('click', () => openWorkspaceDialog());
   $('renameWorkspaceButton').addEventListener('click', () => openWorkspaceDialog(true));
+  $('exportWorkspaceButton').addEventListener('click', exportWorkspace);
+  $('importWorkspaceButton').addEventListener('click', importWorkspace);
+  $('deleteWorkspaceButton').addEventListener('click', deleteWorkspace);
+  $('envConnectionButton').addEventListener('click', async () => {
+    $('connectError').hidden = true;
+    try {
+      const response = await fetch('/api/code/env', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sourceRoot: activeWorkspace()?.sourceRoot || defaultSourceRoot }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'تعذّرت القراءة من .env');
+      const form = $('connectForm');
+      for (const key of ['host', 'port', 'database', 'user']) form.elements.namedItem(key).value = data[key];
+      form.elements.namedItem('password').focus();
+      showToast('عُبّئت البيانات من .env. أدخل كلمة المرور.');
+    } catch (error) { $('connectError').textContent = error.message; $('connectError').hidden = false; }
+  });
   $('closeWorkspaceDialog').addEventListener('click', () => $('workspaceDialog').close());
   $('workspaceForm').addEventListener('submit', async event => {
     event.preventDefault();
@@ -2127,7 +2128,7 @@ function installEvents() {
       case 'renameTable': operation = { type: 'renameTable', tableId: context.tableId, name: value('name') }; break;
       case 'addColumn': operation = { type: 'addColumn', tableId: context.tableId, column: { ...column, primary: data.has('primary') } }; break;
       case 'editColumn': operation = { type: 'updateColumn', tableId: context.tableId, columnName: context.columnName, patch: column }; break;
-      case 'addRelation': operation = { type: 'addRelation', relation: { id: `draft:${crypto.randomUUID()}`, name: `fk_${Date.now()}`, source: value('source'), target: value('target'), pairs: [{ source: value('sourceColumn'), target: value('targetColumn') }], onDelete: value('onDelete') || 'a' } }; break;
+      case 'addRelation': operation = { type: 'addRelation', relation: { id: `draft:${crypto.randomUUID()}`, name: `${(state.schema.tables.find(item => item.id === value('source'))?.name || 'table')}_${value('sourceColumn')}_foreign`, source: value('source'), target: value('target'), pairs: [{ source: value('sourceColumn'), target: value('targetColumn') }], onDelete: value('onDelete') || 'a' } }; break;
     }
     try {
       if (operation.type === 'addTable' && context.position) state.positions.set(operation.id, context.position);
@@ -2143,7 +2144,7 @@ function installEvents() {
   loadCodeSettings();
   $('closeTopicsDialog').addEventListener('click', () => $('topicsDialog').close());
   $('resetTopicsButton').addEventListener('click', () => {
-    state.customGroups = null; localStorage.removeItem(topicKey()); buildGroups();
+    state.customGroups = null; store.removeItem(topicKey()); buildGroups();
     refreshTopics(); renderTopicEditor(); showToast('تمت استعادة التقسيم التلقائي');
   });
   $('topicAiProvider').addEventListener('change', () => {
@@ -2159,7 +2160,7 @@ function installEvents() {
   $('closeAiDialog').addEventListener('click', () => $('aiDialog').close());
   const defaultModels = { 'codex-cli': '', 'claude-cli': '', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-4-5', gemini: 'gemini-2.5-flash', compatible: 'llama3.2' };
   try {
-    const settings = JSON.parse(localStorage.getItem('eratlas.ai.settings.v1') || 'null');
+    const settings = JSON.parse(store.getItem('eratlas.ai.settings.v1') || 'null');
     if (settings && Object.hasOwn(defaultModels, settings.provider)) {
       $('aiProvider').value = settings.provider; $('aiModel').value = typeof settings.model === 'string' ? settings.model : defaultModels[settings.provider];
       $('aiEndpoint').value = typeof settings.endpoint === 'string' ? settings.endpoint : '';
@@ -2275,8 +2276,8 @@ function installEvents() {
       if (state.edgeFrame) { cancelAnimationFrame(state.edgeFrame); state.edgeFrame = null; }
       if (drag.moved) {
         if (state.viewMode === 'map') savePositions();
-        if (state.viewMode === 'topics') localStorage.setItem(`${storageKey()}.topicLayout.${state.topic}`, JSON.stringify(Object.fromEntries(state.topicPositions)));
-        if (state.viewMode === 'focus') localStorage.setItem(`${storageKey()}.focusLayout.${state.focusTable}`, JSON.stringify(Object.fromEntries(state.focusPositions)));
+        if (state.viewMode === 'topics') store.setItem(`${storageKey()}.topicLayout.${state.topic}`, JSON.stringify(Object.fromEntries(state.topicPositions)));
+        if (state.viewMode === 'focus') store.setItem(`${storageKey()}.focusLayout.${state.focusTable}`, JSON.stringify(Object.fromEntries(state.focusPositions)));
         state.edgeRoutes = null; renderEdges(); state.suppressClickUntil = performance.now() + 150;
       }
       else selectTable(drag.id, { inspect: false });
@@ -2287,7 +2288,13 @@ function installEvents() {
     state.drag = null;
   });
   viewport.addEventListener('wheel', event => {
-    event.preventDefault(); zoom(event.deltaY < 0 ? 1.1 : 1 / 1.1, event.clientX, event.clientY);
+    event.preventDefault();
+    // Pinch gestures arrive with ctrlKey; a mouse wheel reports whole, large steps. Anything else is a trackpad scroll.
+    const mouseWheel = event.deltaMode !== 0 || (event.deltaX === 0 && Number.isInteger(event.deltaY) && Math.abs(event.deltaY) >= 50);
+    if (event.ctrlKey || event.metaKey) zoom(Math.exp(-Math.max(-60, Math.min(60, event.deltaY)) * .01), event.clientX, event.clientY);
+    else if (mouseWheel && !event.shiftKey) zoom(event.deltaY < 0 ? 1.1 : 1 / 1.1, event.clientX, event.clientY);
+    else if (event.shiftKey && !event.deltaX) { state.x -= event.deltaY; transform(); }
+    else { state.x -= event.deltaX; state.y -= event.deltaY; transform(); }
   }, { passive: false });
   viewport.addEventListener('click', event => {
     if (performance.now() < state.suppressClickUntil) return;
@@ -2322,6 +2329,18 @@ function installEvents() {
     const editing = event.target.closest?.('input,textarea,select,[contenteditable="true"]');
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !document.querySelector('dialog[open]')) { event.preventDefault(); openQuickActions(); return; }
     if (document.querySelector('dialog[open]')) return;
+    if (!editing && (event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) {
+      event.preventDefault(); stepDraft(event.key.toLowerCase() === 'y' || event.shiftKey ? 1 : -1); return;
+    }
+    if (!editing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      const rect = viewport.getBoundingClientRect(), step = event.shiftKey ? 240 : 80;
+      const pan = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[event.key];
+      if (pan && !document.activeElement?.closest?.('.table-node,button,[role="menuitem"],.header-menu')) { event.preventDefault(); state.x += pan[0]; state.y += pan[1]; transform(); return; }
+      if (['+', '='].includes(event.key)) { zoom(1.2, rect.left + rect.width / 2, rect.top + rect.height / 2); return; }
+      if (['-', '_'].includes(event.key)) { zoom(1 / 1.2, rect.left + rect.width / 2, rect.top + rect.height / 2); return; }
+      if (event.key === '0') { fitView(state.topic !== 'all'); return; }
+      if (event.key.toLowerCase() === 'f') { fitView(state.topic !== 'all', { overview: true }); return; }
+    }
     if (event.key === 'Escape' && (!$('toolsMenu').hidden || !$('aiMenu').hidden || !$('topics').hidden)) { closeHeaderMenus(); return; }
     if (event.key === 'Escape' && !$('workspaceMenu').hidden) { closeWorkspaceMenu({ focus: true }); return; }
     if (event.key === 'Escape' && !$('viewModeMenu').hidden) { closeViewMenu(); $('viewModeButton').focus(); return; }
@@ -2371,7 +2390,23 @@ function installEvents() {
   });
 }
 
+// Workspaces created by earlier versions had their topics hard-coded in the app;
+// copy them into the saved topics once so removing that code loses nothing.
+async function migrateLegacySufra() {
+  const key = `eratlas.v4.ws.${LEGACY_SUFRA_ID}.topics`;
+  if (!state.workspaces.some(item => item.id === LEGACY_SUFRA_ID) || store.getItem(key)) return;
+  try {
+    const sample = parseExport(await (await fetch('/samples/sufra-products.eratlas.json')).text());
+    store.setItem(key, JSON.stringify(sample.topics));
+  } catch { /* topics fall back to automatic grouping */ }
+}
+function sameConnection(saved, live) {
+  if (!live) return false;
+  return saved?.source && live.source ? saved.source === live.source : saved?.database === live.database;
+}
+
 async function bootstrap() {
+  await initStore();
   installEvents();
   let serverSchema = null;
   try {
@@ -2379,20 +2414,16 @@ async function bootstrap() {
     if (response.ok) { const data = await response.json(); if (data.tables) serverSchema = data; }
   } catch { /* app can still open in demo mode */ }
   let registry;
-  try { registry = JSON.parse(localStorage.getItem(WORKSPACES_KEY) || 'null'); } catch { registry = null; }
+  try { registry = JSON.parse(store.getItem(WORKSPACES_KEY) || 'null'); } catch { registry = null; }
   if (Array.isArray(registry?.items) && registry.items.length) {
     state.workspaces = registry.items.filter(item => item?.id && item?.name && ['database', 'demo', 'ideas'].includes(item.kind));
     if (state.workspaces.length) {
-      if (!state.workspaces.some(item => item.id === SUFRA_PRODUCTS_ID)) {
-        state.workspaces.push(sufraProductsWorkspace());
-      }
-      const productsWorkspace = state.workspaces.find(item => item.id === SUFRA_PRODUCTS_ID);
-      includeProposedDevices(productsWorkspace);
+      await migrateLegacySufra();
       const requestedId = location.hash.slice(1);
       const active = state.workspaces.find(item => item.id === requestedId)
         || state.workspaces.find(item => item.id === registry.activeId)
         || state.workspaces[0];
-      const live = active.kind === 'database' && Boolean(serverSchema && active.schema?.database === serverSchema.database);
+      const live = active.kind === 'database' && sameConnection(active.schema, serverSchema);
       if (live) active.schema = serverSchema;
       else if (serverSchema) await fetch('/api/disconnect', { method: 'POST' }).catch(() => {});
       await activateWorkspace(active.id, { initial: true, live });
@@ -2400,25 +2431,10 @@ async function bootstrap() {
     }
   }
   const first = serverSchema || sampleSchema();
-  state.workspaces = [
-    {
-      id: 'legacy',
-      name: serverSchema ? first.database : 'التجربة',
-      kind: serverSchema ? 'database' : 'demo',
-      schema: first,
-      topic: 'all',
-      connection: null
-    },
-    sufraProductsWorkspace()
-  ];
-  const requestedId = location.hash.slice(1);
-  const initialId = requestedId === 'legacy' ? 'legacy' : SUFRA_PRODUCTS_ID;
-  await activateWorkspace(initialId, {
-    initial: true,
-    live: Boolean(serverSchema && initialId === 'legacy')
-  });
-  if (!serverSchema && initialId === 'legacy' && !sessionStorage.getItem('wasla.seen')) {
-    sessionStorage.setItem('wasla.seen', '1');
+  state.workspaces = [{ id: 'legacy', name: serverSchema ? first.database : 'التجربة', kind: serverSchema ? 'database' : 'demo', schema: first, topic: 'all', connection: null }];
+  await activateWorkspace('legacy', { initial: true, live: Boolean(serverSchema) });
+  if (!serverSchema && !sessionStorage.getItem('eratlas.seen')) {
+    sessionStorage.setItem('eratlas.seen', '1');
     setTimeout(openConnectionDialog, 450);
   }
 }

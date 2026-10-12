@@ -157,7 +157,7 @@ function candidates(connection, boxes, reserved) {
       ...relevant.flatMap(box => [box.left - 3, box.right + 3]).filter(x => (x - base) * dir >= 0 && Math.abs(x - base) < 160)], base, 3);
     const sourceXs = outwardX(s.x, sDir), targetXs = outwardX(t.x, tDir);
     const centerY = (s.y + t.y) / 2;
-    const ys = ordered([centerY + (connection.lane || 0), Math.min(...boxes.map(box => box.top)) - 24, Math.max(...boxes.map(box => box.bottom)) + 24,
+    const ys = ordered([centerY + (connection.lane || 0), Math.min(s.y, t.y, ...relevant.map(box => box.top)) - 24, Math.max(s.y, t.y, ...relevant.map(box => box.bottom)) + 24,
       ...relevant.flatMap(box => [box.top - 3, box.bottom + 3])], centerY, 5, true);
     for (const sx of sourceXs) for (const tx of targetXs) for (const y of ys) {
       best = evaluate([a, s, { x: sx, y: s.y }, { x: sx, y }, { x: tx, y }, { x: tx, y: t.y }, t, b], connection, boxes, reserved, penalty + 18, best);

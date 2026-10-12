@@ -45,3 +45,37 @@ test('column rename keeps relationship endpoints aligned', () => {
   const changed = applyOperation(withRelation, { type: 'updateColumn', tableId: '1', columnName: 'id', patch: { name: 'user_id' } });
   assert.deepEqual(changed.relations[0].pairs[0], { source: 'user_id', target: 'user_id' });
 });
+
+const orders = {
+  database: 'test', readOnly: true,
+  tables: [
+    { id: 'o', schema: 'public', name: 'orders', columns: [
+      { number: 1, name: 'id', type: 'bigint', nullable: false, default: null, primary: true, unique: false, foreign: false },
+      { number: 2, name: 'user_id', type: 'bigint', nullable: true, default: null, primary: false, unique: false, foreign: false }
+    ] },
+    { id: 'u', schema: 'public', name: 'users', columns: [
+      { number: 1, name: 'id', type: 'bigint', nullable: false, default: null, primary: true, unique: false, foreign: false }
+    ] }
+  ], relations: []
+};
+const relation = onDelete => ({ id: 'r', name: 'orders_user_id_foreign', source: 'o', target: 'u', pairs: [{ source: 'user_id', target: 'id' }], onDelete });
+
+test('relation SQL keeps the chosen ON DELETE action', () => {
+  assert.match(planChanges(orders, [{ type: 'addRelation', relation: relation('c') }]).sql, /REFERENCES "public"\."users" \("id"\) ON DELETE CASCADE;$/);
+  assert.match(planChanges(orders, [{ type: 'addRelation', relation: relation('n') }]).sql, /ON DELETE SET NULL;$/);
+  assert.doesNotMatch(planChanges(orders, [{ type: 'addRelation', relation: relation('a') }]).sql, /ON DELETE/);
+  assert.throws(() => planChanges(orders, [{ type: 'addRelation', relation: relation('x; DROP') }]), /إجراء الحذف/);
+});
+
+test('column patches without a name still resolve the column', () => {
+  const plan = planChanges(orders, [{ type: 'updateColumn', tableId: 'o', columnName: 'user_id', patch: { nullable: false } }]);
+  assert.equal(plan.sql, 'ALTER TABLE "public"."orders" ALTER COLUMN "user_id" SET NOT NULL;');
+});
+
+test('type changes carry a USING cast and Laravel-style types are accepted', () => {
+  const plan = planChanges(orders, [{ type: 'updateColumn', tableId: 'o', columnName: 'user_id', patch: { type: 'integer' } }]);
+  assert.match(plan.sql, /TYPE integer USING "user_id"::integer;/);
+  for (const type of ['timestamp(0) without time zone', 'timestamptz(3)', 'bigserial', 'text[]', 'varchar(255)']) {
+    assert.doesNotThrow(() => planChanges(orders, [{ type: 'addColumn', tableId: 'o', column: { name: 'extra', type, nullable: true } }]), type);
+  }
+});

@@ -1,6 +1,6 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { extname, join, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { Pool } from 'pg';
@@ -13,6 +13,44 @@ const port = Number(process.env.PORT || 4317);
 const sourceSettings = await readFile(new URL('./source-projects.json', import.meta.url), 'utf8').then(JSON.parse).catch(() => ({}));
 let pool = null;
 let databaseLabel = '';
+let connectionId = '';
+const dataFile = join(process.env.ER_ATLAS_DATA || fileURLToPath(new URL('./data', import.meta.url)), 'store.json');
+let storeCache = null, storeQueue = Promise.resolve();
+const storeKeyPattern = /^eratlas\.[\w.:-]{1,300}$/;
+
+async function loadStore() {
+  if (storeCache) return storeCache;
+  try { storeCache = JSON.parse(await readFile(dataFile, 'utf8')); }
+  catch (error) { if (error.code !== 'ENOENT') console.error(`Could not read ${dataFile}: ${error.message}`); storeCache = {}; }
+  return storeCache;
+}
+function updateStore({ set = {}, remove = [] }) {
+  const run = async () => {
+    const items = await loadStore();
+    for (const [key, value] of Object.entries(set)) if (storeKeyPattern.test(key) && typeof value === 'string') items[key] = value;
+    for (const key of remove) if (storeKeyPattern.test(key)) delete items[key];
+    await mkdir(join(dataFile, '..'), { recursive: true });
+    const temporary = `${dataFile}.${process.pid}.tmp`;
+    await writeFile(temporary, JSON.stringify(items));
+    await rename(temporary, dataFile);
+  };
+  storeQueue = storeQueue.then(run, run);
+  return storeQueue;
+}
+
+// Reads only the non-secret database settings from a Laravel project's .env.
+async function readEnvConnection(sourceRoot) {
+  if (typeof sourceRoot !== 'string' || !isAbsolute(sourceRoot) || sourceRoot.length > 1000) throw new Error('حدد المسار الكامل لمشروع Laravel');
+  const text = await readFile(join(resolve(sourceRoot), '.env'), 'utf8').catch(() => { throw new Error('لم أجد ملف .env في مجلد المشروع'); });
+  const values = {};
+  for (const line of text.split(/\r?\n/)) {
+    const match = /^\s*(DB_[A-Z_]+)\s*=\s*(.*?)\s*$/.exec(line);
+    if (match) values[match[1]] = match[2].replace(/^(["'])(.*)\1$/, '$2');
+  }
+  if (values.DB_CONNECTION && !/^(?:pgsql|postgres)/.test(values.DB_CONNECTION)) throw new Error(`قاعدة المشروع من نوع ${values.DB_CONNECTION} وليست PostgreSQL`);
+  if (!values.DB_DATABASE) throw new Error('لا يحتوي .env على DB_DATABASE');
+  return { host: values.DB_HOST || 'localhost', port: Number(values.DB_PORT) || 5432, database: values.DB_DATABASE, user: values.DB_USERNAME || '' };
+}
 
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.json': 'application/json; charset=utf-8' };
 const paths = {
@@ -22,13 +60,12 @@ const paths = {
   '/topics.js': 'topics.js',
   '/router.js': 'router.js',
   '/route-worker.js': 'route-worker.js',
-  '/sufra-products-schema.js': 'sufra-products-schema.js',
-  '/styles.css': 'styles.css',
-  '/theme.css': 'theme.css',
   '/figma.css': 'figma.css',
   '/graph.css': 'graph.css',
   '/ui.js': 'ui.js',
-  '/favicon.svg': 'favicon.svg'
+  '/favicon.svg': 'favicon.svg',
+  '/storage.js': 'storage.js',
+  '/workspace-io.js': 'workspace-io.js'
 };
 
 function send(res, status, body) {
@@ -36,11 +73,11 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function readJson(req) {
+async function readJson(req, limit = 2000000) {
   let data = '';
   for await (const chunk of req) {
     data += chunk;
-    if (data.length > 2000000) throw new Error('الطلب كبير جدًا');
+    if (data.length > limit) throw new Error('الطلب كبير جدًا');
   }
   return JSON.parse(data || '{}');
 }
@@ -53,7 +90,7 @@ async function getSchema(db) {
     FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     LEFT JOIN pg_catalog.pg_stat_user_tables s ON s.relid = c.oid
-    WHERE c.relkind IN ('r','p') AND n.nspname NOT IN ('pg_catalog','information_schema')
+    WHERE c.relkind IN ('r','p') AND NOT c.relispartition AND n.nspname NOT IN ('pg_catalog','information_schema')
       AND n.nspname NOT LIKE 'pg_toast%'
     ORDER BY n.nspname, c.relname`;
   const columnsSql = `
@@ -66,18 +103,18 @@ async function getSchema(db) {
     JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
-    WHERE a.attnum > 0 AND NOT a.attisdropped AND c.relkind IN ('r','p')
+    WHERE a.attnum > 0 AND NOT a.attisdropped AND c.relkind IN ('r','p') AND NOT c.relispartition
       AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'
     ORDER BY a.attrelid, a.attnum`;
   const constraintsSql = `
     SELECT con.oid::text AS id, con.conname AS name, con.contype AS type,
            con.conrelid::text AS source_table, con.confrelid::text AS target_table,
            con.conkey AS source_columns, con.confkey AS target_columns,
-           con.confdeltype AS on_delete
+           con.confdeltype AS on_delete, con.confupdtype AS on_update
     FROM pg_catalog.pg_constraint con
     JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE con.contype IN ('p','f','u') AND c.relkind IN ('r','p')
+    WHERE con.contype IN ('p','f','u') AND c.relkind IN ('r','p') AND NOT c.relispartition
       AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'
     ORDER BY con.oid`;
   const tableResult = await db.query(tablesSql);
@@ -97,9 +134,14 @@ async function getSchema(db) {
   for (const con of constraintResult.rows) {
     if (con.type !== 'p' && con.type !== 'u') continue;
     const table = byId.get(con.source_table);
-    for (const number of con.source_columns || []) {
-      const col = table?.columns.find(c => c.number === number);
-      if (col) col[con.type === 'p' ? 'primary' : 'unique'] = true;
+    if (!table) continue;
+    const names = (con.source_columns || []).map(number => table.columns.find(c => c.number === number)?.name).filter(Boolean);
+    if (con.type === 'u' && names.length) (table.uniqueKeys ||= []).push(names);
+    // A column flag is only truthful for single-column keys; composite keys live in uniqueKeys.
+    for (const name of names) {
+      const col = table.columns.find(c => c.name === name);
+      if (col && con.type === 'p') col.primary = true;
+      if (col && con.type === 'u' && names.length === 1) col.unique = true;
     }
   }
   const relations = [];
@@ -113,9 +155,9 @@ async function getSchema(db) {
       if (source) source.foreign = true;
       return source && target ? { source: source.name, target: target.name } : null;
     }).filter(Boolean);
-    if (pairs.length) relations.push({ id: con.id, name: con.name, source: from.id, target: to.id, pairs, onDelete: con.on_delete, kind: 'actual' });
+    if (pairs.length) relations.push({ id: con.id, name: con.name, source: from.id, target: to.id, pairs, onDelete: con.on_delete, onUpdate: con.on_update, kind: 'actual' });
   }
-  const result = { database: databaseLabel, tables, relations, readOnly: true };
+  const result = { database: databaseLabel, source: connectionId, tables, relations, readOnly: true };
   return { ...result, fingerprint: fingerprint(result) };
 }
 
@@ -160,7 +202,7 @@ async function askProvider(body, signal) {
   } else if (provider === 'gemini') {
     url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     headers['x-goog-api-key'] = key;
-    payload = { contents: [{ parts: [{ text: prompt }] }] };
+    payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: codeContext ? 4500 : 1800 } };
   } else {
     const base = new URL(String(endpoint || ''));
     if (!['http:', 'https:'].includes(base.protocol)) throw new Error('رابط AI غير صالح');
@@ -169,8 +211,10 @@ async function askProvider(body, signal) {
     payload = { model, messages: [{ role: 'user', content: prompt }], max_tokens: codeContext ? 4500 : 1800 };
   }
   const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(60000)]) : AbortSignal.timeout(60000) });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error?.message || data.error || `AI: HTTP ${response.status}`);
+  const raw = await response.text();
+  let data;
+  try { data = JSON.parse(raw); } catch { throw new Error(`AI: استجابة غير صالحة من الخدمة (HTTP ${response.status})`); }
+  if (!response.ok) throw new Error(data.error?.message || (typeof data.error === 'string' ? data.error : '') || `AI: HTTP ${response.status}`);
   const answer = provider === 'openai' ? data.output?.flatMap(item => item.content || []).filter(item => item.type === 'output_text').map(item => item.text).join('\n')
     : provider === 'anthropic' ? data.content?.filter(item => item.type === 'text').map(item => item.text).join('\n')
     : provider === 'gemini' ? data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('\n')
@@ -188,6 +232,8 @@ function sourceSummary(context) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    const host = String(req.headers.host || '').toLowerCase();
+    if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) return send(res, 403, { error: 'مضيف الطلب غير مسموح' });
     const origin = req.headers.origin;
     if (origin && origin !== `http://127.0.0.1:${port}` && origin !== `http://localhost:${port}`) return send(res, 403, { error: 'مصدر الطلب غير مسموح' });
     if (req.method === 'POST' && req.url === '/api/connect') {
@@ -203,13 +249,14 @@ const server = http.createServer(async (req, res) => {
       const next = new Pool(settings);
       next.on('error', error => {
         console.error(`PostgreSQL connection lost: ${error.message}`);
-        if (pool === next) { pool = null; databaseLabel = ''; }
+        if (pool === next) { pool = null; databaseLabel = ''; connectionId = ''; }
       });
       const previous = pool;
       try {
         await next.query('SELECT 1');
         pool = next;
         databaseLabel = settings.database;
+        connectionId = `${settings.host}:${settings.port}/${settings.database}`;
         const schema = await getSchema(pool);
         previous?.end().catch(() => {});
         return send(res, 200, schema);
@@ -223,10 +270,19 @@ const server = http.createServer(async (req, res) => {
       if (!pool) return send(res, 200, { connected: false });
       return send(res, 200, await getSchema(pool));
     }
+    if (req.method === 'GET' && req.url === '/api/store') return send(res, 200, { items: await loadStore() });
+    if (req.method === 'PUT' && req.url === '/api/store') {
+      await updateStore(await readJson(req, 60000000));
+      return send(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && req.url === '/api/code/env') {
+      return send(res, 200, await readEnvConnection((await readJson(req)).sourceRoot));
+    }
     if (req.method === 'POST' && req.url === '/api/disconnect') {
       const previous = pool;
       pool = null;
       databaseLabel = '';
+      connectionId = '';
       await previous?.end().catch(() => {});
       return send(res, 200, { ok: true });
     }
@@ -249,7 +305,7 @@ const server = http.createServer(async (req, res) => {
       } finally { res.removeListener('close', cancel); }
     }
     if (req.method === 'GET' && req.url === '/api/ai/local-status') {
-      return send(res, 200, { providers: await Promise.all(localProviders.map(cliStatus)) });
+      return send(res, 200, { providers: await Promise.all(localProviders.map(provider => cliStatus(provider, { fresh: true }))) });
     }
     if (req.method === 'GET' && req.url === '/api/code/settings') {
       return send(res, 200, { defaultSourceRoot: process.env.ER_ATLAS_SOURCE_ROOT || sourceSettings.defaultSourceRoot || '' });
@@ -260,7 +316,7 @@ const server = http.createServer(async (req, res) => {
       const context = await analyzeSource(body.sourceRoot, body.tables);
       return send(res, 200, sourceSummary(context));
     }
-    const asset = /^\/assets\/(?:figma|fonts)\/[A-Za-z0-9_.-]+\.(?:svg|ttf|woff2|css|json)$/.test(req.url);
+    const asset = /^\/(?:assets\/(?:figma|fonts)|samples)\/[A-Za-z0-9_.-]+\.(?:svg|ttf|woff2|css|json)$/.test(req.url);
     if (req.method !== 'GET' || (!Object.hasOwn(paths, req.url) && !asset)) return send(res, 404, { error: 'غير موجود' });
     const file = join(root, asset ? req.url.slice(1) : paths[req.url]);
     const data = await readFile(file);

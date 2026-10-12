@@ -7,3 +7,5 @@ preview-focus.png
 .env
 .DS_Store
 Thumbs.db
+source-projects.json
+data/
