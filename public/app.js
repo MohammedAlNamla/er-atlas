@@ -1500,7 +1500,7 @@ function openEditor(kind, context = {}) {
   }
   if (kind === 'addRelation') {
     const choices = state.schema.tables.map(t => [t.id, `${t.schema}.${t.name}`]);
-    fields.append(selectField('source', 'الجدول المصدر', choices, context.source), selectField('target', 'الجدول الهدف', choices, context.target),
+    fields.append(selectField('source', 'الجدول المصدر', choices, context.source), selectField('target', 'الجدول الهدف', choices, context.target ?? choices.find(([id]) => id !== (context.source ?? choices[0]?.[0]))?.[0]),
       selectField('sourceColumn', 'عمود المصدر', [], context.sourceColumn), selectField('targetColumn', 'عمود الهدف', [], context.targetColumn));
     const update = which => {
       const t = state.schema.tables.find(item => item.id === fields.querySelector(`[name="${which}"]`).value);
@@ -1543,12 +1543,13 @@ function openEditor(kind, context = {}) {
       const source = state.schema.tables.find(table => table.id === read('source')), target = state.schema.tables.find(table => table.id === read('target'));
       const sourceColumn = source?.columns.find(column => column.name === read('sourceColumn')), targetColumn = target?.columns.find(column => column.name === read('targetColumn'));
       const status = $('relationshipCompatibility'), targetIsKey = Boolean(targetColumn && (targetColumn.primary || targetColumn.unique || (target.uniqueKeys || []).some(key => key.length === 1 && key[0] === targetColumn.name)));
-      const compatible = sourceColumn && targetColumn && sourceColumn.type === targetColumn.type && targetIsKey;
+      const selfSame = Boolean(sourceColumn && targetColumn && source.id === target.id && sourceColumn.name === targetColumn.name);
+      const compatible = sourceColumn && targetColumn && sourceColumn.type === targetColumn.type && targetIsKey && !selfSame;
       if (status) {
         status.className = `notice full ${compatible ? 'success' : 'warning'}`;
-        status.replaceChildren(icon(compatible ? 'check' : 'info'), el('div', 'notice-copy', compatible ? `النوعان متوافقان: ${sourceColumn.type} · ${source.name}.${sourceColumn.name} → ${target.name}.${targetColumn.name}` : sourceColumn && targetColumn && !targetIsKey ? `العمود ${target.name}.${targetColumn.name} ليس مفتاحًا أساسيًا أو فريدًا؛ سيرفض PostgreSQL هذه العلاقة.` : 'راجع الأعمدة ونوعيها قبل إضافة العلاقة إلى المسودة.'));
+        status.replaceChildren(icon(compatible ? 'check' : 'info'), el('div', 'notice-copy', compatible ? `النوعان متوافقان: ${sourceColumn.type} · ${source.name}.${sourceColumn.name} → ${target.name}.${targetColumn.name}` : selfSame ? 'العمود يشير إلى نفسه. اختر جدولًا أو عمودًا مختلفًا للهدف.' : sourceColumn && targetColumn && !targetIsKey ? `العمود ${target.name}.${targetColumn.name} ليس مفتاحًا أساسيًا أو فريدًا؛ سيرفض PostgreSQL هذه العلاقة.` : 'راجع الأعمدة ونوعيها قبل إضافة العلاقة إلى المسودة.'));
       }
-      $('editSubmit').disabled = !sourceColumn || !targetColumn;
+      $('editSubmit').disabled = !sourceColumn || !targetColumn || selfSame;
       sql = `ALTER TABLE ${source?.schema}.${source?.name}\nADD FOREIGN KEY (${read('sourceColumn')})\nREFERENCES ${target?.schema}.${target?.name} (${read('targetColumn')})\nON DELETE ${({ a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL' })[read('onDelete')] || 'NO ACTION'};`;
     }
     $('editPreview').replaceChildren(el('div', 'code-label', 'معاينة التعريف · يُراجع SQL النهائي من المسودة'), el('pre', '', sql));

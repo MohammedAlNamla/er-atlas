@@ -3778,3 +3778,23 @@ body .modal-header h2 { font-size: 21px; line-height: 32px; min-height: 32px; }
 .catalog-row:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
 .map-area.show-view-overlay .editing-palette { display: none; }
 @media (max-width: 600px) { .catalog-tools { flex-direction: column; align-items: stretch; width: 100%; } .catalog-sort { width: 100%; } .catalog-total { margin-top: -4px; } }
+
+/* Inspector and dialog bodies are flex columns; tables must keep their natural height
+   and let the body scroll, instead of shrinking into a 22px strip. */
+.modal-body > .data-table-wrap,
+.modal-body > .table-code-evidence,
+.modal-body > .table-relations,
+.modal-body > .chip-row,
+.modal-body > .notice { flex: none; }
+
+/* The inspector's column list fits its 420px panel; identifiers stay left-aligned and
+   the scroller starts at the identifier column rather than at the far edge. */
+.details-panel .data-table-wrap { direction: ltr; }
+.details-panel .data-table th:first-child,
+.details-panel .data-table td:first-child { min-width: 140px; }
+.details-panel .data-table th:nth-child(2),
+.details-panel .data-table td:nth-child(2) { min-width: 100px; }
+
+/* Destructive workspace action: separated and colored so it is not hit by accident. */
+#deleteWorkspaceButton { color: var(--danger); border-top: 1px solid var(--line); margin-top: 4px; }
+#deleteWorkspaceButton:hover { background: var(--danger-bg); }
