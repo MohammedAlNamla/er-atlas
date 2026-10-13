@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#fcfbfd" />
+    <meta name="theme-color" content="#f6f6f8" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <script>
@@ -18,288 +18,213 @@
     <link rel="stylesheet" href="/atlas.css" />
   </head>
   <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <!-- ER Atlas mark: five table blocks form the E and R; the star is the connection point. -->
+      <symbol id="logo-mark" viewBox="316 280 640 522">
+        <g fill="currentColor">
+          <path d="M322 453V377C322 327 362 287 412 287H558V398C558 428 532 453 502 453Z" />
+          <path d="M322 612V527C322 512 334 499 349 499H538C578 499 608 531 608 571V612Z" />
+          <path d="M322 657H586C635 657 672 697 672 746V795H414C364 795 322 753 322 703Z" />
+          <path d="M594 287H772C860 287 932 358 932 446C932 500 906 548 866 580C858 520 836 482 806 462C790 452 772 452 750 452H682C632 452 594 414 594 372Z" />
+          <path d="M674 608C674 568 720 538 762 540C790 541 812 556 830 582L946 756C958 774 944 795 922 795H775L683 654C677 644 674 626 674 608Z" />
+        </g>
+        <path fill="var(--accent)" d="M572 413C578 455 602 485 636 500C676 504 726 502 766 498C706 506 650 540 636 630C632 586 614 530 572 483Z" />
+      </symbol>
+      <g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></symbol>
+        <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 3.5 19 10l-6.5 2.2L10.3 19Z" /></symbol>
+        <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M3 10h18M9.5 10v10" /></symbol>
+        <symbol id="i-relation" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5" /><rect x="14" y="14" width="6.5" height="6.5" rx="1.5" /><path d="M6 8.5V12a2 2 0 0 0 2 2h6" /></symbol>
+        <symbol id="i-arrange" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.8" /><rect x="13" y="3" width="8" height="5" rx="1.8" /><rect x="13" y="11" width="8" height="10" rx="1.8" /><rect x="3" y="14" width="8" height="7" rx="1.8" /></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></symbol>
+        <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></symbol>
+        <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5" /><path d="M20 9H10a6 6 0 0 0 0 12h3" /></symbol>
+        <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1.1.9-1.1 1.7" /><path d="M12 17h.01" /></symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5.5h14a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2h-7l-4.5 3.5V17H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z" /><path d="M8 10h8M8 13h5" /></symbol>
+        <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+        <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+        <symbol id="i-draft" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></symbol>
+      </g>
+    </svg>
     <a class="skip-link" href="#map">الانتقال إلى الخريطة</a>
     <div class="app-shell">
-      <header class="topbar">
-        <div class="topbar-identity">
-          <div class="brand-wrap">
-            <img
-              class="brand-mark"
-              src="/assets/figma/main-context-aca14.svg"
-              alt=""
-            />
-            <h1 dir="ltr">ER Atlas</h1>
-          </div>
-          <div class="workspace-switcher">
-            <button
-              id="workspaceSwitchButton"
-              class="workspace-switch-button"
-              type="button"
-              aria-expanded="false"
-              aria-controls="workspaceMenu"
-            >
-              <span class="switch-copy"
-                ><strong id="workspaceCurrentName">مساحة العمل</strong></span
-              ><img
-                id="workspaceStatus"
-                src="/assets/figma/main-context-3b36a.svg"
-                alt=""
-              /><span data-icon="chevron"></span>
-            </button>
-            <div id="workspaceMenu" class="workspace-menu" hidden>
-              <div class="workspace-menu-head">
-                <h2>مساحات العمل</h2>
-                <span id="workspaceMenuCount">0</span>
-              </div>
-              <nav
-                id="workspaceTabs"
-                class="workspace-list"
-                aria-label="اختر مساحة العمل"
-              ></nav>
-              <div class="workspace-menu-actions">
-                <button id="newWorkspaceButton" type="button">
-                  مساحة جديدة</button
-                ><button id="renameWorkspaceButton" type="button">
-                  إعادة تسمية الحالية</button
-                ><button id="exportWorkspaceButton" type="button">
-                  تصدير الحالية كملف</button
-                ><button id="importWorkspaceButton" type="button">
-                  استيراد مساحة</button
-                ><button id="deleteWorkspaceButton" type="button">
-                  حذف الحالية
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="topbar-search">
-          <button
-            id="searchToggleButton"
-            class="header-button search-toggle"
-            type="button"
-            aria-label="فتح البحث"
-            aria-expanded="false"
-            aria-controls="navbarSearch"
-            title="البحث عن جدول أو عمود"
-          >
-            <span data-icon="search"></span>
-          </button>
-          <div id="navbarSearch" class="search-wrap" role="search">
-            <span data-icon="search"></span
-            ><input
-              id="searchInput"
-              type="search"
-              placeholder="ابحث عن جدول أو عمود…"
-              aria-label="ابحث عن جدول أو عمود"
-            /><kbd>/</kbd>
-          </div>
-        </div>
-        <div class="topbar-actions">
-          <div class="header-menu">
-            <button
-              id="aiMenuButton"
-              class="header-button"
-              type="button"
-              aria-expanded="false"
-              aria-controls="aiMenu"
-              aria-label="مساعد AI"
-              title="مساعد AI"
-            >
-              <span data-icon="ai"></span
-              ><span class="header-label">مساعد AI</span>
-              <span data-icon="chevron"></span>
-            </button>
-            <div id="aiMenu" class="header-popover" hidden>
-              <button id="aiButton" type="button">اسأل عن المخطط</button
-              ><button id="aiArrangeButton" type="button">رتّب بالـAI</button
-              ><button id="aiSettingsButton" type="button">
-                إعدادات المساعد
-              </button>
-            </div>
-          </div>
-          <div class="header-menu">
-            <button
-              id="toolsButton"
-              class="header-button"
-              type="button"
-              aria-expanded="false"
-              aria-controls="toolsMenu"
-              aria-label="الأدوات"
-              title="الأدوات"
-            >
-              <span data-icon="tools"></span
-              ><span class="header-label">الأدوات</span>
-              <span data-icon="chevron"></span>
-            </button>
-            <div id="toolsMenu" class="header-popover" hidden>
-              <button id="codeSourceButton" class="source-button" type="button" title="تحليل كود المشروع">
-                <span data-icon="source"></span><span>كود المشروع <small id="sourceName" dir="ltr">مصدر المخطط</small></span>
-              </button>
-              <button id="topicManageButton" type="button">
-                تنظيم المواضيع</button
-              ><button id="changesButton" type="button">
-                مراجعة المسودة <span id="pendingCount">0</span></button
-              ><button id="connectionButton" type="button">
-                <span id="connectionLabel">اتصال PostgreSQL</span></button
-              ><button id="refreshButton" type="button">تحديث المخطط</button
-              ><button id="themeButton" type="button" title="تبديل المظهر بين تلقائي وفاتح وليلي">
-                المظهر: <span id="themeLabel">تلقائي</span></button
-              ><button id="quickActionsButton" type="button">
-                الأوامر السريعة <kbd>Ctrl K</kbd>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-      <div class="workspace-bar">
-        <div class="workspace-actions">
-          <div class="canvas-tabs" role="group" aria-label="مساحة العمل">
-            <button id="mapTabButton" class="canvas-tab active" type="button" aria-pressed="true">الخريطة</button>
-            <button id="tablesTabButton" class="canvas-tab" type="button" aria-pressed="false">الجداول</button>
-          </div>
-          <div class="topic-switcher">
-            <button
-              id="topicSwitchButton"
-              class="header-button topic-trigger"
-              type="button"
-              aria-expanded="false"
-              aria-controls="topics"
-            >
-              <span data-icon="tableWhite"></span
-              ><span id="currentTopicLabel">كل الجداول</span
-              ><span data-icon="chevron"></span>
-            </button>
-            <nav
-              id="topics"
-              class="topics"
-              aria-label="مواضيع قاعدة البيانات"
-              hidden
-            ></nav>
-          </div>
-          <div class="view-switcher">
-            <button
-              id="viewModeButton"
-              class="header-button"
-              type="button"
-              aria-expanded="false"
-              aria-controls="viewModeMenu"
-              aria-label="خيارات عرض المخطط"
-              title="خيارات عرض المخطط"
-            >
-              <span data-icon="table"></span
-              ><span id="viewModeLabel">الخريطة</span
-              ><span data-icon="chevron"></span>
-            </button>
-            <div id="viewModeMenu" class="view-mode-menu" hidden>
-              <h3>طريقة العرض</h3>
-              <div
-                id="viewModeOptions"
-                role="group"
-                aria-label="طريقة عرض المخطط"
-              ></div>
-            </div>
-          </div>
-          <button
-            id="backTopicsButton"
-            class="workspace-button"
-            type="button"
-            hidden
-          >
-            كل المواضيع</button
-          ><button
-            id="chooseFocusButton"
-            class="workspace-button"
-            type="button"
-            hidden
-          >
-            اختيار جدول
-          </button>
-        </div>
-        <button id="addTableButton" class="primary-button canvas-add" type="button" aria-label="إضافة جدول" title="إضافة جدول">
-          <span data-icon="add"></span><span>إضافة جدول</span>
-        </button>
-        <div class="workspace-title sr-only">
-          <strong id="mapTitle"></strong><span id="mapSubtitle"></span>
-        </div>
-      </div>
       <main id="map" class="map-area" tabindex="-1" aria-label="خريطة الجداول">
         <div class="canvas-grid" aria-hidden="true"></div>
         <div id="viewport" class="viewport">
-          <canvas
-            id="edgeCanvas"
-            class="edge-canvas"
-            aria-hidden="true"
-          ></canvas>
+          <canvas id="edgeCanvas" class="edge-canvas" aria-hidden="true"></canvas>
           <div id="world" class="world">
             <svg id="edges" class="edges" aria-hidden="true"></svg>
             <div id="nodes" class="nodes"></div>
           </div>
         </div>
         <section id="viewOverlay" class="view-overlay" hidden></section>
-        <div class="editing-palette" role="group" aria-label="أدوات الخريطة">
-          <button id="selectionModeButton" type="button" aria-pressed="true" title="تحديد جدول" aria-label="تحديد جدول">
-            <span class="palette-icon" data-icon="pointer"></span><span>تحديد</span>
-          </button>
-          <button id="linkModeButton" type="button" aria-haspopup="dialog" title="إضافة علاقة" aria-label="إضافة علاقة">
-            <span class="palette-icon" data-icon="link"></span
-            ><span>علاقة</span></button
-          ><button id="arrangeButton" type="button" aria-label="ترتيب الجداول" title="ترتيب الجداول">
-            <span class="palette-icon" data-icon="arrange"></span
-            ><span>ترتيب</span></button
-          >
-        </div>
-        <div class="map-controls" aria-label="التحكم بالتكبير">
-          <button id="zoomIn" type="button" aria-label="تكبير">
-            <span data-icon="plus"></span></button
-          ><button id="zoomOut" type="button" aria-label="تصغير">
-            <span data-icon="minus"></span></button
-          ><span class="control-divider"></span><button id="readableViewButton" type="button" title="عرض بحجم مقروء" aria-label="عرض بحجم مقروء"><span id="zoomLabel">100%</span></button>
-          <button
-            id="fitButton"
-            type="button"
-            aria-label="إظهار كامل المخطط"
-            title="إظهار كامل المخطط"
-          >
-            <span data-icon="fit"></span>
-          </button>
-        </div>
-        <div class="map-status" aria-live="polite">
-          <span id="tableCount"></span><span id="relationCount"></span>
-        </div>
-        <aside
-          id="details"
-          class="details-panel"
-          aria-label="تفاصيل العنصر"
-          hidden
-        >
-          <button
-            id="closeDetails"
-            class="dialog-close"
-            type="button"
-            aria-label="إغلاق التفاصيل"
-          >
+        <aside id="details" class="details-panel" aria-label="تفاصيل العنصر" hidden>
+          <button id="closeDetails" class="dialog-close" type="button" aria-label="إغلاق التفاصيل">
             <span data-icon="close"></span>
           </button>
           <div id="detailsBody"></div>
         </aside>
         <div id="contextMenu" class="context-menu" role="menu" hidden></div>
         <section id="emptyWorkspace" class="empty-workspace" hidden>
+          <svg class="empty-logo" aria-hidden="true"><use href="#logo-mark" /></svg>
           <span id="emptyWorkspaceKicker" class="sr-only"></span>
           <h2 id="emptyWorkspaceTitle">ابدأ من هنا</h2>
           <p id="emptyWorkspaceText"></p>
           <div class="empty-workspace-actions">
-            <button
-              id="emptyPrimaryButton"
-              class="primary-button"
-              type="button"
-            ></button
-            ><button id="emptyAiButton" class="workspace-button" type="button">
-              ناقش الفكرة مع AI
-            </button>
+            <button id="emptyPrimaryButton" class="primary-button" type="button"></button
+            ><button id="emptyAiButton" class="workspace-button" type="button">ناقش الفكرة مع AI</button>
           </div>
         </section>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </main>
+
+      <div class="chrome">
+        <!-- Top start: identity, workspace, main menu -->
+        <div class="chrome-zone chrome-start">
+          <div class="pill brand" title="ER Atlas">
+            <svg class="logo-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
+            <span class="brand-word" dir="ltr">ER Atlas</span>
+          </div>
+          <div class="pill workspace-switcher">
+            <button id="workspaceSwitchButton" class="pill-button" type="button" aria-expanded="false" aria-controls="workspaceMenu">
+              <img id="workspaceStatus" class="status-dot" src="/assets/figma/main-context-3b36a.svg" alt="" />
+              <strong id="workspaceCurrentName">مساحة العمل</strong>
+              <svg class="i i-small" aria-hidden="true"><use href="#i-chevron" /></svg>
+            </button>
+            <div id="workspaceMenu" class="workspace-menu" hidden>
+              <div class="workspace-menu-head">
+                <h2>مساحات العمل</h2>
+                <span id="workspaceMenuCount">0</span>
+              </div>
+              <nav id="workspaceTabs" class="workspace-list" aria-label="اختر مساحة العمل"></nav>
+              <div class="workspace-menu-actions">
+                <button id="newWorkspaceButton" type="button">مساحة جديدة</button
+                ><button id="renameWorkspaceButton" type="button">إعادة تسمية الحالية</button
+                ><button id="exportWorkspaceButton" type="button">تصدير الحالية كملف</button
+                ><button id="importWorkspaceButton" type="button">استيراد مساحة</button
+                ><button id="deleteWorkspaceButton" type="button">حذف الحالية</button>
+              </div>
+            </div>
+          </div>
+          <div class="pill header-menu">
+            <button id="toolsButton" class="pill-button icon-only" type="button" aria-expanded="false" aria-controls="toolsMenu" aria-label="القائمة الرئيسية" title="القائمة الرئيسية">
+              <svg class="i" aria-hidden="true"><use href="#i-menu" /></svg>
+            </button>
+            <div id="toolsMenu" class="header-popover" hidden>
+              <button id="codeSourceButton" class="source-button" type="button" title="تحليل كود المشروع">
+                <span data-icon="source"></span><span>كود المشروع <small id="sourceName" dir="ltr">مصدر المخطط</small></span>
+              </button>
+              <button id="topicManageButton" type="button">تنظيم المواضيع</button
+              ><button id="connectionButton" type="button"><span id="connectionLabel">اتصال PostgreSQL</span></button
+              ><button id="refreshButton" type="button">تحديث المخطط</button
+              ><button id="themeButton" type="button" title="تبديل المظهر بين تلقائي وفاتح وليلي">المظهر: <span id="themeLabel">تلقائي</span></button
+              ><button id="quickActionsButton" type="button">الأوامر السريعة <kbd>Ctrl K</kbd></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top center: one tool strip, and a quiet context row beneath it -->
+        <div class="chrome-zone chrome-center">
+          <div class="pill toolbar" role="toolbar" aria-label="أدوات الخريطة">
+            <div class="segmented" role="group" aria-label="مساحة العمل">
+              <button id="mapTabButton" class="seg active" type="button" aria-pressed="true">الخريطة</button>
+              <button id="tablesTabButton" class="seg" type="button" aria-pressed="false">الجداول</button>
+            </div>
+            <span class="divider" aria-hidden="true"></span>
+            <button id="selectionModeButton" class="tool" type="button" aria-pressed="true" title="تحديد (V)" aria-label="تحديد جدول">
+              <svg class="i" aria-hidden="true"><use href="#i-pointer" /></svg><kbd>V</kbd>
+            </button>
+            <button id="addTableButton" class="tool" type="button" title="جدول جديد (T)" aria-label="إضافة جدول">
+              <svg class="i" aria-hidden="true"><use href="#i-table" /></svg><kbd>T</kbd>
+            </button>
+            <button id="linkModeButton" class="tool" type="button" aria-haspopup="dialog" title="علاقة جديدة (R)" aria-label="إضافة علاقة">
+              <svg class="i" aria-hidden="true"><use href="#i-relation" /></svg><kbd>R</kbd>
+            </button>
+            <button id="arrangeButton" class="tool" type="button" title="ترتيب الجداول (A)" aria-label="ترتيب الجداول">
+              <svg class="i" aria-hidden="true"><use href="#i-arrange" /></svg><kbd>A</kbd>
+            </button>
+            <span class="divider" aria-hidden="true"></span>
+            <div class="search-field">
+              <button id="searchToggleButton" class="tool search-toggle" type="button" aria-label="فتح البحث" aria-expanded="false" aria-controls="navbarSearch" title="بحث (/)">
+                <svg class="i" aria-hidden="true"><use href="#i-search" /></svg>
+              </button>
+              <div id="navbarSearch" class="search-wrap" role="search">
+                <svg class="i i-small" aria-hidden="true"><use href="#i-search" /></svg
+                ><input id="searchInput" type="search" placeholder="ابحث عن جدول أو عمود…" aria-label="ابحث عن جدول أو عمود" /><kbd>/</kbd>
+              </div>
+            </div>
+          </div>
+          <div class="context-row">
+            <div class="pill topic-switcher">
+              <button id="topicSwitchButton" class="pill-button" type="button" aria-expanded="false" aria-controls="topics" title="الموضوع">
+                <svg class="i i-small" aria-hidden="true"><use href="#i-table" /></svg>
+                <span id="currentTopicLabel">كل الجداول</span>
+                <svg class="i i-small" aria-hidden="true"><use href="#i-chevron" /></svg>
+              </button>
+              <nav id="topics" class="topics" aria-label="مواضيع قاعدة البيانات" hidden></nav>
+            </div>
+            <div class="pill view-switcher">
+              <button id="viewModeButton" class="pill-button" type="button" aria-expanded="false" aria-controls="viewModeMenu" aria-label="خيارات عرض المخطط" title="خيارات عرض المخطط">
+                <span id="viewModeLabel">الخريطة</span>
+                <svg class="i i-small" aria-hidden="true"><use href="#i-chevron" /></svg>
+              </button>
+              <div id="viewModeMenu" class="view-mode-menu" hidden>
+                <h3>طريقة العرض</h3>
+                <div id="viewModeOptions" role="group" aria-label="طريقة عرض المخطط"></div>
+              </div>
+            </div>
+            <button id="backTopicsButton" class="pill pill-button" type="button" hidden>كل المواضيع</button
+            ><button id="chooseFocusButton" class="pill pill-button" type="button" hidden>اختيار جدول</button>
+          </div>
+        </div>
+
+        <!-- Top end: drafts and the one primary action -->
+        <div class="chrome-zone chrome-end">
+          <button id="changesButton" class="pill pill-button" type="button" data-pending="0" title="مراجعة المسودة">
+            <svg class="i" aria-hidden="true"><use href="#i-draft" /></svg>
+            <span class="label">المسودة</span>
+            <span id="pendingCount" class="badge">0</span>
+          </button>
+          <div class="pill header-menu ai-menu">
+            <button id="aiMenuButton" class="pill-button primary" type="button" aria-expanded="false" aria-controls="aiMenu" aria-label="مساعد AI" title="مساعد AI">
+              <svg class="i" aria-hidden="true"><use href="#i-chat" /></svg>
+              <span class="label">مساعد AI</span>
+              <svg class="i i-small" aria-hidden="true"><use href="#i-chevron" /></svg>
+            </button>
+            <div id="aiMenu" class="header-popover" hidden>
+              <button id="aiButton" type="button">اسأل عن المخطط</button
+              ><button id="aiArrangeButton" type="button">رتّب بالـAI</button
+              ><button id="aiSettingsButton" type="button">إعدادات المساعد</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom start: view and history -->
+        <div class="chrome-zone chrome-bottom-start">
+          <div class="pill zoom" role="group" aria-label="التحكم بالتكبير">
+            <button id="zoomOut" class="tool" type="button" aria-label="تصغير" title="تصغير (-)"><svg class="i" aria-hidden="true"><use href="#i-minus" /></svg></button>
+            <button id="readableViewButton" class="zoom-value" type="button" title="عرض بحجم مقروء (0)" aria-label="عرض بحجم مقروء"><span id="zoomLabel">100%</span></button>
+            <button id="zoomIn" class="tool" type="button" aria-label="تكبير" title="تكبير (+)"><svg class="i" aria-hidden="true"><use href="#i-plus" /></svg></button>
+            <span class="divider" aria-hidden="true"></span>
+            <button id="fitButton" class="tool" type="button" aria-label="إظهار كامل المخطط" title="إظهار كامل المخطط (F)"><svg class="i" aria-hidden="true"><use href="#i-fit" /></svg></button>
+          </div>
+          <div class="pill history" role="group" aria-label="السجل">
+            <button id="undoQuick" class="tool" type="button" aria-label="تراجع" title="تراجع (Ctrl Z)" disabled><svg class="i" aria-hidden="true"><use href="#i-undo" /></svg></button>
+            <button id="redoQuick" class="tool" type="button" aria-label="إعادة" title="إعادة (Ctrl Y)" disabled><svg class="i" aria-hidden="true"><use href="#i-redo" /></svg></button>
+          </div>
+        </div>
+
+        <!-- Bottom end: what is on screen, and help -->
+        <div class="chrome-zone chrome-bottom-end">
+          <div class="pill counts map-status" aria-live="polite"><span id="tableCount"></span><span class="dot" aria-hidden="true">·</span><span id="relationCount"></span></div>
+          <button id="helpButton" class="pill pill-button icon-only" type="button" aria-label="الأوامر والاختصارات" title="الأوامر والاختصارات (Ctrl K)">
+            <svg class="i" aria-hidden="true"><use href="#i-help" /></svg>
+          </button>
+        </div>
+      </div>
+      <div class="workspace-title sr-only"><strong id="mapTitle"></strong><span id="mapSubtitle"></span></div>
     </div>
     <dialog
       id="connectDialog"

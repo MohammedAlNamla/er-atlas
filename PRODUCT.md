@@ -19,7 +19,7 @@ Arabic controls with English database and code identifiers. Existing vanilla Jav
 - Database edits are proposed as drafts; the visual redesign does not authorize direct database writes.
 
 ## Brand Commitments
-Keep the ER Atlas name, connected-node logo, purple identity, and focus on tables. The user selected the first of the three redesign images on 2026-10-03.
+Keep the ER Atlas name and focus on tables. The logo is the E+R table-block mark with the violet connection star (brand/logo-mark.svg), chosen by the user on 2026-10-10; it replaces the earlier connected-node mark. The identity is a matched light and dark pair of neutrals with one violet (the star) for the primary action, selection and focus. The user pinned an Excalidraw-style layout on 2026-10-13: a full-bleed canvas with floating pill chrome (menu and workspace top-start, one tool strip top-center, drafts and AI top-end, zoom and history bottom-start, counts and help bottom-end).
 
 ## Evidence on Hand
 Selected visual: C:/Users/Nitro/.codex/generated_images/01a0f67c-ac8e-7da1-b60d-698343f44115/exec-a5b0a4dc-a535-4d42-8531-ccf763d217fa.png. Existing schemas and source assets are real project evidence; do not replace them with invented metrics or mock relationships.

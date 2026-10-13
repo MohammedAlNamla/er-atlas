@@ -577,12 +577,12 @@ function renderViewMenu() {
     button.addEventListener('click', () => { closeViewMenu(); setViewMode(choice.id); });
     options.append(button);
   }
-  $('viewModeLabel').textContent = viewChoices.find(choice => choice.id === state.viewMode).label;
+  $('viewModeLabel').textContent = ['topics', 'focus'].includes(state.viewMode) ? viewChoices.find(choice => choice.id === state.viewMode).label : 'عرض';
+  document.querySelector('.chrome').dataset.view = state.viewMode;
 }
 function renderTopicOverview(overlay) {
   const heading = el('div', 'view-overlay-heading');
-  heading.append(el('span', 'view-overlay-kicker', 'DATABASE / OVERVIEW'),
-    el('h2', '', 'مواضيع قاعدة البيانات'),
+  heading.append(el('h2', '', 'مواضيع قاعدة البيانات'),
     el('p', '', 'اختر موضوعًا لعرض جداوله وعلاقاته بوضوح.'));
   const grid = el('div', 'topic-overview-grid');
   for (const group of state.groups.filter(item => item.id !== 'all' && item.ids.size)) {
@@ -596,7 +596,7 @@ function renderTopicOverview(overlay) {
     for (const table of members.slice(0, 5)) names.append(el('span', 'topic-overview-table', table.name));
     if (members.length > 5) names.append(el('span', 'topic-overview-table more', `+${members.length - 5}`));
     button.append(top, el('strong', '', group.label), names,
-      el('span', 'topic-overview-meta', `${members.length} جدول · ${relationships} علاقة داخلية`));
+      el('span', 'topic-overview-meta', `${relationships} علاقة داخلية`));
     button.addEventListener('click', () => {
       state.topic = group.id; activeWorkspace().topic = group.id; saveWorkspaces();
       buildTopicPositions(); renderTopics(); renderView(); renderNodes(); fitView(true);
@@ -607,8 +607,7 @@ function renderTopicOverview(overlay) {
 }
 function renderFocusPicker(overlay) {
   const heading = el('div', 'view-overlay-heading');
-  heading.append(el('span', 'view-overlay-kicker', 'TABLE / FOCUS'),
-    el('h2', '', 'اختر جدولًا'), el('p', '', 'اعرض الجدول وأعمدته وعلاقاته المباشرة.'));
+  heading.append(el('h2', '', 'اختر جدولًا'), el('p', '', 'اعرض الجدول وأعمدته وعلاقاته المباشرة.'));
   const search = el('input', 'focus-search'); search.type = 'search';
   search.placeholder = 'ابحث عن اسم جدول...'; search.setAttribute('aria-label', 'ابحث عن جدول للتركيز');
   const list = el('div', 'focus-table-list');
@@ -669,7 +668,7 @@ function renderTableCatalog(overlay) {
   }]));
   const makeRow = table => {
     const row = uiButton('', () => { setViewMode('map'); selectTable(table.id); centerTable(table.id); }, 'catalog-row');
-    const name = el('span', 'catalog-name'); name.append(icon('table'), el('strong', '', table.name)); name.dir = 'ltr';
+    const name = el('span', 'catalog-name'); const label = el('strong', '', table.name); label.dir = 'ltr'; name.append(icon('table'), label);
     const { relations, topics } = info.get(table.id);
     const chips = el('span', 'catalog-topics');
     if (!topics.length) chips.append(el('span', 'catalog-topic none', table.schema));
@@ -1422,9 +1421,10 @@ function saveTopics() {
 }
 function updateDraftView() {
   $('pendingCount').textContent = String(state.cursor);
+  $('changesButton').dataset.pending = String(state.cursor);
   updateViewCounts();
-  $('undoButton').disabled = state.cursor === 0;
-  $('redoButton').disabled = state.cursor === state.operations.length;
+  $('undoButton').disabled = $('undoQuick').disabled = state.cursor === 0;
+  $('redoButton').disabled = $('redoQuick').disabled = state.cursor === state.operations.length;
   $('reviewButton').disabled = state.cursor === 0;
   $('discardDraftButton').disabled = !state.operations.length;
   $('draftSummary').textContent = `${state.cursor} تغييرات محلية جاهزة للمراجعة والتسليم إلى المساعد.`;
@@ -2024,7 +2024,7 @@ function closeHeaderMenus() {
   }
 }
 function setNavbarSearch(open, { focus = false } = {}) {
-  document.querySelector('.topbar').classList.toggle('search-open', open);
+  document.querySelector('.chrome').classList.toggle('search-open', open);
   $('searchToggleButton').setAttribute('aria-expanded', String(open));
   $('searchToggleButton').setAttribute('aria-label', open ? 'إغلاق البحث' : 'فتح البحث');
   if (focus) (open ? $('searchInput') : $('searchToggleButton')).focus();
@@ -2160,6 +2160,9 @@ function installEvents() {
   $('changesButton').addEventListener('click', () => openDialog($('changesPanel')));
   $('closeChanges').addEventListener('click', () => $('changesPanel').close());
   $('undoButton').addEventListener('click', () => stepDraft(-1));
+  $('undoQuick').addEventListener('click', () => stepDraft(-1));
+  $('redoQuick').addEventListener('click', () => stepDraft(1));
+  $('helpButton').addEventListener('click', openQuickActions);
   $('redoButton').addEventListener('click', () => stepDraft(1));
   $('closeEditDialog').addEventListener('click', () => $('editDialog').close());
   $('editForm').addEventListener('submit', event => {
@@ -2384,13 +2387,15 @@ function installEvents() {
       if (['+', '='].includes(event.key)) { zoom(1.2, rect.left + rect.width / 2, rect.top + rect.height / 2); return; }
       if (['-', '_'].includes(event.key)) { zoom(1 / 1.2, rect.left + rect.width / 2, rect.top + rect.height / 2); return; }
       if (event.key === '0') { fitView(state.topic !== 'all'); return; }
+      const tool = { v: 'selectionModeButton', t: 'addTableButton', r: 'linkModeButton', a: 'arrangeButton' }[event.key.toLowerCase()];
+      if (tool && !$(tool).hidden && !$(tool).disabled) { event.preventDefault(); $(tool).click(); return; }
       if (event.key.toLowerCase() === 'f') { fitView(state.topic !== 'all', { overview: true }); return; }
     }
     if (event.key === 'Escape' && (!$('toolsMenu').hidden || !$('aiMenu').hidden || !$('topics').hidden)) { closeHeaderMenus(); return; }
     if (event.key === 'Escape' && !$('workspaceMenu').hidden) { closeWorkspaceMenu({ focus: true }); return; }
     if (event.key === 'Escape' && !$('viewModeMenu').hidden) { closeViewMenu(); $('viewModeButton').focus(); return; }
     if (event.key === '/' && !editing) { event.preventDefault(); setNavbarSearch(true, { focus: true }); }
-    if (event.key === 'Escape' && document.querySelector('.topbar.search-open') && matchMedia('(max-width: 880px)').matches) { event.preventDefault(); setNavbarSearch(false, { focus: true }); return; }
+    if (event.key === 'Escape' && document.querySelector('.chrome.search-open') && matchMedia('(max-width: 880px)').matches) { event.preventDefault(); setNavbarSearch(false, { focus: true }); return; }
     if (event.key === 'Escape' && !$('connectDialog').open) { closeContextMenu(); state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis(); }
   });
   let previousViewport = { width: viewport.clientWidth, height: viewport.clientHeight };

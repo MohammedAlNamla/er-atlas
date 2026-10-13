@@ -1,400 +1,138 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-03T08:02:16.288Z",
-  "title": "Design System: ER Atlas — Quiet Atlas",
+  "generatedAt": "2026-10-13T00:00:00Z",
+  "title": "Design System: ER Atlas",
   "extensions": {
     "colorMeta": {
-      "primary": {
-        "role": "primary",
-        "displayName": "Atlas Purple",
-        "tonalRamp": [
-          "oklch(15.00% 0.14950 290.02)",
-          "oklch(26.43% 0.14950 290.02)",
-          "oklch(37.86% 0.14950 290.02)",
-          "oklch(49.29% 0.14950 290.02)",
-          "oklch(60.71% 0.14950 290.02)",
-          "oklch(72.14% 0.14950 290.02)",
-          "oklch(83.57% 0.14950 290.02)",
-          "oklch(95.00% 0.14950 290.02)"
-        ]
-      },
-      "primary-deep": {
-        "role": "primary",
-        "displayName": "Deep Atlas Purple",
-        "tonalRamp": [
-          "oklch(15.00% 0.15570 287.24)",
-          "oklch(26.43% 0.15570 287.24)",
-          "oklch(37.86% 0.15570 287.24)",
-          "oklch(49.29% 0.15570 287.24)",
-          "oklch(60.71% 0.15570 287.24)",
-          "oklch(72.14% 0.15570 287.24)",
-          "oklch(83.57% 0.15570 287.24)",
-          "oklch(95.00% 0.15570 287.24)"
-        ]
-      },
-      "primary-hover": {
-        "role": "primary",
-        "displayName": "Pressed Purple",
-        "tonalRamp": [
-          "oklch(15.00% 0.14634 287.13)",
-          "oklch(26.43% 0.14634 287.13)",
-          "oklch(37.86% 0.14634 287.13)",
-          "oklch(49.29% 0.14634 287.13)",
-          "oklch(60.71% 0.14634 287.13)",
-          "oklch(72.14% 0.14634 287.13)",
-          "oklch(83.57% 0.14634 287.13)",
-          "oklch(95.00% 0.14634 287.13)"
-        ]
-      },
-      "paper": {
-        "role": "neutral",
-        "displayName": "Paper",
-        "tonalRamp": [
-          "oklch(15.00% 0.00283 308.43)",
-          "oklch(26.43% 0.00283 308.43)",
-          "oklch(37.86% 0.00283 308.43)",
-          "oklch(49.29% 0.00283 308.43)",
-          "oklch(60.71% 0.00283 308.43)",
-          "oklch(72.14% 0.00283 308.43)",
-          "oklch(83.57% 0.00283 308.43)",
-          "oklch(95.00% 0.00283 308.43)"
-        ]
-      },
-      "surface": {
-        "role": "neutral",
-        "displayName": "White Surface",
-        "tonalRamp": [
-          "oklch(15.00% 0.00000 89.88)",
-          "oklch(26.43% 0.00000 89.88)",
-          "oklch(37.86% 0.00000 89.88)",
-          "oklch(49.29% 0.00000 89.88)",
-          "oklch(60.71% 0.00000 89.88)",
-          "oklch(72.14% 0.00000 89.88)",
-          "oklch(83.57% 0.00000 89.88)",
-          "oklch(95.00% 0.00000 89.88)"
-        ]
-      },
-      "ink": {
-        "role": "neutral",
-        "displayName": "Ink",
-        "tonalRamp": [
-          "oklch(15.00% 0.02760 293.70)",
-          "oklch(26.43% 0.02760 293.70)",
-          "oklch(37.86% 0.02760 293.70)",
-          "oklch(49.29% 0.02760 293.70)",
-          "oklch(60.71% 0.02760 293.70)",
-          "oklch(72.14% 0.02760 293.70)",
-          "oklch(83.57% 0.02760 293.70)",
-          "oklch(95.00% 0.02760 293.70)"
-        ]
-      },
-      "muted": {
-        "role": "neutral",
-        "displayName": "Muted Ink",
-        "tonalRamp": [
-          "oklch(15.00% 0.03020 297.37)",
-          "oklch(26.43% 0.03020 297.37)",
-          "oklch(37.86% 0.03020 297.37)",
-          "oklch(49.29% 0.03020 297.37)",
-          "oklch(60.71% 0.03020 297.37)",
-          "oklch(72.14% 0.03020 297.37)",
-          "oklch(83.57% 0.03020 297.37)",
-          "oklch(95.00% 0.03020 297.37)"
-        ]
-      },
-      "line": {
-        "role": "neutral",
-        "displayName": "Fine Line",
-        "tonalRamp": [
-          "oklch(15.00% 0.01536 302.54)",
-          "oklch(26.43% 0.01536 302.54)",
-          "oklch(37.86% 0.01536 302.54)",
-          "oklch(49.29% 0.01536 302.54)",
-          "oklch(60.71% 0.01536 302.54)",
-          "oklch(72.14% 0.01536 302.54)",
-          "oklch(83.57% 0.01536 302.54)",
-          "oklch(95.00% 0.01536 302.54)"
-        ]
-      },
-      "context": {
-        "role": "neutral",
-        "displayName": "Quiet Context",
-        "tonalRamp": [
-          "oklch(15.00% 0.00818 301.36)",
-          "oklch(26.43% 0.00818 301.36)",
-          "oklch(37.86% 0.00818 301.36)",
-          "oklch(49.29% 0.00818 301.36)",
-          "oklch(60.71% 0.00818 301.36)",
-          "oklch(72.14% 0.00818 301.36)",
-          "oklch(83.57% 0.00818 301.36)",
-          "oklch(95.00% 0.00818 301.36)"
-        ]
-      },
-      "selected": {
-        "role": "neutral",
-        "displayName": "Lavender Selection",
-        "tonalRamp": [
-          "oklch(15.00% 0.01779 300.07)",
-          "oklch(26.43% 0.01779 300.07)",
-          "oklch(37.86% 0.01779 300.07)",
-          "oklch(49.29% 0.01779 300.07)",
-          "oklch(60.71% 0.01779 300.07)",
-          "oklch(72.14% 0.01779 300.07)",
-          "oklch(83.57% 0.01779 300.07)",
-          "oklch(95.00% 0.01779 300.07)"
-        ]
-      },
-      "node-border": {
-        "role": "neutral",
-        "displayName": "Table Outline",
-        "tonalRamp": [
-          "oklch(15.00% 0.02650 300.24)",
-          "oklch(26.43% 0.02650 300.24)",
-          "oklch(37.86% 0.02650 300.24)",
-          "oklch(49.29% 0.02650 300.24)",
-          "oklch(60.71% 0.02650 300.24)",
-          "oklch(72.14% 0.02650 300.24)",
-          "oklch(83.57% 0.02650 300.24)",
-          "oklch(95.00% 0.02650 300.24)"
-        ]
-      },
-      "wire": {
-        "role": "neutral",
-        "displayName": "Context Wire",
-        "tonalRamp": [
-          "oklch(15.00% 0.05841 296.49)",
-          "oklch(26.43% 0.05841 296.49)",
-          "oklch(37.86% 0.05841 296.49)",
-          "oklch(49.29% 0.05841 296.49)",
-          "oklch(60.71% 0.05841 296.49)",
-          "oklch(72.14% 0.05841 296.49)",
-          "oklch(83.57% 0.05841 296.49)",
-          "oklch(95.00% 0.05841 296.49)"
-        ]
-      },
-      "danger": {
-        "role": "semantic",
-        "displayName": "Danger",
-        "tonalRamp": [
-          "oklch(15.00% 0.14763 12.86)",
-          "oklch(26.43% 0.14763 12.86)",
-          "oklch(37.86% 0.14763 12.86)",
-          "oklch(49.29% 0.14763 12.86)",
-          "oklch(60.71% 0.14763 12.86)",
-          "oklch(72.14% 0.14763 12.86)",
-          "oklch(83.57% 0.14763 12.86)",
-          "oklch(95.00% 0.14763 12.86)"
-        ]
-      },
-      "success": {
-        "role": "semantic",
-        "displayName": "Success",
-        "tonalRamp": [
-          "oklch(15.00% 0.09856 163.96)",
-          "oklch(26.43% 0.09856 163.96)",
-          "oklch(37.86% 0.09856 163.96)",
-          "oklch(49.29% 0.09856 163.96)",
-          "oklch(60.71% 0.09856 163.96)",
-          "oklch(72.14% 0.09856 163.96)",
-          "oklch(83.57% 0.09856 163.96)",
-          "oklch(95.00% 0.09856 163.96)"
-        ]
-      }
+      "accent": { "role": "primary", "displayName": "Connection Violet", "canonical": "#7b4bf0", "dark": "#9a73ff", "tonalRamp": ["#2a1466", "#3d1d94", "#5b2fd4", "#7b4bf0", "#9a73ff", "#b9a0ff", "#d8caff", "#f0eaff"] },
+      "accent-deep": { "role": "primary", "displayName": "Deep Violet", "canonical": "#5b2fd4", "dark": "#b9a0ff", "tonalRamp": ["#2a1466", "#3d1d94", "#4c25b8", "#5b2fd4", "#7b4bf0", "#9a73ff", "#b9a0ff", "#e2d6ff"] },
+      "accent-hover": { "role": "primary", "displayName": "Pressed Violet", "canonical": "#4c25b8", "dark": "#cdb9ff", "tonalRamp": ["#2a1466", "#3d1d94", "#4c25b8", "#5b2fd4", "#7b4bf0", "#9a73ff", "#cdb9ff", "#f0eaff"] },
+      "paper": { "role": "neutral", "displayName": "Canvas Paper", "canonical": "#f6f6f8", "dark": "#0e0e11", "tonalRamp": ["#0e0e11", "#1a1a20", "#2e2e38", "#626675", "#9a9cae", "#d6d6de", "#e3e3e8", "#f6f6f8"] },
+      "surface": { "role": "neutral", "displayName": "Surface", "canonical": "#ffffff", "dark": "#1a1a20", "tonalRamp": ["#0e0e11", "#1a1a20", "#22222a", "#34343f", "#d9d9e0", "#e3e3e8", "#f3f3f6", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#0f1117", "dark": "#f1f1f5", "tonalRamp": ["#0f1117", "#262833", "#3f4250", "#626675", "#8b8e9c", "#b4b6c1", "#dcdde3", "#f6f6f8"] },
+      "selected": { "role": "tint", "displayName": "Selected Tint", "canonical": "#f0eaff", "dark": "#2d2552", "tonalRamp": ["#2d2552", "#4a3d82", "#6a5fa0", "#b5a2ee", "#cdbff5", "#e2d6ff", "#f0eaff", "#f6f2ff"] },
+      "danger": { "role": "status", "displayName": "Danger", "canonical": "#c2334d", "dark": "#ff7d92", "tonalRamp": ["#5a1220", "#7d1b30", "#a02a41", "#c2334d", "#e0647a", "#ff7d92", "#ffc2cc", "#fff1f3"] },
+      "success": { "role": "status", "displayName": "Success", "canonical": "#177a55", "dark": "#62d3a2", "tonalRamp": ["#0a3524", "#0f4f38", "#146846", "#177a55", "#3fa57d", "#62d3a2", "#b5ebd3", "#ecf7f1"] }
     },
     "typographyMeta": {
-      "headline": {
-        "displayName": "Headline",
-        "purpose": "Catalog and alternate-view headings."
-      },
-      "title": {
-        "displayName": "Schema title",
-        "purpose": "Proportional table names."
-      },
-      "body": {
-        "displayName": "Interface body",
-        "purpose": "Arabic controls and copy."
-      },
-      "label": {
-        "displayName": "Action label",
-        "purpose": "Dialog actions and compact controls."
-      },
-      "field": {
-        "displayName": "Field name",
-        "purpose": "Monospaced database column names."
-      },
-      "type": {
-        "displayName": "Field type",
-        "purpose": "Monospaced column types and code fields."
-      },
-      "caption": {
-        "displayName": "Caption",
-        "purpose": "Expansion and supporting metadata."
-      }
+      "heading": { "displayName": "Heading", "purpose": "Full-page view titles and the empty-workspace title." },
+      "title": { "displayName": "Title", "purpose": "Dialog section titles and topic cards." },
+      "body": { "displayName": "Body", "purpose": "Default interface text, inputs, menu items." },
+      "label": { "displayName": "Label", "purpose": "Pill buttons, segmented control, context row." },
+      "node-name": { "displayName": "Node name", "purpose": "Table header; 36px in the overview tile." },
+      "identifier": { "displayName": "Identifier", "purpose": "Roboto Mono for column names, types, counts." },
+      "shortcut-key": { "displayName": "Shortcut key", "purpose": "Roboto Mono hint under each tool icon." }
     },
     "shadows": [
-      {
-        "name": "dialog-depth",
-        "value": "0 16px 48px rgba(41, 38, 53, .12)",
-        "purpose": "Shared modal surface depth."
-      },
-      {
-        "name": "popover-depth",
-        "value": "0 10px 32px rgba(41, 38, 53, .1)",
-        "purpose": "Menus and contextual inspector."
-      },
-      {
-        "name": "tool-strip-lift",
-        "value": "0 4px 12px rgba(41, 38, 53, .04)",
-        "purpose": "Bottom editing palette."
-      },
-      {
-        "name": "selection-inset",
-        "value": "inset 0 0 0 1px var(--teal)",
-        "purpose": "Selected schema-node and focused field edge."
-      }
+      { "name": "pill", "value": "0 1px 2px rgb(15 17 23 / .08)", "purpose": "Every chrome pill. Dark pinned theme adds 0 8px 24px rgb(0 0 0 / .35)." },
+      { "name": "popover", "value": "0 4px 14px rgb(15 17 23 / .14)", "purpose": "Menus hanging from pills and the inspector (.12)." },
+      { "name": "dialog", "value": "0 8px 28px rgb(15 17 23 / .22)", "purpose": "Modals over the scrim." },
+      { "name": "selection-ring", "value": "0 0 0 2px color-mix(in srgb, #7b4bf0 35%, transparent)", "purpose": "Selected table node, with the 1px violet border." },
+      { "name": "topic-band", "value": "inset 0 3px 0 var(--node-color)", "purpose": "3px topic band on the table header; keeps node geometry identical to ui.js." }
     ],
     "motion": [
-      {
-        "name": "control-state",
-        "value": "background .15s, border-color .15s",
-        "purpose": "Button state changes."
-      },
-      {
-        "name": "relationship-state",
-        "value": "opacity .18s, stroke .18s",
-        "purpose": "Relationship emphasis."
-      },
-      {
-        "name": "dialog-entry",
-        "value": "overlay-in .18s ease-out",
-        "purpose": "Existing dialog opening animation; disabled for reduced motion."
-      },
-      {
-        "name": "reduced-motion",
-        "value": "animation: none; transition: none",
-        "purpose": "Table nodes and open dialogs honor reduced motion."
-      }
+      { "name": "ease-out", "value": "cubic-bezier(.23, 1, .32, 1)", "purpose": "Pop-in, panel-in and press transforms." },
+      { "name": "pop-in", "value": "160ms, scale .96 and translateY(-4px) to rest", "purpose": "Popovers." },
+      { "name": "panel-in", "value": "200ms, translateX(12px) scale .985 to rest", "purpose": "Inspector." },
+      { "name": "press", "value": "scale(.97) over 120ms", "purpose": "Pill buttons, tools and segments on :active." },
+      { "name": "reduced-motion", "value": "animations off, press scale off", "purpose": "Respected via prefers-reduced-motion." }
     ],
     "breakpoints": [
-      {
-        "name": "compact-header",
-        "value": "880px"
-      },
-      {
-        "name": "narrow-controls",
-        "value": "600px"
-      },
-      {
-        "name": "smallest-controls",
-        "value": "360px"
-      }
+      { "name": "compact", "value": "1180px" },
+      { "name": "icons-only", "value": "900px" },
+      { "name": "phone", "value": "520px" }
     ]
   },
   "components": [
     {
-      "name": "Primary action",
-      "kind": "button",
-      "refersTo": "button-primary",
-      "description": "Deep-purple dialog actions with a darker hover state.",
-      "html": "<button class=\"ds-primary\" type=\"button\" dir=\"rtl\">حفظ</button>",
-      "css": ".ds-primary{font:600 13px/22px \"Noto Sans Arabic\",sans-serif;min-height:40px;height:40px;padding:8px 14px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background .15s,border-color .15s;background:var(--teal-deep,#5d4bb1);color:var(--surface,#ffffff);border:1px solid var(--teal-deep,#5d4bb1)}.ds-primary:hover{background:#51409e;border-color:#51409e}.ds-primary:disabled{opacity:.5;cursor:not-allowed}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--teal,#7864c8);outline-offset:3px}"
-    },
-    {
-      "name": "Secondary action",
-      "kind": "button",
-      "refersTo": "button-secondary",
-      "description": "White outlined secondary dialog actions.",
-      "html": "<button class=\"ds-secondary\" type=\"button\" dir=\"rtl\">إغلاق</button>",
-      "css": ".ds-secondary{font:600 13px/22px \"Noto Sans Arabic\",sans-serif;min-height:40px;height:40px;padding:8px 14px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background .15s,border-color .15s;background:var(--surface,#ffffff);color:var(--ink,#292635);border:1px solid var(--line,#e6e2ed)}.ds-secondary:hover{background:var(--context,#faf8fe);border-color:#bfb3e4}.ds-secondary:disabled{opacity:.5;cursor:not-allowed}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--teal,#7864c8);outline-offset:3px}"
-    },
-    {
-      "name": "Ghost action",
-      "kind": "button",
-      "refersTo": "button-ghost",
-      "description": "Quiet actions that retain keyboard focus without a resting fill.",
-      "html": "<button class=\"ds-ghost\" type=\"button\" dir=\"rtl\">إلغاء</button>",
-      "css": ".ds-ghost{font:600 13px/22px \"Noto Sans Arabic\",sans-serif;min-height:40px;height:40px;padding:8px 14px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background .15s,border-color .15s;background:transparent;color:var(--ink,#292635);border:0}.ds-ghost:hover{background:transparent}.ds-ghost:disabled{opacity:.5;cursor:not-allowed}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--teal,#7864c8);outline-offset:3px}"
-    },
-    {
-      "name": "Text field",
-      "kind": "input",
-      "refersTo": "input",
-      "description": "Arabic fields with a purple border and inset focus stroke.",
-      "html": "<input class=\"ds-input\" dir=\"rtl\" aria-label=\"اسم مساحة العمل\" placeholder=\"اسم مساحة العمل\" />",
-      "css": ".ds-input{font:14px/24px \"Noto Sans Arabic\",sans-serif;height:44px;padding:10px 12px;min-width:0;border:1px solid var(--line,#e6e2ed);border-radius:8px;background:var(--surface,#ffffff);color:var(--ink,#292635);caret-color:var(--teal,#7864c8);outline:none}.ds-input::placeholder{color:var(--muted,#696477)}.ds-input:focus,.ds-input:focus-visible{border-color:var(--teal,#7864c8);box-shadow:inset 0 0 0 1px var(--teal,#7864c8);outline:none}"
-    },
-    {
-      "name": "Canvas navigation",
-      "kind": "nav",
-      "refersTo": "canvas-tab",
-      "description": "Map/table controls with a restrained purple active underline.",
-      "html": "<nav class=\"ds-nav\" dir=\"rtl\" aria-label=\"مساحة العمل\"><button class=\"ds-tab ds-tab-active\" aria-pressed=\"true\">الخريطة</button><button class=\"ds-tab\" aria-pressed=\"false\">الجداول</button></nav>",
-      "css": ".ds-nav{display:flex;gap:8px;height:62px;background:var(--surface,#ffffff)}.ds-tab{min-width:72px;padding:0 12px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted,#696477);font:14px/24px \"Noto Sans Arabic\",sans-serif;cursor:pointer}.ds-tab:hover{color:var(--ink,#292635);background:var(--context,#faf8fe)}.ds-tab-active{font-weight:700;color:var(--teal-deep,#5d4bb1);border-bottom-color:var(--teal,#7864c8)}.ds-tab:focus-visible{outline:2px solid var(--teal,#7864c8);outline-offset:3px}"
-    },
-    {
-      "name": "Topic or metadata chip",
-      "kind": "chip",
-      "refersTo": "chip",
-      "description": "Small contextual metadata, counts and topics.",
-      "html": "<span class=\"ds-chip\" dir=\"rtl\">مسودة</span>",
-      "css": ".ds-chip{display:inline-block;padding:2px 6px;border-radius:4px;background:var(--context,#faf8fe);color:var(--teal-deep,#5d4bb1);font:11px/20px \"Noto Sans Arabic\",sans-serif;white-space:nowrap}"
-    },
-    {
-      "name": "Schema node",
-      "kind": "card",
-      "refersTo": "schema-node",
-      "description": "Fixed-width tables with proportional headings and monospaced fields; this preview demonstrates one row.",
-      "html": "<article class=\"ds-node\" tabindex=\"0\" aria-label=\"جدول devices\"><header class=\"ds-node-head\"><strong class=\"ds-name\">devices</strong></header><div class=\"ds-row\"><span class=\"ds-field\">id</span><span class=\"ds-type\">integer</span></div><button class=\"ds-expand\" dir=\"rtl\" aria-haspopup=\"dialog\">عرض كل الأعمدة</button></article>",
-      "css": ".ds-node{width:320px;border:1px solid #ded8eb;border-radius:8px;overflow:hidden;background:var(--surface,#ffffff);color:var(--ink,#292635);box-shadow:none;transition:border-color .2s}.ds-node:hover{border-color:#bbaed8}.ds-node:focus-visible{outline:auto}.ds-node-head{height:48px;padding:0 12px;display:flex;align-items:center;background:var(--context,#faf8fe);border-bottom:1px solid var(--line,#e6e2ed)}.ds-name{font:700 18px/26px \"Noto Sans Arabic\",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-row{height:40px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr}.ds-field{font:400 14px/20px var(--mono,\"Roboto Mono\",monospace)}.ds-type{font:400 13px/20px var(--mono,\"Roboto Mono\",monospace);color:var(--muted,#696477)}.ds-expand{display:flex;align-items:center;justify-content:flex-start;width:100%;height:40px;padding:0 14px;border:0;border-top:1px solid var(--line,#e6e2ed);border-radius:0;background:var(--surface,#ffffff);color:var(--muted,#696477);font:12px/20px \"Noto Sans Arabic\",sans-serif;cursor:pointer}.ds-expand:hover{background:var(--context,#faf8fe);color:var(--teal-deep,#5d4bb1)}.ds-expand:focus-visible{outline:2px solid var(--teal,#7864c8);outline-offset:-3px}"
-    },
-    {
-      "name": "Relationship context",
+      "name": "Pill",
       "kind": "custom",
-      "description": "Neutral directional wire, with stronger selected purple stroke and grounded multiplicity labels.",
-      "html": "<svg class=\"ds-relationship\" viewBox=\"0 0 320 72\" role=\"img\" aria-label=\"اتجاه علاقة\"><defs><marker id=\"ds-arrow\" viewBox=\"0 0 8 8\" refX=\"8\" refY=\"4\" markerWidth=\"8\" markerHeight=\"8\" markerUnits=\"userSpaceOnUse\" orient=\"auto\"><path d=\"M 1 1 L 7 4 L 1 7\" fill=\"none\" stroke=\"context-stroke\" stroke-width=\"1.5\"/></marker></defs><path class=\"ds-wire\" d=\"M20 36H290\" marker-end=\"url(#ds-arrow)\"/></svg>",
-      "css": ".ds-relationship{display:block;width:320px;height:72px;background:var(--paper,#fcfbfd)}.ds-wire{fill:none;stroke:#9288af;opacity:.75;stroke-width:1.6px;transition:stroke .18s,opacity .18s}.ds-relationship:hover .ds-wire{stroke:#6551c7;opacity:1;stroke-width:2.5px}"
+      "refersTo": "pill",
+      "description": "The one container for floating chrome.",
+      "html": "<div class=\"ds-pill\"><button class=\"ds-pill-button\">Menu</button></div>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 3px; background: var(--surface, #fff); color: var(--ink, #0f1117); border: 1px solid var(--line, #e3e3e8); border-radius: 12px; box-shadow: var(--pill-shadow, 0 1px 2px rgb(15 17 23 / .08)); } .ds-pill-button { height: 36px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: inherit; font: 600 14px/1 'Noto Sans Arabic', sans-serif; cursor: pointer; transition: background-color .15s, transform .12s; } .ds-pill-button:hover { background: var(--context, #f3f3f6); } .ds-pill-button:active { transform: scale(.97); } .ds-pill-button:focus-visible { outline: 2px solid var(--accent, #7b4bf0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Pill Button",
+      "kind": "button",
+      "refersTo": "pill-button-primary",
+      "description": "The single violet action (AI).",
+      "html": "<button class=\"ds-primary\">Ask AI</button>",
+      "css": ".ds-primary { height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--accent, #7b4bf0); color: var(--on-accent, #fff); font: 600 14px/1 'Noto Sans Arabic', sans-serif; cursor: pointer; transition: background-color .15s, transform .12s; } .ds-primary:hover { background: var(--accent-hover, #4c25b8); } .ds-primary:active { transform: scale(.97); } .ds-primary:focus-visible { outline: 2px solid var(--accent, #7b4bf0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segment-active",
+      "description": "Map and tables view switch.",
+      "html": "<div class=\"ds-seg-track\"><button class=\"ds-seg active\">Map</button><button class=\"ds-seg\">Tables</button></div>",
+      "css": ".ds-seg-track { display: inline-flex; gap: 2px; padding: 3px; background: var(--context, #f3f3f6); border-radius: 9px; } .ds-seg { height: 30px; padding: 0 14px; border: 0; border-radius: 7px; background: transparent; color: var(--muted, #626675); font: 600 13px/1 'Noto Sans Arabic', sans-serif; cursor: pointer; } .ds-seg:hover { background: var(--context, #f3f3f6); } .ds-seg.active { background: var(--surface, #fff); color: var(--ink, #0f1117); box-shadow: 0 1px 2px rgb(15 17 23 / .12); } .ds-seg:focus-visible { outline: 2px solid var(--accent, #7b4bf0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Tool Button",
+      "kind": "button",
+      "refersTo": "tool",
+      "description": "Icon tool with a mono shortcut key; pressed state is the violet tint.",
+      "html": "<button class=\"ds-tool\" aria-pressed=\"true\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"margin-top:-6px\"><path d=\"M5 3l14 8-6 2-2 6z\"/></svg><kbd>V</kbd></button>",
+      "css": ".ds-tool { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--muted, #626675); cursor: pointer; transition: background-color .15s, color .15s, transform .12s; } .ds-tool:hover { background: var(--context, #f3f3f6); color: var(--ink, #0f1117); } .ds-tool:active { transform: scale(.97); } .ds-tool[aria-pressed='true'] { background: var(--selected, #f0eaff); color: var(--accent-deep, #5b2fd4); } .ds-tool kbd { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); font: 500 11px/1 'Roboto Mono', monospace; color: var(--muted, #626675); } .ds-tool:focus-visible { outline: 2px solid var(--accent, #7b4bf0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "Quiet search that grows and gains a violet border on focus.",
+      "html": "<label class=\"ds-search\"><input placeholder=\"Search tables\" /><kbd>/</kbd></label>",
+      "css": ".ds-search { display: flex; align-items: center; gap: 8px; width: 176px; height: 36px; padding: 0 10px; border-radius: 9px; background: var(--context, #f3f3f6); border: 1px solid transparent; transition: width .15s, border-color .15s, background-color .15s; } .ds-search:focus-within { width: 248px; background: var(--surface, #fff); border-color: var(--accent, #7b4bf0); } .ds-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink, #0f1117); font: 400 14px/1 'Noto Sans Arabic', sans-serif; } .ds-search input::placeholder { color: var(--faint, #686c7a); } .ds-search kbd { font: 500 11px/1 'Roboto Mono', monospace; color: var(--faint, #686c7a); border: 1px solid var(--line, #e3e3e8); border-radius: 5px; padding: 3px 6px; background: var(--surface, #fff); }"
+    },
+    {
+      "name": "Table Node",
+      "kind": "card",
+      "refersTo": "table-node",
+      "description": "Outlined table card with a 3px topic band as an inset shadow; 1px border keeps ui.js geometry.",
+      "html": "<div class=\"ds-node\"><div class=\"ds-node-head\">users</div><div class=\"ds-col\"><span>id</span><span class=\"t\">uuid</span></div><div class=\"ds-col\"><span>email</span><span class=\"t\">varchar</span></div></div>",
+      "css": ".ds-node { width: 320px; border: 1px solid var(--node-border, #d9d9e0); border-radius: 10px; background: var(--surface, #fff); overflow: hidden; direction: ltr; } .ds-node:hover { border-color: var(--outline-strong, #b5a2ee); } .ds-node-head { height: 48px; padding: 0 12px; display: flex; align-items: center; border-bottom: 1px solid var(--line, #e3e3e8); box-shadow: inset 0 3px 0 #2f9e8f; font: 650 16px/24px 'Noto Sans Arabic', sans-serif; color: var(--ink, #0f1117); } .ds-col { height: 40px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; font: 400 13.5px/20px 'Roboto Mono', monospace; color: var(--ink, #0f1117); } .ds-col + .ds-col { border-top: 1px solid var(--divider-soft, #efeff3); } .ds-col .t { font-size: 13px; color: var(--muted, #626675); }"
+    },
+    {
+      "name": "Popover Menu",
+      "kind": "nav",
+      "refersTo": "pill",
+      "description": "Menu hanging 8px under its pill.",
+      "html": "<div class=\"ds-menu\"><button>Open project</button><button>Export</button></div>",
+      "css": ".ds-menu { min-width: 268px; padding: 12px; border: 1px solid var(--line, #e3e3e8); border-radius: 12px; background: var(--surface, #fff); box-shadow: 0 4px 14px rgb(15 17 23 / .14); } .ds-menu button { display: flex; align-items: center; width: 100%; height: 44px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--ink, #0f1117); font: 400 13px 'Noto Sans Arabic', sans-serif; text-align: start; cursor: pointer; } .ds-menu button:hover { background: var(--selected, #f0eaff); } .ds-menu button:focus-visible { outline: 2px solid var(--accent, #7b4bf0); outline-offset: 2px; }"
     }
   ],
   "narrative": {
-    "northStar": "Quiet Atlas",
-    "overview": "Quiet Atlas makes database structure comfortable to read. The canvas is near-white paper with a fine dotted field; tables are white, clearly separated surfaces. Purple carries actions and selection while restrained neutral wires preserve the surrounding structure.\n\nArabic controls share the workspace with English database identifiers. Keep ER Atlas's supplied connected-node mark, purple identity and local font assets. The chosen direction favors readable rows, two grouped navigation levels and small bottom tools. Actual schema data supplies the content and topology.",
+    "northStar": "The Quiet Map",
+    "overview": "The canvas is the product. A full-bleed dotted map fills the viewport, and every piece of chrome floats over it as a small outlined pill: no header bar, no toolbar band, no bottom palette. The interface is Arabic-first and right-to-left, so \"start\" is the right edge. Near-black ink and neutral grays carry everything; one violet, taken from the logo's connection star, appears only where the user acts, selects or focuses.\n\nLight and dark are a matched pair, not a theme and its inversion. The system follows the OS by default and can be pinned to light or dark; the pin is applied by an inline script before first paint so dark never flashes light.\n\nDensity is calm and workmanlike. Table cards are outlined, flat and uniform, so the topic band, the wires and the selection are the only things that change.",
     "keyCharacteristics": [
-      "Readable table surfaces on a light dotted canvas.",
-      "Arabic interface type paired with monospaced fields and SQL.",
-      "Purple actions and lavender state surfaces.",
-      "Thin separators, modest corners and restrained overlay depth.",
-      "Compact navigation around a pannable data canvas."
+      "Full-bleed dotted canvas; chrome is pills and one tool strip only.",
+      "Flat outlined surfaces with one soft pill shadow; no hard offset shadows.",
+      "One violet, reserved for primary action, selection and focus.",
+      "Noto Sans Arabic for UI, Roboto Mono only for identifiers, types and shortcut keys.",
+      "Topic color appears as information (a 3px band), never as decoration."
     ],
     "rules": [
-      {
-        "name": "The Context Stays Visible Rule",
-        "body": "Keep unrelated nodes readable and unrelated wires present when a table or relationship receives emphasis.",
-        "section": "colors"
-      },
-      {
-        "name": "The Two Reading Voices Rule",
-        "body": "Use proportional interface type for navigation and schema-node titles; reserve monospace for field-level structure, code and numerical readouts.",
-        "section": "typography"
-      },
-      {
-        "name": "The Flat Tables Rule",
-        "body": "Table cards use separators and state outlines for hierarchy; reserve ambient elevation for tools and overlays.",
-        "section": "elevation"
-      }
+      { "name": "The One Violet Rule", "body": "Violet is for the primary action, selection and focus. There is no second accent; topic colors are data, not accent.", "section": "colors" },
+      { "name": "The Context Stays Rule", "body": "Selecting a table or relation emphasizes it, but surrounding tables and wires stay visible (dimmed wires keep 55% opacity).", "section": "colors" },
+      { "name": "The Literal Is Mono Rule", "body": "Roboto Mono is for identifiers, types, counts and shortcut keys only. Never set interface prose in it.", "section": "typography" },
+      { "name": "The Outline First Rule", "body": "A boundary is a 1px outline before it is a shadow. Nodes carry no resting shadow at all.", "section": "elevation" }
     ],
     "dos": [
-      "**Do** preserve the connected-node mark, purple identity and local Noto Sans Arabic / Roboto Mono fonts.",
-      "**Do** keep table geometry and relationship endpoints synchronized between styles and shared measurements.",
-      "**Do** prioritize real keys in compact previews and retain every column in the complete table view.",
-      "**Do** keep the context visible around selection and reserve bottom space for canvas tools.",
-      "**Do** bound narrow-screen overlays, preserve accessible action names and allow canvas panning."
+      "Do use violet only for the primary action, selection and focus.",
+      "Do keep context visible around the selection: dim, never hide, neighboring tables and wires.",
+      "Do keep table geometry synchronized between CSS and `public/ui.js` (320px width, 1px border, header and row heights).",
+      "Do carry topic identity as a 3px inset band on the table header; it is information, not decoration.",
+      "Do put every new floating control in a pill, in the zone its role belongs to.",
+      "Do set identifiers, types, counts and shortcut keys in Roboto Mono and everything else in Noto Sans Arabic.",
+      "Do design every new color token as a light and dark pair, in all three theme blocks."
     ],
     "donts": [
-      "**Don't** invent schema relationships or cardinality to reproduce an illustration.",
-      "**Don't** shrink table rows or default the entry camera to unreadable whole-diagram scale.",
-      "**Don't** reset saved coordinates to imitate the approved composition.",
-      "**Don't** add decorative gradients or ambient shadows to resting table cards.",
-      "**Don't** replace supplied vector assets with decorative text glyphs."
+      "Don't add a second accent color.",
+      "Don't add a header bar, a toolbar band or a bottom palette.",
+      "Don't add kickers or eyebrow labels above headings.",
+      "Don't use gradient text.",
+      "Don't give nodes a resting shadow or use hard offset shadows.",
+      "Don't thicken the node border above 1px or change node header and row heights in CSS alone."
     ]
   }
 }
