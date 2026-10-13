@@ -734,12 +734,13 @@ function makeNode(table) {
   const more = uiButton('', event => { event.stopPropagation(); showContextMenu(event); }, 'node-more');
   more.append(icon('more')); more.setAttribute('aria-label', `إجراءات جدول ${table.name}`);
   more.addEventListener('pointerdown', event => event.stopPropagation());
-  head.append(icon('table'), name, more);
+  const meta = el('span', 'node-count', String(table.columns.length)); meta.title = `${table.columns.length} أعمدة`;
+  head.append(icon('table'), name, ...(table.kind === 'proposed' ? [el('span', 'node-draft', 'مسودة')] : []), meta, more);
   head.addEventListener('pointerdown', event => startDrag(event, table.id, card));
   const columns = el('div', 'node-columns');
   const involved = involvedColumns.get(table.id) || new Set();
   for (const column of previewColumns(table, nodeExpanded(table))) {
-    const row = el('div', `column${involved.has(column.name) ? ' has-line' : ''}${column.kind === 'proposed' ? ' proposed' : ''}`);
+    const row = el('div', `column${involved.has(column.name) ? ' has-line' : ''}${column.primary ? ' pk' : ''}${column.kind === 'proposed' ? ' proposed' : ''}`);
     row.dataset.column = column.name;
     row.title = `${column.name} · ${column.type}${column.nullable ? ' · nullable' : ' · not null'}`;
     const left = el('span', 'col-name', column.name);
@@ -871,14 +872,14 @@ function renderEdges() {
   const defs = document.createElementNS(ns, 'defs');
   const marker = document.createElementNS(ns, 'marker');
   marker.setAttribute('id', 'relation-direction');
-  marker.setAttribute('viewBox', '0 0 8 8');
-  marker.setAttribute('refX', '8'); marker.setAttribute('refY', '4');
-  marker.setAttribute('markerWidth', '8'); marker.setAttribute('markerHeight', '8');
+  marker.setAttribute('viewBox', '0 0 10 10');
+  marker.setAttribute('refX', '9'); marker.setAttribute('refY', '5');
+  marker.setAttribute('markerWidth', '10'); marker.setAttribute('markerHeight', '10');
   marker.setAttribute('markerUnits', 'userSpaceOnUse'); marker.setAttribute('orient', 'auto');
   const arrow = document.createElementNS(ns, 'path');
-  arrow.setAttribute('d', 'M 1 1 L 7 4 L 1 7');
-  arrow.setAttribute('fill', 'none'); arrow.setAttribute('stroke', 'context-stroke');
-  arrow.setAttribute('stroke-width', '1.5');
+  arrow.setAttribute('d', 'M 1.5 1.5 L 8.5 5 L 1.5 8.5 Z');
+  arrow.setAttribute('fill', 'context-stroke'); arrow.setAttribute('stroke', 'context-stroke');
+  arrow.setAttribute('stroke-width', '1'); arrow.setAttribute('stroke-linejoin', 'round');
   marker.append(arrow); defs.append(marker); svg.append(defs);
   edgeRefs.clear();
   const byId = new Map(visibleTables().map(table => [table.id, table]));
@@ -943,6 +944,8 @@ function renderEdges() {
       hit.setAttribute('d', path.d); hit.setAttribute('class', 'edge hit');
       hit.dataset.relation = relation.id;
       hit.addEventListener('click', event => { event.stopPropagation(); selectRelation(relation.id); });
+      hit.addEventListener('mouseenter', () => line.classList.add('hover'));
+      hit.addEventListener('mouseleave', () => line.classList.remove('hover'));
       const labels = {};
       // Composite foreign keys have one multiplicity, not one per column pair.
       if (key.endsWith(':0')) {
@@ -952,7 +955,7 @@ function renderEdges() {
           const label = document.createElementNS(ns, 'text');
           label.setAttribute('class', 'edge-cardinality');
           label.setAttribute('text-anchor', 'middle');
-          label.textContent = cardinality[side];
+          label.textContent = cardinality[side] === '*' ? 'N' : cardinality[side];
           labels[side] = label;
         }
       }
@@ -1001,7 +1004,7 @@ function updateEdgeEmphasis() {
       const proposed = ref.line.classList.contains('proposed');
       ref.canvasStyle = {
         stroke: selected ? edgeColors().selected : incident ? edgeColors().trace : focused ? edgeColors().focus : proposed ? edgeColors().proposed : edgeColors().wire,
-        opacity: dimmed && !selected ? .55 : selected || incident ? 1 : proposed ? .88 : focused ? .8 : .75,
+        opacity: dimmed && !selected ? .28 : selected || incident ? 1 : proposed ? .88 : focused ? .8 : .75,
         width: selected ? 2.5 : incident ? 2.25 : focused ? 1.7 : 1.6,
         proposed
       };
@@ -1088,10 +1091,11 @@ function drawCanvasEdges() {
     if (ref.arrow) {
       const { x, y, direction } = ref.arrow;
       context.beginPath();
-      context.moveTo(x - direction * 7, y - 3.5);
+      context.moveTo(x - direction * 8, y - 4);
       context.lineTo(x - direction, y);
-      context.lineTo(x - direction * 7, y + 3.5);
-      context.stroke();
+      context.lineTo(x - direction * 8, y + 4);
+      context.closePath();
+      context.fillStyle = ref.canvasStyle.stroke; context.fill(); context.stroke();
     }
     context.font = '600 13px "Roboto Mono", monospace';
     context.textAlign = 'center';
