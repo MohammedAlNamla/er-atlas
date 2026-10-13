@@ -13,7 +13,7 @@ const schema = {
 };
 
 test('every mode has an output budget', () => {
-  for (const mode of MODES) assert.ok(TOKEN_LIMITS[mode] >= 2000, mode);
+  for (const mode of MODES.filter(item => item !== 'ping')) assert.ok(TOKEN_LIMITS[mode] >= 2000, mode);
 });
 
 test('schema text carries keys, FK targets, delete action, defaults and comments', () => {
@@ -82,4 +82,20 @@ test('column notes keep real columns only, match case-insensitively and report g
   assert.equal(notes.summary, 'طلبات');
   assert.throws(() => readColumnNotes('نص عادي', schema.tables[0]), /شرحًا صالحًا/);
   assert.throws(() => readColumnNotes('{"columns":[{"name":"x","meaning":"y"}]}', schema.tables[0]), /لأي عمود/);
+});
+
+test('chat modes ask for dialogue and quick replies; the follow-up line is split off', async () => {
+  const { splitFollowups } = await import('../ai-prompts.js');
+  const prompt = buildPrompt({ mode: 'explain', question: 'x', schema }).prompt;
+  assert.match(prompt, /\[متابعة\]/);
+  assert.match(prompt, /سؤالًا توضيحيًا واحدًا/);
+  const split = splitFollowups('الجواب هنا.\n\n[متابعة] ماذا عن الحذف؟ | وما الفهارس؟ | - ثالث | رابع');
+  assert.equal(split.answer, 'الجواب هنا.');
+  assert.deepEqual(split.followups, ['ماذا عن الحذف؟', 'وما الفهارس؟', 'ثالث']);
+  assert.deepEqual(splitFollowups('بلا متابعة'), { answer: 'بلا متابعة', followups: [] });
+});
+
+test('ping needs no schema', () => {
+  const { prompt } = buildPrompt({ mode: 'ping', question: 'ping', schema: { tables: [], relations: [] } });
+  assert.match(prompt, /جاهز/);
 });

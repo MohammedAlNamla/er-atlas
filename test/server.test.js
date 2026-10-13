@@ -89,3 +89,20 @@ test('/api/ai sends a system prompt, scopes column requests and returns validate
     assert.match(noTable.json.error, /اختر جدولًا/);
   } finally { provider.close(); }
 });
+
+test('/api/ai ping works without a schema and chat answers come back with quick replies', async () => {
+  let reply = 'جاهز';
+  const provider = http.createServer((req, res) => {
+    req.resume(); req.on('end', () => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ choices: [{ message: { content: reply } }] })); });
+  });
+  await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
+  try {
+    const base = { provider: 'compatible', endpoint: `http://127.0.0.1:${provider.address().port}/v1`, model: 'm', schema: { tables: [], relations: [] } };
+    const ping = await request('POST', '/api/ai', { body: { ...base, mode: 'ping', question: 'ping' } });
+    assert.equal(ping.status, 200);
+    assert.equal(ping.json.answer, 'جاهز');
+    reply = 'الجواب.\n[متابعة] أولًا؟ | ثانيًا؟';
+    const chat = await request('POST', '/api/ai', { body: { ...base, mode: 'explain', question: 'اشرح' } });
+    assert.deepEqual(chat.json, { answer: 'الجواب.', followups: ['أولًا؟', 'ثانيًا؟'] });
+  } finally { provider.close(); }
+});

@@ -1,11 +1,11 @@
 // Prompt assembly and answer parsing for every AI mode. Pure functions so they can be tested
 // without a provider: the server only decides *where* a prompt goes, never what it says.
 
-export const MODES = ['explain', 'ideas', 'layout', 'topics', 'migration', 'columns'];
+export const MODES = ['explain', 'ideas', 'layout', 'topics', 'migration', 'columns', 'ping'];
 
 // Output budgets per mode. Column notes and layouts are JSON for every table, so they need room;
 // a truncated JSON answer is worse than a slow one.
-export const TOKEN_LIMITS = { explain: 2200, ideas: 2200, layout: 3000, topics: 4500, migration: 4500, columns: 4000 };
+export const TOKEN_LIMITS = { explain: 2200, ideas: 2200, layout: 3000, topics: 4500, migration: 4500, columns: 4000, ping: 64 };
 
 export const SYSTEM_PROMPT = [
   'أنت مساعد متخصص في مخططات قواعد بيانات PostgreSQL داخل ER Atlas.',
@@ -81,9 +81,14 @@ export function buildGraphContext(schema, { withDegree = false, compactRelations
 
 const FORMAT_RULES = 'الصيغة: ابدأ بجواب مباشر في جملة أو جملتين، ثم عناوين `##` قصيرة ونقاط `-` عند الحاجة. ضع أسماء الجداول والأعمدة بين backticks. اكتب **[مثبت]** قبل ما هو مكتوب صراحة في المخطط (مفتاح، نوع، قيد، علاقة، تعليق) و**[استنتاج]** قبل ما تستنتجه من الأسماء أو المنطق. لا تتجاوز 250 كلمة ما لم يطلب المستخدم التفصيل.';
 
+// Chat modes are a conversation, not a report: no repeating, one clarifying question at most,
+// and a machine-readable last line the UI turns into quick replies.
+const DIALOGUE_RULES = 'هذه محادثة مستمرة مع المستخدم: لا تعد ما قلته سابقًا، وإن كان السؤال غامضًا بما يمنع إجابة مفيدة فاسأل سؤالًا توضيحيًا واحدًا قصيرًا بدل التخمين. في آخر الإجابة، في سطر مستقل، اكتب بالضبط: [متابعة] سؤال قصير أول | سؤال قصير ثانٍ | سؤال قصير ثالث — أسئلة (حتى 60 حرفًا لكل منها) قد يرغب المستخدم في طرحها بعدك مباشرة.';
+
 const INSTRUCTIONS = {
-  explain: `اشرح للمستخدم المخطط المرفق وأجب عن سؤاله. إن ذُكر جدول أو علاقة محددة فركّز عليها أولًا ثم على ما يحيط بها. عند الحديث عن علاقة اذكر الاتجاه (من يحمل المفتاح الأجنبي) وأثر الحذف حسب ON DELETE، وإن كان العمود يقبل NULL فالعلاقة اختيارية. ${FORMAT_RULES}`,
-  ideas: `أنت شريك تفكير في تصميم قواعد البيانات. ناقش فكرة المستخدم، واسأل سؤالًا واحدًا فقط عند الحاجة، واقترح جداول وأعمدة وعلاقات عملية مع سبب كل اختيار. المخطط المرفق قد يكون فارغًا ولا تدّعِ وجود ما لم يُذكر. عند اقتراح جدول اكتب تعريفه في كتلة SQL. ${FORMAT_RULES}`,
+  ping: 'اختبار اتصال. أجب بكلمة واحدة فقط: جاهز',
+  explain: `اشرح للمستخدم المخطط المرفق وأجب عن سؤاله. إن ذُكر جدول أو علاقة محددة فركّز عليها أولًا ثم على ما يحيط بها. عند الحديث عن علاقة اذكر الاتجاه (من يحمل المفتاح الأجنبي) وأثر الحذف حسب ON DELETE، وإن كان العمود يقبل NULL فالعلاقة اختيارية. ${FORMAT_RULES} ${DIALOGUE_RULES}`,
+  ideas: `أنت شريك تفكير في تصميم قواعد البيانات. ناقش فكرة المستخدم، واسأل سؤالًا واحدًا فقط عند الحاجة، واقترح جداول وأعمدة وعلاقات عملية مع سبب كل اختيار. المخطط المرفق قد يكون فارغًا ولا تدّعِ وجود ما لم يُذكر. عند اقتراح جدول اكتب تعريفه في كتلة SQL. ${FORMAT_RULES} ${DIALOGUE_RULES}`,
   migration: 'أنت وكيل ترحيل PostgreSQL. اقرأ متغيرات المسودة حرفيًا، تحقق من المخطط الحالي قبل أي عمل، واشرح خطة التنفيذ ثم أعد migration SQL داخل transaction. لا تدّعِ أنك نفذت شيئًا إن لم تكن لديك أداة اتصال بقاعدة البيانات. إذا كانت لديك أداة اتصال، نفّذ فقط بعد التحقق من التطابق وأبلغ بالنتيجة.',
   layout: 'أنت مصمم مخططات ERD. قسّم الجداول إلى 3 إلى 8 مناطق مفهومة تجمع ما يعمل معًا وتقلل العلاقات العابرة بين المناطق، ورتّب المناطق بحيث تتجاور المرتبطة منها. الجداول المحورية (centralTableIds) هي الأعلى ترابطًا (relations) والتي تتصل بأكثر من منطقة. أعد JSON فقط، دون أي نص أو شرح خارجه، بالشكل {"zones":[{"name":"اسم عربي قصير","reason":"جملة واحدة عن سبب التجميع","tableIds":["..."]}],"centralTableIds":["..."]}. استخدم IDs الموجودة حرفيًا، وضع كل جدول في منطقة واحدة فقط، ولا تحذف أي جدول.',
   topics: 'نظّم المواضيع حسب الوظائف وسير العمل الفعلي المثبت من تحليل syntax الكود، وليس مجرد تشابه أسماء الجداول أو روابط FK. استند إلى الخدمات والدوال والمسارات والموديلات وتعريفات Eloquent. أعد JSON فقط بالشكل [{"name":"اسم عربي واضح","tableIds":["..."],"sourceFiles":["app/Services/...php"],"reason":"لماذا تنتمي هذه الجداول معًا وما وظيفة الموضوع"}]. استخدم IDs ومسارات ملفات موجودة في تحليل الكود حرفيًا. اختر من 1 إلى 16 موضوعًا مناسبًا للنطاق، وافصل المهام الواضحة كالقائمة، وصفات الاستهلاك، حركة المخزون، والطلبات عند وجود دليل عليها. التكرار مقصود ومطلوب: أدرج كل جدول مساعد يحتاجه سير العمل في كل موضوع يستخدمه، مثل stores في المواضيع التي تستخدم نطاق المتجر، والوجبات والمتغيرات والإضافات في موضوع وصفات الاستهلاك وموضوع القائمة. لا تحشر الجداول المشتركة في موضوع واحد، ولا تكررها في موضوع لا يستخدمها. اختَر sourceFiles التي تنفذ نفس المهمة، فالخادم سيضيف كل الجداول التي تستخدمها هذه الملفات. لا تختلق علاقات قاعدة بيانات من علاقات morph في الكود. ميّز الاستنتاجات عن التعريفات الصريحة في السبب. اترك الجداول غير المطابقة للكود للمراجعة ولا تدع تحليلها من المصدر.',
@@ -167,4 +172,13 @@ export function readColumnNotes(answer, table) {
   if (!Object.keys(notes).length) throw new Error('لم يرجع AI شرحًا لأي عمود موجود في الجدول. أعد المحاولة.');
   const missing = table.columns.map(column => column.name).filter(name => !notes[name]);
   return { summary: clip(data?.summary, 300), columns: notes, missing };
+}
+
+// Pulls the "[متابعة] a | b | c" line off a chat answer. The answer text stays clean.
+export function splitFollowups(answer) {
+  const text = String(answer || '');
+  const match = /^[ \t]*\[متابعة\][ \t]*(.+)$/m.exec(text);
+  if (!match) return { answer: text.trim(), followups: [] };
+  const followups = match[1].split('|').map(item => clip(item.replace(/^[-•\s]+/, ''), 80)).filter(Boolean).slice(0, 3);
+  return { answer: text.replace(match[0], '').replace(/\n{3,}/g, '\n\n').trim(), followups };
 }

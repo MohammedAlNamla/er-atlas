@@ -99,8 +99,9 @@ function renderEmptyWorkspace() {
   $('emptyAiButton').hidden = !ideas;
 }
 // What a question will actually send: the selection wins, then the open topic or focus, then everything.
-function aiScope() {
+function aiScope(wide = state.aiWide) {
   if (!state.schema?.tables) return { kind: 'all', label: 'المخطط', schema: { tables: [], relations: [] }, focus: {} };
+  if (wide) return { kind: 'all', label: `كل المخطط · ${state.schema.tables.length} جدول`, schema: state.schema, focus: {}, wide: true };
   const table = state.schema.tables.find(item => item.id === state.selectedTable);
   if (table) return { kind: 'table', table, label: `جدول ${table.name} وجيرانه`, schema: state.schema, focus: { tableId: table.id } };
   const relation = state.schema.relations.find(item => item.id === state.selectedRelation);
@@ -147,30 +148,127 @@ function answerNodes(text) {
   return String(text).split(/```(?:[^\n]*)\n?([\s\S]*?)```/g).flatMap((part, index) => !part.trim() ? []
     : [index % 2 ? codeBlock(part.trim(), /\b(?:CREATE|ALTER|SELECT|INSERT|UPDATE|DELETE|BEGIN|DROP|COMMENT)\b/i.test(part) ? 'SQL' : 'AI') : richText(part.trim())]);
 }
-function renderAiMessages(status = '', failed = false) {
-  const box = $('aiResponse'); box.replaceChildren();
-  const scope = aiScope();
-  $('clearAiButton').hidden = !state.aiMessages.length;
-  if (!state.aiMessages.length && !status) {
-    box.append(el('h3', '', 'ماذا تريد أن تفهم؟'), el('p', 'ai-empty', activeWorkspace()?.kind === 'ideas' ? 'اكتب فكرتك وابدأ النقاش.' : 'اختر سؤالًا أو اكتب سؤالك مباشرة.'));
-    const suggestions = el('div', 'ai-suggestions');
-    for (const question of aiSuggestions(scope)) suggestions.append(uiButton(question, () => { $('aiQuestion').value = question; $('aiQuestion').focus(); }));
-    box.append(suggestions, notice(`السياق المرسل: ${scope.label}`, 'نرسل البنية والعلاقات والتعليقات والمحادثة، دون صفوف البيانات أو كلمة مرور PostgreSQL. حدّد جدولًا على الخريطة لتركيز الإجابة عليه.'));
+// ---- Chat: a dialogue, not a report. The thread keeps turns; the composer stays pinned.
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function sprite(name, className = 'i') {
+  const svg = document.createElementNS(SVG_NS, 'svg'), use = document.createElementNS(SVG_NS, 'use');
+  svg.setAttribute('class', className); svg.setAttribute('aria-hidden', 'true'); use.setAttribute('href', `#i-${name}`);
+  svg.append(use); return svg;
+}
+function chatButton(label, handler, className = '', iconName = '') {
+  const node = uiButton('', handler, className);
+  if (iconName) node.append(sprite(iconName, 'i i-small'));
+  node.append(el('span', '', label));
+  return node;
+}
+const AI_STAGES = ['أقرأ بنية الجداول…', 'أحلل العلاقات والمفاتيح…', 'أصيغ الإجابة…'];
+function aiGenericFollowups() { return ['اشرح أكثر', 'أعطني مثالًا', 'لخّص ذلك في ثلاث نقاط']; }
+function chatWho(label = 'المساعد', scope = '') {
+  const who = el('div', 'turn-who'); who.append(sprite('sparkle', 'i i-small'), el('strong', '', label));
+  if (scope) who.append(el('span', 'turn-scope', scope));
+  return who;
+}
+function chatWelcome(scope) {
+  const root = el('div', 'chat-welcome'), mark = el('div', 'welcome-mark');
+  const logo = document.createElementNS(SVG_NS, 'svg'), use = document.createElementNS(SVG_NS, 'use');
+  logo.setAttribute('class', 'welcome-logo'); logo.setAttribute('aria-hidden', 'true'); use.setAttribute('href', '#logo-mark'); logo.append(use); mark.append(logo);
+  root.append(mark, el('h3', '', 'اسأل عن مخططك'), el('p', '', activeWorkspace()?.kind === 'ideas' ? 'ناقش فكرتك، وسأقترح جداولها وعلاقاتها خطوة بخطوة.' : 'أشرح لك الجداول والعلاقات، وأراجع التصميم، وأناقشك فيما يخطر لك.'));
+  const connection = providerState();
+  if (connection.tone === 'warn' || connection.tone === 'bad') {
+    const card = el('div', 'connect-card');
+    card.append(el('strong', '', 'اربط مساعدًا لتبدأ'), el('p', '', `${providerShort()}: ${connection.text}.`), chatButton('ربط المساعد', () => openDialog($('aiSettingsDialog')), 'primary-button'));
+    root.append(card);
   }
-  for (const message of state.aiMessages) {
-    const bubble = el('div', `ai-message ${message.role}`);
-    if (message.role === 'user') bubble.textContent = message.content;
-    else {
-      bubble.append(...answerNodes(message.content));
-      const actions = el('div', 'ai-message-actions'); actions.append(uiButton('نسخ الإجابة', () => copyText(message.content), 'text-button')); bubble.append(actions);
-    }
-    box.append(bubble);
+  const replies = el('div', 'quick-replies');
+  for (const question of aiSuggestions(scope)) replies.append(uiButton(question, () => sendAiQuestion(question), 'quick-reply'));
+  root.append(replies);
+  return root;
+}
+function chatTurn(message, { last = false, fresh = false } = {}) {
+  const turn = el('div', `turn ${message.role}`);
+  if (message.at) turn.title = new Date(message.at).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' });
+  if (message.role === 'user') { turn.append(el('div', 'bubble', message.content)); return turn; }
+  turn.append(chatWho('المساعد', message.scope || ''));
+  const body = el('div', `turn-body${fresh ? ' fresh' : ''}`);
+  answerNodes(message.content).forEach((node, index) => { node.style.setProperty('--i', String(Math.min(index, 8))); body.append(node); });
+  const actions = el('div', 'turn-actions');
+  actions.append(chatButton('نسخ', () => copyText(message.content), 'turn-action', 'copy'));
+  if (last) actions.append(chatButton('أعد الإجابة', regenerateAiAnswer, 'turn-action', 'refresh'));
+  turn.append(body, actions);
+  if (last) {
+    const replies = el('div', 'quick-replies inline');
+    for (const question of (message.followups?.length ? message.followups : aiGenericFollowups())) replies.append(uiButton(question, () => sendAiQuestion(question), 'quick-reply'));
+    turn.append(replies);
   }
-  if (status) box.append(el('div', `ai-message ${failed ? 'error' : 'status'}`, status));
-  if (failed) box.append(uiButton('إعدادات المساعد', () => openDialog($('aiSettingsDialog'))), uiButton('إعادة المحاولة', () => $('aiForm').requestSubmit()));
-  // A new answer is read from its first line; only a pending status or error jumps to the end.
-  const latest = box.querySelector('.ai-message.assistant:last-of-type');
-  box.scrollTop = latest && !status ? Math.max(0, latest.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8) : box.scrollHeight;
+  return turn;
+}
+function renderAiMessages() {
+  const box = $('aiResponse'), scope = aiScope(), pending = state.aiPending, failed = state.aiFailed;
+  box.replaceChildren();
+  $('clearAiButton').hidden = !state.aiMessages.length || Boolean(pending);
+  if (!state.aiMessages.length && !pending && !failed) box.append(chatWelcome(scope));
+  const lastIndex = state.aiMessages.length - 1;
+  state.aiMessages.forEach((message, index) => box.append(chatTurn(message, { last: index === lastIndex && !pending && !failed, fresh: message.at && message.at === state.aiFreshAt })));
+  state.aiFreshAt = null;
+  if (pending || failed) box.append(chatTurn({ role: 'user', content: (pending || failed).question }));
+  state.aiStageEl = null;
+  if (pending) {
+    const turn = el('div', 'turn assistant pending'), typing = el('div', 'typing');
+    typing.append(el('i'), el('i'), el('i')); state.aiStageEl = el('span', 'typing-text');
+    const line = el('div', 'typing-line'); line.append(typing, state.aiStageEl);
+    turn.append(chatWho(), line); box.append(turn); updateAiStage();
+  } else if (failed) {
+    const turn = el('div', 'turn assistant failed'), actions = el('div', 'turn-actions');
+    actions.append(chatButton('أعد المحاولة', () => sendAiQuestion(failed.question), 'turn-action strong', 'refresh'), chatButton('ربط المساعد', () => openDialog($('aiSettingsDialog')), 'turn-action', 'key'));
+    turn.append(chatWho(), el('div', 'turn-error', failed.message), actions); box.append(turn);
+  }
+  // A new answer is read from its question; a pending or failed turn stays at the end.
+  const users = box.querySelectorAll('.turn.user'), lastUser = users[users.length - 1];
+  const target = !pending && !failed && state.aiJustAnswered && lastUser ? Math.max(0, lastUser.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 12) : box.scrollHeight;
+  state.aiJustAnswered = false;
+  box.scrollTop = target;
+}
+function updateAiStage() {
+  const target = state.aiStageEl; if (!target?.isConnected || !state.aiPending) return;
+  const seconds = Math.floor((Date.now() - state.aiPending.at) / 1000);
+  target.textContent = `${AI_STAGES[Math.min(AI_STAGES.length - 1, Math.floor(seconds / 4))]}${seconds >= 6 ? ` · ${seconds} ث` : ''}`;
+}
+function autosizeComposer() {
+  const input = $('aiQuestion'); input.style.height = 'auto';
+  input.style.height = `${Math.min(input.scrollHeight, 168)}px`;
+  $('askAiButton').disabled = !input.value.trim();
+}
+function setComposerBusy(busy) { $('askAiButton').hidden = busy; $('stopAiButton').hidden = !busy; }
+async function sendAiQuestion(raw) {
+  if (state.aiController) return;
+  const question = String(raw ?? $('aiQuestion').value).trim(); if (!question) return;
+  const workspaceId = state.workspaceId, controller = new AbortController(), scope = aiScope();
+  state.aiController = controller; state.aiFailed = null; state.aiPending = { question, at: Date.now() };
+  $('aiQuestion').value = ''; autosizeComposer(); setComposerBusy(true); renderAiMessages();
+  const timer = setInterval(updateAiStage, 1000);
+  try {
+    const data = await askAi(activeWorkspace()?.kind === 'ideas' ? 'ideas' : 'explain', question, scope.schema, controller.signal, { focus: scope.focus });
+    if (workspaceId !== state.workspaceId) return;
+    const at = Date.now();
+    state.aiMessages.push({ role: 'user', content: question, at: state.aiPending?.at || at }, { role: 'assistant', content: data.answer, at, scope: scope.label, followups: data.followups || [] });
+    state.aiMessages = state.aiMessages.slice(-30); saveAiMessages(); state.aiFreshAt = at; state.aiJustAnswered = true;
+    if (!$('aiDialog').open) showToast('وصلت إجابة المساعد');
+  } catch (error) {
+    if (workspaceId !== state.workspaceId) return;
+    if (error.name === 'AbortError') $('aiQuestion').value = question;
+    else state.aiFailed = { question, message: error.message };
+  } finally {
+    clearInterval(timer);
+    if (state.aiController === controller) { state.aiController = null; state.aiPending = null; }
+    if (workspaceId === state.workspaceId) { setComposerBusy(false); autosizeComposer(); renderAiMessages(); if ($('aiDialog').open) $('aiQuestion').focus(); }
+  }
+}
+function regenerateAiAnswer() {
+  if (state.aiController) return;
+  const index = state.aiMessages.length - 1;
+  if (index < 1 || state.aiMessages[index].role !== 'assistant') return;
+  const question = state.aiMessages[index - 1].content;
+  state.aiMessages = state.aiMessages.slice(0, index - 1); saveAiMessages(); sendAiQuestion(question);
 }
 function saveAiMessages() { store.setItem(`${storageKey()}.conversation`, JSON.stringify(state.aiMessages)); }
 async function activateWorkspace(id, { initial = false, live = false } = {}) {
@@ -181,7 +279,7 @@ async function activateWorkspace(id, { initial = false, live = false } = {}) {
   state.workspaceId = id; state.connectionLive = live;
   state.viewMode = ['map', 'tables', 'topics', 'focus'].includes(next.viewMode) ? next.viewMode : 'map';
   state.focusTable = next.focusTable || null; state.focusPositions = null; state.topicPositions = null;
-  state.aiMessages = [];
+  state.aiController?.abort(); state.aiPending = null; state.aiFailed = null; state.aiMessages = [];
   state.linkMode = false; state.linkSource = null; state.plan = null; state.handoffPrompt = '';
   $('linkModeButton').setAttribute('aria-pressed', 'false');
   state.scale = 1; state.x = 0; state.y = 0;
@@ -1093,7 +1191,7 @@ function searchMatches(search) {
 
 function updateEmphasis() {
   const scopeKey = `${state.selectedTable}|${state.selectedRelation}|${state.viewMode}|${state.topic}|${state.focusTable}`;
-  if (scopeKey !== state.aiScopeKey) { state.aiScopeKey = scopeKey; if ($('aiDialog').open) { updateAiSettings(); if (!state.aiMessages.length && !state.aiController) renderAiMessages(); } }
+  if (scopeKey !== state.aiScopeKey) { state.aiScopeKey = scopeKey; state.aiWide = false; updateAiSettings(); if ($('aiDialog').open && !state.aiMessages.length && !state.aiController) renderAiMessages(); }
   const active = state.groups.find(group => group.id === state.topic)?.ids;
   const search = $('searchInput').value.trim().toLowerCase();
   const matches = search ? searchMatches(search) : null;
@@ -1858,23 +1956,84 @@ function refreshTopics() {
     member.title = shared ? 'يظهر هذا الجدول في أكثر من موضوع' : '';
   }
 }
+// ---- Connecting an assistant: pick a card, see its state, done.
+const LOCAL_PROVIDERS = [
+  { id: 'claude-cli', name: 'Claude Code', login: 'claude auth login' },
+  { id: 'codex-cli', name: 'Codex', login: 'codex login' }
+];
+const API_PROVIDERS = [
+  { id: 'anthropic', name: 'Anthropic', note: 'Claude عبر API' },
+  { id: 'openai', name: 'OpenAI', note: 'GPT عبر API' },
+  { id: 'gemini', name: 'Google Gemini', note: 'Gemini عبر API' },
+  { id: 'compatible', name: 'خدمة أخرى', note: 'Ollama وكل ما يتوافق مع OpenAI' }
+];
+const MODEL_SUGGESTIONS = { 'claude-cli': ['sonnet', 'opus', 'haiku'], 'codex-cli': [], anthropic: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5'], openai: ['gpt-5-mini', 'gpt-5'], gemini: ['gemini-2.5-flash', 'gemini-2.5-pro'], compatible: ['llama3.2'] };
+let localAiStatuses = [];
+let localAiFailed = false;
+function isLocalProvider(id = $('aiProvider').value) { return id === 'claude-cli' || id === 'codex-cli'; }
+function providerShort(id = $('aiProvider').value) { return [...LOCAL_PROVIDERS, ...API_PROVIDERS].find(item => item.id === id)?.name || id; }
+// tone: ok (ready), warn (one step left), bad (cannot work yet), idle (still checking)
+function providerState(id = $('aiProvider').value) {
+  if (isLocalProvider(id)) {
+    const status = localAiStatuses.find(item => item.provider === id);
+    if (!status) return localAiFailed ? { tone: 'bad', text: 'تعذّر فحص الجهاز' } : { tone: 'idle', text: 'أفحص الجهاز…' };
+    if (status.ready) return { tone: 'ok', text: 'جاهز · يستخدم اشتراكك' };
+    return status.installed ? { tone: 'warn', text: 'سجّل الدخول مرة واحدة' } : { tone: 'bad', text: 'غير مثبّت على هذا الجهاز' };
+  }
+  if (id === 'compatible') return $('aiEndpoint').value.trim() ? { tone: 'ok', text: 'جاهز' } : { tone: 'warn', text: 'أدخل رابط الخدمة' };
+  return $('aiKey').value ? { tone: 'ok', text: 'المفتاح جاهز' } : { tone: 'warn', text: 'أدخل مفتاح API' };
+}
+function selectProvider(id) {
+  $('aiProvider').value = id; $('aiProvider').dispatchEvent(new Event('change'));
+  if (!isLocalProvider(id)) requestAnimationFrame(() => (id === 'compatible' && !$('aiEndpoint').value.trim() ? $('aiEndpoint') : $('aiKey').value ? $('aiModel') : $('aiKey')).focus());
+}
+function providerCard(provider, { local }) {
+  const selected = $('aiProvider').value === provider.id, info = providerState(provider.id);
+  const card = el('div', `provider-card${selected ? ' selected' : ''}`);
+  card.setAttribute('role', 'radio'); card.setAttribute('aria-checked', String(selected)); card.tabIndex = 0;
+  const tile = el('span', 'provider-tile'); tile.append(sprite(local ? 'terminal' : 'key'));
+  const copy = el('span', 'provider-copy'); copy.append(el('strong', '', provider.name));
+  if (local) {
+    const line = el('span', `provider-status ${info.tone}`); line.append(el('i', 'dot'), el('span', '', info.text)); copy.append(line);
+    if (info.tone === 'warn') {
+      const command = uiButton('', event => { event.stopPropagation(); copyText(provider.login); }, 'copy-command');
+      command.append(el('code', '', provider.login), sprite('copy', 'i i-small')); command.title = 'انسخ الأمر ثم نفّذه في الطرفية'; copy.append(command);
+    } else if (info.tone === 'bad' && localAiStatuses.length) copy.append(el('small', '', 'ثبّته ثم اضغط «إعادة الفحص».'));
+  } else copy.append(el('small', '', provider.note));
+  const radio = el('span', 'provider-radio'); radio.append(sprite('check', 'i i-small'));
+  card.append(tile, copy, radio);
+  card.addEventListener('click', () => selectProvider(provider.id));
+  card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectProvider(provider.id); } });
+  return card;
+}
+function renderProviderChoices() {
+  const local = $('localProviderChoices'), api = $('apiProviderChoices'); if (!local || !api) return;
+  local.replaceChildren(...LOCAL_PROVIDERS.map(provider => providerCard(provider, { local: true })));
+  api.replaceChildren(...API_PROVIDERS.map(provider => providerCard(provider, { local: false })));
+}
+function updateScopeChip() {
+  const current = aiScope(), narrow = aiScope(false), canNarrow = narrow.kind !== 'all';
+  $('aiContext').textContent = current.label;
+  $('aiScopeChip').disabled = !canNarrow;
+  $('aiScopeAction').textContent = !canNarrow ? '' : state.aiWide ? 'عودة إلى التحديد' : 'كل المخطط';
+}
 function updateAiSettings({ save = false } = {}) {
-  const provider = $('aiProvider').value, local = ['codex-cli', 'claude-cli'].includes(provider);
-  $('aiKeyWrap').hidden = local;
-  $('aiKey').disabled = local;
+  const provider = $('aiProvider').value, local = isLocalProvider(provider), info = providerState(provider);
+  $('aiApiFields').hidden = local;
   $('aiEndpointWrap').hidden = provider !== 'compatible';
-  $('aiModel').placeholder = local ? 'اتركه فارغًا للنموذج الافتراضي' : 'اسم النموذج';
-  $('topicAiProvider').value = local ? provider : 'settings';
-  const status = localAiStatuses.find(item => item.provider === provider);
-  const message = local ? (status?.message || 'يستخدم تسجيل دخول المساعد على الجهاز، دون مفتاح API.') : 'يستخدم الخدمة المحددة في إعدادات AI.';
-  $('aiLocalStatus').textContent = message;
-  $('topicAiStatus').textContent = message;
-  $('aiContext').textContent = `${state.schema ? aiScope().label : 'المخطط'} · ${providerLabel()}`;
-  $('aiFootnote').textContent = local ? 'استخدام تسجيل الدخول على الجهاز · الطلب ضمن حدود الاشتراك.' : 'يستخدم المزوّد المحدد في إعدادات المساعد.';
+  $('aiKey').disabled = local;
+  $('aiKeyWrap').firstChild.textContent = provider === 'compatible' ? 'مفتاح API (اختياري)' : 'مفتاح API';
+  $('aiModel').placeholder = local ? 'تلقائي' : MODEL_SUGGESTIONS[provider]?.[0] || 'اسم النموذج';
+  $('aiModelLabel').replaceChildren(document.createTextNode('النموذج '), ...(local || provider === 'compatible' ? [el('small', '', 'اختياري')] : []));
+  $('aiModelList').replaceChildren(...(MODEL_SUGGESTIONS[provider] || []).map(name => { const option = el('option'); option.value = name; return option; }));
+  $('aiProviderName').textContent = providerShort(provider);
+  $('aiProviderDot').className = `dot ${info.tone}`;
+  $('topicAiName').textContent = `${providerShort(provider)} · ${info.text}`;
+  $('topicAiStatus').textContent = info.tone === 'ok' ? '' : `${providerShort(provider)}: ${info.text}.`;
+  updateScopeChip();
   renderProviderChoices();
   if (save) store.setItem('eratlas.ai.settings.v1', JSON.stringify({ provider, model: $('aiModel').value.trim(), endpoint: $('aiEndpoint').value.trim() }));
 }
-let localAiStatuses = [];
 let defaultSourceRoot = '';
 function syncCodeSource() {
   if (!$('topicSourceRoot')) return;
@@ -1928,14 +2087,31 @@ async function loadLocalAiStatus() {
   try {
     const response = await fetch('/api/ai/local-status');
     if (!response.ok) throw new Error();
-    localAiStatuses = (await response.json()).providers || [];
+    localAiStatuses = (await response.json()).providers || []; localAiFailed = false;
     if (!store.getItem('eratlas.ai.settings.v1')) {
-      $('aiProvider').value = localAiStatuses.find(item => item.ready)?.provider || 'codex-cli';
+      const ready = localAiStatuses.find(item => item.ready);
+      if (ready) $('aiProvider').value = ready.provider;
     }
-    updateAiSettings();
-  } catch {
-    $('aiLocalStatus').textContent = $('topicAiStatus').textContent = 'تعذّر فحص مساعد الجهاز. أعد تشغيل ER Atlas ثم حدّث الصفحة.';
-  }
+  } catch { localAiFailed = true; }
+  updateAiSettings();
+  if ($('aiDialog').open && !state.aiController && !state.aiMessages.length) renderAiMessages();
+}
+async function testAiConnection() {
+  const result = $('aiTestResult'), button = $('testAiButton'), provider = $('aiProvider').value;
+  const show = (text, kind = '') => { result.hidden = false; result.className = `notice ${kind}`.trim(); result.textContent = text; };
+  button.disabled = true; show('أختبر الاتصال…');
+  try {
+    if (isLocalProvider(provider)) {
+      await loadLocalAiStatus();
+      const info = providerState(provider), status = localAiStatuses.find(item => item.provider === provider);
+      show(info.tone === 'ok' ? `${providerShort(provider)} جاهز على جهازك.` : status?.message || info.text, info.tone === 'ok' ? 'success' : 'error');
+    } else {
+      const started = performance.now();
+      await askAi('ping', 'ping', { tables: [], relations: [] });
+      show(`اتصل ${providerShort(provider)} بنجاح خلال ${Math.max(1, Math.round((performance.now() - started) / 1000))} ث.`, 'success');
+    }
+  } catch (error) { show(error.message, 'error'); }
+  finally { button.disabled = false; }
 }
 async function askAi(mode, question, schema = state.schema, signal, { focus, evidence } = {}) {
   updateAiSettings({ save: true });
@@ -1946,7 +2122,7 @@ async function askAi(mode, question, schema = state.schema, signal, { focus, evi
       history: mode === 'explain' || mode === 'ideas' ? state.aiMessages.slice(-12) : [] }) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'تعذّر الاتصال بخدمة AI');
-  if (mode === 'topics' || mode === 'columns') return data;
+  if (['topics', 'columns', 'explain', 'ideas'].includes(mode)) return data;
   return data.answer;
 }
 function parseTopicSuggestions(answer) {
@@ -2235,16 +2411,8 @@ function setNavbarSearch(open, { focus = false } = {}) {
 function providerLabel() {
   return { 'codex-cli': 'Codex على الجهاز', 'claude-cli': 'Claude Code على الجهاز', openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Google Gemini', compatible: 'خدمة متوافقة' }[$('aiProvider').value] || 'Codex على الجهاز';
 }
-function renderProviderChoices() {
-  const root = $('localProviderChoices'); if (!root) return; root.replaceChildren();
-  for (const [id, label] of [['codex-cli', 'Codex على الجهاز'], ['claude-cli', 'Claude Code على الجهاز']]) {
-    const choice = el('label', 'choice'), radio = el('input'); radio.type = 'radio'; radio.name = 'localProvider'; radio.checked = $('aiProvider').value === id;
-    const copy = el('span'); copy.append(el('strong', '', label), el('small', '', 'CLI · يستخدم تسجيل الدخول الحالي دون مفتاح'));
-    radio.addEventListener('change', () => { $('aiProvider').value = id; $('aiProvider').dispatchEvent(new Event('change')); }); choice.append(radio, copy); root.append(choice);
-  }
-}
 function openAiConversation() {
-  closeHeaderMenus(); updateAiSettings(); renderAiMessages(); openDialog($('aiDialog')); $('aiQuestion').focus();
+  closeHeaderMenus(); updateAiSettings(); renderAiMessages(); openDialog($('aiDialog')); autosizeComposer(); $('aiQuestion').focus();
 }
 function openCodeDialog() {
   closeHeaderMenus(); syncCodeSource(); updateAiSettings(); openDialog($('codeDialog'));
@@ -2283,9 +2451,9 @@ function installEvents() {
   }
   document.addEventListener('pointerdown', event => { if (!event.target.closest('.header-menu,.topic-switcher')) closeHeaderMenus(); });
   $('aiSettingsButton').addEventListener('click', () => openDialog($('aiSettingsDialog')));
-  $('conversationSettingsButton').addEventListener('click', () => openDialog($('aiSettingsDialog')));
+  $('aiProviderChip').addEventListener('click', () => openDialog($('aiSettingsDialog')));
   $('arrangeSettingsButton').addEventListener('click', () => openDialog($('aiSettingsDialog')));
-  $('saveAiSettingsButton').addEventListener('click', () => { updateAiSettings({ save: true }); $('aiSettingsDialog').close(); showToast('حُفظت إعدادات المساعد'); });
+  $('saveAiSettingsButton').addEventListener('click', () => { updateAiSettings({ save: true }); $('aiSettingsDialog').close(); });
   $('codeSourceButton').addEventListener('click', openCodeDialog); $('topicAnalysisButton').addEventListener('click', openCodeDialog);
   $('selectionModeButton').addEventListener('click', () => {
     state.linkMode = false; state.linkSource = null;
@@ -2415,14 +2583,7 @@ function installEvents() {
     state.customGroups = null; store.removeItem(topicKey()); buildGroups();
     refreshTopics(); renderTopicEditor(); showToast('تمت استعادة التقسيم التلقائي');
   });
-  $('topicAiProvider').addEventListener('change', () => {
-    if ($('topicAiProvider').value === 'settings') {
-      openDialog($('aiSettingsDialog'));
-      return;
-    }
-    $('aiProvider').value = $('topicAiProvider').value; $('aiModel').value = '';
-    updateAiSettings({ save: true }); loadLocalAiStatus();
-  });
+  $('topicAiSettingsButton').addEventListener('click', () => openDialog($('aiSettingsDialog')));
   $('aiButton').addEventListener('click', openAiConversation);
   $('aiArrangeButton').addEventListener('click', () => openArrangement('ai'));
   $('closeAiDialog').addEventListener('click', () => $('aiDialog').close());
@@ -2430,7 +2591,7 @@ function installEvents() {
     if (state.aiController || !state.aiMessages.length) return;
     state.aiMessages = []; saveAiMessages(); renderAiMessages(); $('aiQuestion').focus();
   });
-  const defaultModels = { 'codex-cli': '', 'claude-cli': '', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-4-5', gemini: 'gemini-2.5-flash', compatible: 'llama3.2' };
+  const defaultModels = { 'codex-cli': '', 'claude-cli': '', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-5-5', gemini: 'gemini-2.5-flash', compatible: 'llama3.2' };
   try {
     const settings = JSON.parse(store.getItem('eratlas.ai.settings.v1') || 'null');
     if (settings && Object.hasOwn(defaultModels, settings.provider)) {
@@ -2443,28 +2604,27 @@ function installEvents() {
     $('aiModel').value = defaultModels[$('aiProvider').value];
     $('aiEndpointWrap').hidden = $('aiProvider').value !== 'compatible';
     if ($('aiProvider').value === 'compatible' && !$('aiEndpoint').value) $('aiEndpoint').value = 'http://127.0.0.1:11434/v1';
-    updateAiSettings({ save: true }); loadLocalAiStatus();
+    updateAiSettings({ save: true }); if (isLocalProvider()) loadLocalAiStatus();
   });
   $('aiModel').addEventListener('change', () => updateAiSettings({ save: true }));
   $('aiEndpoint').addEventListener('change', () => updateAiSettings({ save: true }));
-  $('aiForm').addEventListener('submit', async event => {
-    if (state.aiController) { event.preventDefault(); return; }
-    event.preventDefault(); const button = $('askAiButton'); button.disabled = true;
-    const question = $('aiQuestion').value.trim(); if (!question) { button.disabled = false; return; }
-    const workspaceId = state.workspaceId, controller = new AbortController(); state.aiController = controller;
-    $('aiQuestion').disabled = true;
-    $('stopAiButton').hidden = false; button.textContent = 'جارٍ إعداد الإجابة…';
-    renderAiMessages('جارٍ إعداد الإجابة...');
-    const scope = aiScope();
-    try {
-      const answer = await askAi(activeWorkspace()?.kind === 'ideas' ? 'ideas' : 'explain', question, scope.schema, controller.signal, { focus: scope.focus });
-      if (controller.signal.aborted || workspaceId !== state.workspaceId) return;
-      state.aiMessages.push({ role: 'user', content: question }, { role: 'assistant', content: answer });
-      state.aiMessages = state.aiMessages.slice(-30); saveAiMessages(); renderAiMessages(); $('aiQuestion').value = '';
-    }
-    catch (error) { if (workspaceId === state.workspaceId) renderAiMessages(error.name === 'AbortError' ? 'أُوقف الطلب. يمكنك تعديل السؤال وإرساله مجددًا.' : error.message, error.name !== 'AbortError'); }
-    finally { if (state.aiController === controller) state.aiController = null; button.disabled = false; button.textContent = 'إرسال السؤال'; $('stopAiButton').hidden = true; $('aiQuestion').disabled = false; }
+  $('aiForm').addEventListener('submit', event => { event.preventDefault(); sendAiQuestion(); });
+  $('aiQuestion').addEventListener('input', autosizeComposer);
+  $('aiQuestion').addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); if (!state.aiController) sendAiQuestion(); }
   });
+  $('aiScopeChip').addEventListener('click', () => {
+    state.aiWide = !state.aiWide; updateAiSettings();
+    if (!state.aiMessages.length && !state.aiController) renderAiMessages();
+  });
+  $('aiKey').addEventListener('input', () => updateAiSettings());
+  $('aiEndpoint').addEventListener('input', () => updateAiSettings());
+  $('recheckAiButton').addEventListener('click', async event => {
+    const trigger = event.currentTarget; trigger.disabled = true; trigger.textContent = 'أفحص…';
+    await loadLocalAiStatus(); trigger.disabled = false; trigger.textContent = 'إعادة الفحص';
+  });
+  $('testAiButton').addEventListener('click', testAiConnection);
+  $('aiSettingsDialog').addEventListener('close', () => { updateAiSettings({ save: true }); if ($('aiDialog').open && !state.aiController) renderAiMessages(); });
   $('arrangeWithAiButton').addEventListener('click', arrangeWithAi);
   $('suggestTopicsButton').addEventListener('click', async () => {
     const button = $('suggestTopicsButton'); button.disabled = true; button.textContent = 'جارٍ الاقتراح...';

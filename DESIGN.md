@@ -274,6 +274,12 @@ Compact ERD card: 300px, 10px radius, 1px node-border, hairline resting shadow (
 ### Column list
 Inspector and expanded table share one list: per column a mono name (LTR, semibold) with its PK/FK badge and type on the same line, then one muted sentence for the note. A note carries a small basis tag: database comment and code-backed notes are violet, schema-derived are neutral, name-only guesses are amber. Notes written by hand are editable in place (click, Enter saves, Esc cancels); database comments are read-only. The bar above the list holds the table summary, the AI action, and the explained count; on phones only errors show there.
 
+### AI chat
+A sheet in the sidebar slot, three parts: head (title, provider chip with a status dot, new-conversation and close), a scrolling thread, a pinned composer. The user speaks in a violet-tint bubble on the start edge; the assistant has no bubble, only a label line (sparkle, name, scope) above plain text, so long answers keep the full width. Waiting shows three pulsing dots with a stage phrase that advances every 4 s and the elapsed seconds after 6. A new answer fades in block by block, and the thread scrolls to the question that produced it rather than the end. After the last answer: copy, regenerate, and up to three quick-reply chips (from the model, with generic fallbacks) that send on click. The composer is one rounded box: auto-growing textarea, a round send button that turns into a stop button while a request is in flight, and a scope chip above it that says exactly what is sent and toggles to the whole schema.
+
+### AI connection
+A short modal, one decision: pick a card. Local assistants (Claude Code, Codex) are probed on open and show ready / sign in once (with a copyable command) / not installed. API services are four compact cards; picking one reveals the key (memory only), an endpoint for compatible services, and a model with suggestions. The footer tests the connection and closes. When the chat has no usable assistant, its welcome state carries a connect card instead of failing on the first question.
+
 ### AI answers
 Answers render as short paragraphs, `##` headings and bullets with identifiers in LTR code chips. `[مثبت]` (violet) marks what the schema states, `[استنتاج]` (amber) what was inferred. The scope shown under the dialog title is exactly what a question sends. A new answer opens at its first line, not at the end.
 

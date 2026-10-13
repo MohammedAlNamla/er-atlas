@@ -7,7 +7,7 @@ import { Pool } from 'pg';
 import { fingerprint, planChanges } from './planner.js';
 import { askLocal, cliStatus, localProviders } from './local-ai.js';
 import { analyzeSource, compactCodeContext, groundTopicSuggestions } from './code-context.js';
-import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, readColumnNotes } from './ai-prompts.js';
+import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, readColumnNotes, splitFollowups } from './ai-prompts.js';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const port = Number(process.env.PORT || 4317);
@@ -180,6 +180,7 @@ async function askProvider(body, signal) {
       const table = schema.tables.find(item => item.id === body.focus?.tableId);
       return { answer, notes: readColumnNotes(answer, table) };
     }
+    if (mode === 'explain' || mode === 'ideas') return splitFollowups(answer);
     return { answer: codeContext ? groundTopicSuggestions(answer, codeContext, schema.tables) : answer,
       ...(codeContext ? { sourceAnalysis: sourceSummary(codeContext) } : {}) };
   };

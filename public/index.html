@@ -45,6 +45,16 @@
         <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
         <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></symbol>
         <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></symbol>
+        <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" /></symbol>
+        <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="3" fill="currentColor" /></symbol>
+        <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 3.5 1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9Z" /><path d="M18.5 16.5v3M17 18h3" /></symbol>
+        <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><path d="m7.5 10 2.5 2-2.5 2M12.5 14.5h4" /></symbol>
+        <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.5" /><path d="m10.5 12.5 8-8M15 8l2.5 2.5" /></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5" /><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5" /></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.2L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 14.5 4.2l1.5-1.7M20 20v-4.5h-4.5" /></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></symbol>
+        <symbol id="i-compose" viewBox="0 0 24 24"><path d="M12 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /><path d="M17.5 3.5a1.8 1.8 0 0 1 2.5 2.5L12 14l-3.5 1 1-3.5Z" /></symbol>
         <symbol id="i-draft" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></symbol>
       </g>
     </svg>
@@ -196,7 +206,7 @@
             <div id="aiMenu" class="header-popover" hidden>
               <button id="aiButton" type="button">اسأل عن المخطط</button
               ><button id="aiArrangeButton" type="button">رتّب بالـAI</button
-              ><button id="aiSettingsButton" type="button">إعدادات المساعد</button>
+              ><button id="aiSettingsButton" type="button">ربط المساعد</button>
             </div>
           </div>
         </div>
@@ -548,14 +558,11 @@
             autocomplete="off"
           />
           <p class="field-hint">مسار مشروع Laravel المحلي على جهازك.</p>
-          <label for="topicAiProvider">المساعد</label
-          ><select id="topicAiProvider">
-            <option value="codex-cli">Codex على الجهاز · دون مفتاح</option>
-            <option value="claude-cli">
-              Claude Code على الجهاز · دون مفتاح
-            </option>
-            <option value="settings">خدمة أخرى من إعدادات AI</option>
-          </select>
+          <div class="provider-row">
+            <span class="provider-row-label">المساعد</span>
+            <strong id="topicAiName"></strong>
+            <button id="topicAiSettingsButton" class="text-button" type="button">تغيير</button>
+          </div>
         </details>
         <p
           id="topicSourceSummary"
@@ -585,69 +592,45 @@
     </dialog>
     <dialog
       id="aiDialog"
-      class="ai-dialog drawer-dialog sheet"
+      class="ai-dialog drawer-dialog sheet chat-dialog"
       aria-labelledby="aiDialogTitle"
     >
-      <div class="modal-header">
-        <button
-          id="closeAiDialog"
-          class="dialog-close"
-          type="button"
-          aria-label="إغلاق"
-        >
-          <span data-icon="close"></span>
+      <div class="chat-head">
+        <div class="chat-title">
+          <h2 id="aiDialogTitle">المساعد</h2>
+          <button id="aiProviderChip" class="provider-chip" type="button" title="تغيير المساعد">
+            <span id="aiProviderDot" class="dot" aria-hidden="true"></span>
+            <span id="aiProviderName"></span>
+            <svg class="i i-small" aria-hidden="true"><use href="#i-chevron" /></svg>
+          </button>
+        </div>
+        <div class="chat-head-actions">
+          <button id="clearAiButton" class="chat-icon" type="button" aria-label="محادثة جديدة" title="محادثة جديدة" hidden>
+            <svg class="i" aria-hidden="true"><use href="#i-compose" /></svg>
+          </button>
+          <button id="closeAiDialog" class="chat-icon" type="button" aria-label="إغلاق" title="إغلاق">
+            <svg class="i" aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+      </div>
+      <div id="aiResponse" class="chat-thread" role="log" aria-live="polite"></div>
+      <form id="aiForm" class="chat-composer">
+        <button id="aiScopeChip" class="scope-chip" type="button">
+          <svg class="i i-small" aria-hidden="true"><use href="#i-table" /></svg>
+          <span id="aiContext"></span>
+          <span id="aiScopeAction" class="scope-action"></span>
         </button>
-        <h2 id="aiDialogTitle">اسأل عن المخطط</h2>
-        <p id="aiContext">مساعد بجانب الخريطة، مع سياق واضح لكل سؤال.</p>
-        <div class="header-links">
-          <button
-            id="conversationSettingsButton"
-            class="text-button"
-            type="button"
-          >
-            إعدادات المساعد
+        <div class="composer-box">
+          <textarea id="aiQuestion" rows="1" placeholder="اسأل عن الجداول أو العلاقات…" aria-label="سؤالك"></textarea>
+          <button id="askAiButton" class="send-button" type="submit" aria-label="إرسال" title="إرسال (Enter)" disabled>
+            <svg class="i" aria-hidden="true"><use href="#i-send" /></svg>
           </button>
-          <button id="clearAiButton" class="text-button" type="button" hidden>
-            محادثة جديدة
+          <button id="stopAiButton" class="send-button stop" type="button" aria-label="إيقاف الإجابة" title="إيقاف" hidden>
+            <svg class="i" aria-hidden="true"><use href="#i-stop" /></svg>
           </button>
         </div>
-      </div>
-      <div class="modal-body">
-        <div id="aiResponse" class="ai-response" aria-live="polite"></div>
-        <form id="aiForm">
-          <label for="aiQuestion">متابعة المحادثة</label
-          ><textarea
-            id="aiQuestion"
-            rows="4"
-            placeholder="اكتب سؤالك عن الجداول والعلاقات…"
-            required
-          ></textarea>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <p id="aiFootnote">
-          استخدام تسجيل الدخول على الجهاز · الطلب ضمن حدود الاشتراك.
-        </p>
-        <div class="footer-actions">
-          <button
-            id="askAiButton"
-            class="primary-button"
-            type="submit"
-            form="aiForm"
-          >
-            إرسال السؤال</button
-          ><button
-            id="stopAiButton"
-            class="secondary-button"
-            type="button"
-            hidden
-          >
-            إيقاف الطلب</button
-          ><button class="secondary-button" type="button" data-close="aiDialog">
-            إغلاق
-          </button>
-        </div>
-      </div>
+        <p class="composer-hint">Enter للإرسال · Shift + Enter لسطر جديد</p>
+      </form>
     </dialog>
     <dialog
       id="aiSettingsDialog"
@@ -655,75 +638,49 @@
       aria-labelledby="aiSettingsTitle"
     >
       <div class="modal-header">
-        <button
-          class="dialog-close"
-          type="button"
-          data-close="aiSettingsDialog"
-          aria-label="إغلاق"
-        >
+        <button class="dialog-close" type="button" data-close="aiSettingsDialog" aria-label="إغلاق">
           <span data-icon="close"></span>
         </button>
-        <h2 id="aiSettingsTitle">إعدادات المساعد</h2>
-        <p>استخدم تسجيل الدخول الموجود على جهازك.</p>
+        <h2 id="aiSettingsTitle">اربط مساعدك</h2>
+        <p>اختر مساعدًا مثبّتًا على جهازك، أو أدخل مفتاح API لخدمة أخرى.</p>
       </div>
       <div class="modal-body">
-        <div id="localProviderChoices" class="provider-choices"></div>
-        <div class="ai-settings">
-          <label
-            >الخدمة<select id="aiProvider">
-              <option value="codex-cli">Codex على الجهاز · الاشتراك</option>
-              <option value="claude-cli">
-                Claude Code على الجهاز · الاشتراك
-              </option>
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="gemini">Google Gemini</option>
-              <option value="compatible">OpenAI Compatible / محلي</option>
-            </select></label
-          ><label
-            >النموذج<input
-              id="aiModel"
-              dir="ltr"
-              placeholder="تلقائي من إعدادات المساعد" /></label
-          ><label id="aiEndpointWrap" hidden
-            >رابط الخدمة<input
-              id="aiEndpoint"
-              dir="ltr"
-              placeholder="http://127.0.0.1:11434/v1" /></label
-          ><label id="aiKeyWrap" hidden
-            >مفتاح API<input
-              id="aiKey"
-              type="password"
-              dir="ltr"
-              placeholder="يبقى في الذاكرة فقط"
-          /></label>
-        </div>
-        <p
-          id="aiLocalStatus"
-          class="notice success"
-          role="status"
-          aria-live="polite"
-        ></p>
-        <p class="field-hint">
-          Codex وClaude Code يستخدمان تسجيل الدخول على الجهاز دون API key. تُرسل
-          البنية والمحادثة دون صفوف البيانات أو كلمة مرور PostgreSQL.
-        </p>
+        <section class="connect-group" aria-labelledby="connectLocalTitle">
+          <div class="connect-group-head">
+            <h3 id="connectLocalTitle">على جهازك <small>دون مفتاح</small></h3>
+            <button id="recheckAiButton" class="text-button" type="button">إعادة الفحص</button>
+          </div>
+          <div id="localProviderChoices" class="provider-cards" role="radiogroup" aria-labelledby="connectLocalTitle"></div>
+        </section>
+        <section class="connect-group" aria-labelledby="connectApiTitle">
+          <div class="connect-group-head"><h3 id="connectApiTitle">بمفتاح API</h3></div>
+          <div id="apiProviderChoices" class="provider-cards compact" role="radiogroup" aria-labelledby="connectApiTitle"></div>
+          <div id="aiApiFields" class="connect-fields" hidden>
+            <label id="aiEndpointWrap" hidden>رابط الخدمة<input id="aiEndpoint" dir="ltr" placeholder="http://127.0.0.1:11434/v1" autocomplete="off" /></label>
+            <label id="aiKeyWrap">مفتاح API<input id="aiKey" type="password" dir="ltr" placeholder="sk-…" autocomplete="off" /></label>
+            <p class="field-hint">المفتاح يبقى في ذاكرة الصفحة فقط ولا يُحفظ على القرص؛ أعد إدخاله بعد إعادة تحميل الصفحة.</p>
+          </div>
+        </section>
+        <label class="connect-model" id="aiModelWrap">
+          <span id="aiModelLabel">النموذج <small>اختياري</small></span>
+          <input id="aiModel" dir="ltr" list="aiModelList" placeholder="تلقائي" autocomplete="off" />
+          <datalist id="aiModelList"></datalist>
+        </label>
+        <select id="aiProvider" hidden aria-hidden="true" tabindex="-1">
+          <option value="claude-cli">Claude Code</option>
+          <option value="codex-cli">Codex</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="compatible">خدمة متوافقة</option>
+        </select>
+        <p id="aiTestResult" class="notice" role="status" aria-live="polite" hidden></p>
       </div>
       <div class="modal-footer">
+        <p>نرسل البنية والعلاقات والتعليقات والمحادثة فقط، دون صفوف البيانات أو كلمة مرور PostgreSQL.</p>
         <div class="footer-actions">
-          <button
-            id="saveAiSettingsButton"
-            class="primary-button"
-            type="button"
-          >
-            حفظ الإعدادات</button
-          ><button
-            class="secondary-button"
-            type="button"
-            data-close="aiSettingsDialog"
-          >
-            إغلاق
-          </button>
+          <button id="saveAiSettingsButton" class="primary-button" type="button">تم</button>
+          <button id="testAiButton" class="secondary-button" type="button">اختبر الاتصال</button>
         </div>
       </div>
     </dialog>
