@@ -3355,3 +3355,11 @@ body dialog.sheet, body dialog.drawer-dialog { width: min(var(--sheet-width, 420
 body .modal-header h2 { font-size: 20px; line-height: 30px; min-height: 0; }
 @media (max-width: 900px) { body dialog.sheet, body dialog.drawer-dialog { width: 100vw; border-radius: 16px 16px 0 0; } }
 @media (max-width: 600px) { body dialog:not(.quick-actions-dialog):not(.drawer-dialog):not(.sheet) { border-radius: 16px 16px 0 0; } }
+
+/* Bottom controls live on the end edge; the start edge is free for sidebars. */
+.chrome-bottom-end { gap: 8px; }
+.sheet, .drawer-dialog { inset-block: 76px 16px; }
+.details-panel { bottom: 16px; }
+.toast { bottom: 24px; }
+@media (max-width: 520px) { .chrome-bottom-end .history { display: none; } }
+@media (max-width: 900px) { .sheet, .drawer-dialog { inset-block: auto 0; } .details-panel { bottom: 68px; } }

@@ -201,8 +201,15 @@
           </div>
         </div>
 
-        <!-- Bottom start: view and history -->
-        <div class="chrome-zone chrome-bottom-start">
+        <!-- Bottom end: view, history, help. The start edge stays free for sidebars. -->
+        <div class="chrome-zone chrome-bottom-end">
+          <button id="helpButton" class="pill pill-button icon-only" type="button" aria-label="الأوامر والاختصارات" title="الأوامر والاختصارات (Ctrl K)">
+            <svg class="i" aria-hidden="true"><use href="#i-help" /></svg>
+          </button>
+          <div class="pill history" role="group" aria-label="السجل">
+            <button id="undoQuick" class="tool" type="button" aria-label="تراجع" title="تراجع (Ctrl Z)" disabled><svg class="i" aria-hidden="true"><use href="#i-undo" /></svg></button>
+            <button id="redoQuick" class="tool" type="button" aria-label="إعادة" title="إعادة (Ctrl Y)" disabled><svg class="i" aria-hidden="true"><use href="#i-redo" /></svg></button>
+          </div>
           <div class="pill zoom" role="group" aria-label="التحكم بالتكبير">
             <button id="zoomOut" class="tool" type="button" aria-label="تصغير" title="تصغير (-)"><svg class="i" aria-hidden="true"><use href="#i-minus" /></svg></button>
             <button id="readableViewButton" class="zoom-value" type="button" title="عرض بحجم مقروء (0)" aria-label="عرض بحجم مقروء"><span id="zoomLabel">100%</span></button>
@@ -210,20 +217,9 @@
             <span class="divider" aria-hidden="true"></span>
             <button id="fitButton" class="tool" type="button" aria-label="إظهار كامل المخطط" title="إظهار كامل المخطط (F)"><svg class="i" aria-hidden="true"><use href="#i-fit" /></svg></button>
           </div>
-          <div class="pill history" role="group" aria-label="السجل">
-            <button id="undoQuick" class="tool" type="button" aria-label="تراجع" title="تراجع (Ctrl Z)" disabled><svg class="i" aria-hidden="true"><use href="#i-undo" /></svg></button>
-            <button id="redoQuick" class="tool" type="button" aria-label="إعادة" title="إعادة (Ctrl Y)" disabled><svg class="i" aria-hidden="true"><use href="#i-redo" /></svg></button>
-          </div>
-        </div>
-
-        <!-- Bottom end: what is on screen, and help -->
-        <div class="chrome-zone chrome-bottom-end">
-          <div class="pill counts map-status" aria-live="polite"><span id="tableCount"></span><span class="dot" aria-hidden="true">·</span><span id="relationCount"></span></div>
-          <button id="helpButton" class="pill pill-button icon-only" type="button" aria-label="الأوامر والاختصارات" title="الأوامر والاختصارات (Ctrl K)">
-            <svg class="i" aria-hidden="true"><use href="#i-help" /></svg>
-          </button>
         </div>
       </div>
+      <div class="sr-only map-status" aria-live="polite"><span id="tableCount"></span> <span id="relationCount"></span></div>
       <div class="workspace-title sr-only"><strong id="mapTitle"></strong><span id="mapSubtitle"></span></div>
     </div>
     <dialog

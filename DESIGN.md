@@ -211,13 +211,12 @@ Near-black ink and cool neutral grays with a single violet. Values below are lig
 
 ## Layout
 
-A fixed full-viewport shell: `.map-area` fills the screen and a pointer-transparent chrome layer sits above it in five zones, inset 16px from the edges (12px under 520px). In RTL, start is the right edge.
+A fixed full-viewport shell: `.map-area` fills the screen and a pointer-transparent chrome layer sits above it in four zones, inset 16px from the edges (12px under 520px). In RTL, start is the right edge.
 - **Top-start:** logo pill, workspace pill, menu pill.
 - **Top-center:** the tool strip (map/tables segmented control, select, table, relation, arrange, search) with a quiet context row beneath (topic, view).
 - **Top-end:** drafts chip and the single violet AI button.
-- **Bottom-start:** zoom pill and undo/redo pill (kept left-to-right so numeric controls keep their order).
-- **Bottom-end:** counts pill and help button.
-- **Inspector:** a 360px panel on the start side under the menu (top and bottom 76px); full-page views pad 408px on that side while it is open.
+- **Bottom-end:** zoom pill, undo/redo pill and help button. The bottom-start edge is deliberately empty so sidebars can use the full height.
+- **Inspector and sidebars:** a 420px panel on the start side under the menu (76px from the top, 16px from the bottom); full-page views pad 408px on that side while it is open.
 - **Full-page views** (catalog, topic overview, focus picker) fill the map area and clear the chrome (128px top padding).
 
 Spacing runs on a 4/8/12/16/24 rhythm; pill internals are 2-3px padding with 8px gaps. Responsive: under 1180px the wordmark is hidden and search collapses into a toggle; under 900px button labels hide, the tool strip drops to 68px and scrolls horizontally, shortcut hints hide, and the inspector becomes a bottom sheet; under 520px history and counts are hidden.
@@ -260,8 +259,8 @@ Context Gray track (9px radius, 3px padding); the active segment is a surface ch
 ### Search field
 Context Gray, 36px, 176px wide, expanding to 248px with a violet border and surface fill on focus; carries a mono key hint. Hidden when the catalog view brings its own search.
 
-### Zoom and counts
-The zoom pill is mono, tabular, left-to-right. The counts pill is quiet muted text on a surface pill.
+### Zoom
+The zoom pill is mono, tabular, left-to-right. Table and relation counts are no longer shown on screen; they remain as a screen-reader status.
 
 ### Popovers
 Hang 8px below their pill, 12px radius, surface with hairline and soft shadow, 44px rows at 8px radius, hover in Selected Tint. They grow away from the nearest screen edge (pop-in 160ms ease-out, scale from .96).
