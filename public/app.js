@@ -1486,7 +1486,7 @@ function openEditor(kind, context = {}) {
   const titles = { addTable: 'جدول جديد', renameTable: 'تغيير اسم الجدول', addColumn: 'إضافة عمود', editColumn: 'تعديل العمود', addRelation: 'إضافة علاقة' };
   $('editTitle').textContent = titles[kind];
   $('editDescription').textContent = kind === 'addTable' ? 'أضف تعريف الجدول إلى المسودة ثم جهّز أعمدته.' : kind === 'renameTable' ? 'سيبقى الجدول مرتبطًا بمواضيعه وعلاقاته.' : kind === 'addRelation' ? 'عمود المفتاح الأجنبي يشير إلى عمود المفتاح الأساسي في الجدول الهدف.' : `تعديل أعمدة ${table.name} ضمن المسودة.`;
-  $('editDialog').style.setProperty('--modal-width', `${kind === 'addRelation' ? 800 : kind === 'renameTable' ? 520 : kind === 'addTable' ? 680 : 640}px`);
+  $('editDialog').style.setProperty('--modal-width', `${kind === 'addRelation' ? 560 : kind === 'renameTable' ? 440 : 520}px`);
   if (kind === 'addTable') fields.append(field('name', 'اسم الجدول', '', 'text', { required: true }), field('schema', 'Schema', 'public', 'text', { required: true }));
   if (kind === 'renameTable') {
     const current = field('currentName', 'الاسم الحالي', table.name); current.classList.add('full'); current.querySelector('input').disabled = true;

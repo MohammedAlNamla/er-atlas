@@ -321,3 +321,12 @@ Dialogs, sheets, menus, fields, notices, code blocks, tabs and tables share one 
 - **Command palette:** top-anchored (12vh), 560px wide, large search line, items with shortcut hints, arrow-key and Enter navigation.
 
 **Do:** reuse these item, field and card shapes for any new overlay. **Don't:** add a new radius, a saturated notice, a black code block in light mode, or a modal for a task that a menu or the inspector can carry.
+
+### Template v2: modal or sidebar
+
+One decision rule: **a short task is a modal; anything with a lot of content is a sidebar.**
+
+- **Modals** are centered and come in three widths: 420px (confirmations), 520–560px (forms), 760px (side-by-side previews). The header is a 20px title plus a one-line 14px description; the body is a single column with 20px between fields; the footer holds a 13px hint at the start and the actions at the end, primary action outermost. The backdrop dims and blurs the map.
+- **Sidebars** (`.sheet`: draft review, hand-off prompt, topic manager, code analysis, full-table view, AI conversation, and the inspector) all dock in the same slot: the start edge, between the top chrome and the bottom pills (76px inset), 16px from the edge, 420px wide or 640px with `.wide`. They share the modal's header, body and footer, slide in 14px from the edge in 220ms, and use a transparent backdrop so the map stays readable. On screens under 900px they become bottom sheets.
+- **Fields:** 44px high, a visible 1.5px outline, 14px/600 label above, 15px text; identifiers stay mono and LTR but align to the reading start. Choices among two or three options are one bordered list, not separate cards.
+- **Notices:** information is a plain line of text. Only success, warning and error get a tinted box. SQL previews are collapsed behind a "معاينة SQL" disclosure.

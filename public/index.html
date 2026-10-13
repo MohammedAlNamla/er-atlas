@@ -380,7 +380,7 @@
         </div>
         <div class="modal-body">
           <div id="editFields" class="edit-fields"></div>
-          <div id="editPreview" class="code-block" dir="ltr"></div>
+          <details class="sql-preview"><summary>معاينة SQL</summary><div id="editPreview" class="code-block" dir="ltr"></div></details>
           <p id="editError" class="notice error" role="alert" hidden></p>
         </div>
         <div class="modal-footer">
@@ -399,7 +399,7 @@
         </div>
       </form>
     </dialog>
-    <dialog id="planDialog" class="plan-dialog" aria-labelledby="planTitle">
+    <dialog id="planDialog" class="plan-dialog sheet wide" aria-labelledby="planTitle">
       <div class="modal-header">
         <button
           id="closePlanDialog"
@@ -427,7 +427,7 @@
         </div>
       </div>
     </dialog>
-    <dialog id="changesPanel" class="draft-dialog" aria-labelledby="draftTitle">
+    <dialog id="changesPanel" class="draft-dialog sheet" aria-labelledby="draftTitle">
       <div class="modal-header">
         <button
           id="closeChanges"
@@ -477,7 +477,7 @@
     </dialog>
     <dialog
       id="topicsDialog"
-      class="topics-dialog"
+      class="topics-dialog sheet wide"
       aria-labelledby="topicsTitle"
     >
       <div class="modal-header">
@@ -528,7 +528,7 @@
         </div>
       </div>
     </dialog>
-    <dialog id="codeDialog" class="code-dialog" aria-labelledby="codeTitle">
+    <dialog id="codeDialog" class="code-dialog sheet" aria-labelledby="codeTitle">
       <div class="modal-header">
         <button
           class="dialog-close"
@@ -589,7 +589,7 @@
     </dialog>
     <dialog
       id="aiDialog"
-      class="ai-dialog drawer-dialog"
+      class="ai-dialog drawer-dialog sheet"
       aria-labelledby="aiDialogTitle"
     >
       <div class="modal-header">
@@ -820,7 +820,7 @@
     </dialog>
     <dialog
       id="tableDialog"
-      class="table-dialog"
+      class="table-dialog sheet wide"
       aria-labelledby="expandedTableTitle"
     >
       <div id="expandedTableContent"></div>

@@ -3237,3 +3237,121 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .ai-dialog .modal-body { overflow: hidden; }
 #aiResponse { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 4px; }
 #aiForm { flex: none; }
+
+/* =====================================================================
+   Template v2 — one dialog template, one sidebar template.
+   Rule of thumb: a short task is a MODAL (centered, 420 / 520 / 760);
+   anything with a lot of content is a SIDEBAR (.sheet, docked at the start
+   edge under the chrome, same slot as the inspector, 420 or 640).
+   Both share header (title + one-line description), body (one column,
+   space instead of boxes) and footer (hint at the start, actions at the end).
+   ===================================================================== */
+.connect-dialog, .workspace-dialog, .editor-dialog { --modal-width: 520px; }
+.confirmation-dialog { --modal-width: 420px; }
+.relationship-dialog { --modal-width: 520px; }
+.ai-settings-dialog, .topic-settings-dialog { --modal-width: 560px; }
+.topic-proposal-dialog { --modal-width: 640px; }
+.arrange-dialog { --modal-width: 760px; }
+
+/* ---- Header / body / footer ---- */
+.modal-header { padding: 24px 24px 8px; gap: 4px; }
+.modal-header h2 { font-size: 20px; line-height: 30px; padding-left: 44px; }
+.modal-header p { font-size: 14px; line-height: 22px; }
+.dialog-close, .details-close { top: 18px; left: 18px; width: 34px; height: 34px; }
+.modal-body { padding: 16px 24px 8px; gap: 20px; }
+.modal-body h3 { font-size: 16px; line-height: 24px; }
+.modal-footer { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px 22px; }
+.modal-footer > p { font-size: 13px; line-height: 20px; max-width: 280px; }
+.footer-actions { margin-inline-start: auto; gap: 10px; }
+
+/* ---- Buttons ---- */
+.primary-button, .secondary-button, .ghost-button, .inline-action { height: 44px; min-height: 44px; padding: 0 20px; font-size: 15px; border-radius: 10px; }
+.secondary-button, .inline-action { border-width: 1.5px; }
+.data-table .inline-action { height: 30px; min-height: 30px; padding: 0 8px; font-size: 13px; }
+
+/* ---- Fields: visible edge, generous height, readable size ---- */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea,
+.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input {
+  height: 44px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; font-size: 15px;
+}
+textarea { height: auto; }
+input:not([type="checkbox"]):not([type="radio"]):hover, select:hover, textarea:hover { border-color: var(--outline-strong); }
+.form-grid label, .edit-field, .ai-settings label, .workspace-field { font-size: 14px; line-height: 22px; }
+.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input { margin-top: 8px; }
+.form-grid input, .edit-field input:not([type="checkbox"]), .ai-settings input { font-size: 14px; }
+.field-hint, .status-message { font-size: 13px; line-height: 20px; }
+.edit-fields { gap: 20px 16px; }
+
+/* ---- Choices read as one list, not a stack of cards ---- */
+.workspace-kinds, #localProviderChoices, .topic-rail { display: flex; flex-direction: column; gap: 0; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; padding: 0; max-height: none; }
+.workspace-kinds .choice, #localProviderChoices .choice, .topic-rail .choice { border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 12px 14px; }
+.workspace-kinds .choice:first-child, #localProviderChoices .choice:first-child, .topic-rail .choice:first-child { border-top: 0; }
+.workspace-kinds .choice:has(input:checked), #localProviderChoices .choice:has(input:checked), .topic-rail .choice:has(input:checked) { background: var(--selected); }
+.choice strong { font-size: 15px; }
+.choice small { font-size: 13px; line-height: 20px; }
+.topic-rail > .secondary-button, .topic-rail > .ghost-button { margin: 8px; width: auto; }
+
+/* ---- No stacked boxes: info is a line of text; only problems get a box ---- */
+.notice { padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 14px; line-height: 22px; }
+.notice strong { color: var(--ink); font-size: 14px; }
+.notice > .figma-icon, .notice-copy + .figma-icon { color: var(--muted); }
+.notice.success { padding: 12px 14px; border: 1.5px solid color-mix(in srgb, var(--success) 35%, transparent); background: var(--ok-bg); color: var(--success); }
+.notice.warning { padding: 12px 14px; border: 1.5px solid color-mix(in srgb, var(--warn-ink) 35%, transparent); background: var(--warn-bg); color: var(--warn-ink); }
+.notice.error { padding: 12px 14px; border: 1.5px solid color-mix(in srgb, var(--danger) 35%, transparent); background: var(--danger-bg); color: var(--danger); }
+.notice-copy p { font-size: 13px; line-height: 20px; }
+#relationshipCompatibility.success { padding: 0; border: 0; background: transparent; color: var(--ink); }
+.ai-message.status { background: transparent; padding: 0; color: var(--muted); }
+
+/* ---- SQL stays one click away ---- */
+.sql-preview { border-top: 1px solid var(--line); padding-top: 14px; }
+.sql-preview > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; cursor: pointer; font-size: 14px; font-weight: 600; padding: 2px 0; }
+.sql-preview > summary::-webkit-details-marker { display: none; }
+.sql-preview > summary::after { content: ""; width: 16px; height: 16px; flex: none; background: currentColor; opacity: .6; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; transition: transform .15s var(--ease-out); }
+.sql-preview[open] > summary::after { transform: rotate(180deg); }
+.sql-preview .code-block { margin-top: 12px; }
+.code-block { font-size: 13px; line-height: 21px; }
+.code-label { font-size: 12px; }
+
+/* ---- Backdrop: strong enough to calm the map ---- */
+dialog::backdrop { background: var(--scrim); backdrop-filter: blur(2px); }
+
+/* ---- Sidebars: one slot, one template (shared with the inspector) ---- */
+.sheet, .drawer-dialog {
+  width: min(var(--sheet-width, 420px), calc(100vw - 32px)); height: auto; max-height: none; margin: 0;
+  inset-block: 76px 76px; inset-inline-start: 16px; inset-inline-end: auto; border-radius: 16px;
+}
+.sheet.wide { --sheet-width: 640px; }
+.sheet[open], .drawer-dialog[open] { display: flex; flex-direction: column; animation: sheet-in-start .22s var(--ease-out); }
+.sheet::backdrop, .drawer-dialog::backdrop { background: transparent; backdrop-filter: none; }
+.sheet > .modal-body, .drawer-dialog > .modal-body { flex: 1; min-height: 0; }
+@keyframes sheet-in-start { from { opacity: 0; transform: translateX(14px); } }
+.details-panel { width: 420px; border-radius: 16px; box-shadow: 0 8px 28px rgb(var(--shadow-rgb) / .2); }
+.details-panel .modal-header, .sheet .modal-header { padding: 20px 20px 8px; }
+.details-panel .modal-body, .sheet .modal-body { padding: 12px 20px 16px; }
+.sheet .modal-footer, .details-panel .modal-footer { padding: 14px 20px 18px; }
+.details-panel .primary-button, .details-panel .secondary-button { height: 40px; min-height: 40px; font-size: 14px; padding: 0 16px; }
+.topic-editor-split { grid-template-columns: 1fr; gap: 20px; direction: rtl; }
+.sheet:not(.wide) .topic-editor-split { grid-template-columns: 1fr; }
+.sheet.wide .topic-editor-split { grid-template-columns: 220px minmax(0, 1fr); }
+.sheet.wide .topic-editor-split > .topic-membership { order: 2; }
+.sheet.wide .topic-editor-split > .topic-rail { order: 1; align-self: start; }
+
+@media (max-width: 900px) {
+  .sheet, .drawer-dialog { inset-block: auto 0; inset-inline: 0; width: 100vw; height: 86dvh; border-radius: 16px 16px 0 0; border-bottom: 0; }
+  .sheet[open], .drawer-dialog[open] { animation-name: sheet-up; }
+  .sheet::backdrop, .drawer-dialog::backdrop { background: var(--scrim); }
+  .sheet.wide .topic-editor-split { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .modal-footer > p { max-width: none; flex-basis: 100%; }
+  .footer-actions { width: 100%; }
+  .footer-actions > button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .sheet[open], .drawer-dialog[open] { animation: none; } .sql-preview > summary::after { transition: none; } }
+
+/* Specificity guard: older "body dialog" rules must not override the template. */
+body dialog:not(.drawer-dialog) { border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 28px rgb(var(--shadow-rgb) / .22); }
+body dialog.sheet, body dialog.drawer-dialog { width: min(var(--sheet-width, 420px), calc(100vw - 32px)); max-height: none; border-radius: 16px; }
+body .modal-header h2 { font-size: 20px; line-height: 30px; min-height: 0; }
+@media (max-width: 900px) { body dialog.sheet, body dialog.drawer-dialog { width: 100vw; border-radius: 16px 16px 0 0; } }
+@media (max-width: 600px) { body dialog:not(.quick-actions-dialog):not(.drawer-dialog):not(.sheet) { border-radius: 16px 16px 0 0; } }
