@@ -730,12 +730,13 @@ function makeNode(table) {
   card.style.left = `${pos.x}px`; card.style.top = `${pos.y}px`;
   card.style.setProperty('--node-color', groupForTable(table).color);
   const head = el('div', 'node-head');
-  const name = el('div', 'node-name', table.name); name.title = table.name;
+  const title = el('div', 'node-title'), name = el('div', 'node-name', table.name); name.title = table.name;
+  const meta = el('div', 'node-meta', `${table.schema} · `); meta.append(el('span', 'node-meta-count', `${table.columns.length} أعمدة`));
+  title.append(name, meta);
   const more = uiButton('', event => { event.stopPropagation(); showContextMenu(event); }, 'node-more');
   more.append(icon('more')); more.setAttribute('aria-label', `إجراءات جدول ${table.name}`);
   more.addEventListener('pointerdown', event => event.stopPropagation());
-  const meta = el('span', 'node-count', String(table.columns.length)); meta.title = `${table.columns.length} أعمدة`;
-  head.append(icon('table'), name, ...(table.kind === 'proposed' ? [el('span', 'node-draft', 'مسودة')] : []), meta, more);
+  head.append(title, ...(table.kind === 'proposed' ? [el('span', 'node-draft', 'مسودة')] : []), more);
   head.addEventListener('pointerdown', event => startDrag(event, table.id, card));
   const columns = el('div', 'node-columns');
   const involved = involvedColumns.get(table.id) || new Set();
@@ -743,10 +744,9 @@ function makeNode(table) {
     const row = el('div', `column${involved.has(column.name) ? ' has-line' : ''}${column.primary ? ' pk' : ''}${column.kind === 'proposed' ? ' proposed' : ''}`);
     row.dataset.column = column.name;
     row.title = `${column.name} · ${column.type}${column.nullable ? ' · nullable' : ' · not null'}`;
-    const left = el('span', 'col-name', column.name);
-    const badge = el('span', `col-key${column.foreign && !column.primary ? ' fk' : ''}${!column.primary && !column.foreign ? ' none' : ''}`);
-    badge.append(icon(column.primary ? 'key' : 'link')); left.prepend(badge);
-    row.append(left, el('span', 'col-type', column.type));
+    const badge = el('span', `col-key ${column.primary ? 'pk' : column.foreign ? 'fk' : 'none'}`, column.primary ? 'PK' : column.foreign ? 'FK' : '');
+    const nullable = el('span', 'col-null', column.nullable ? '?' : ''); if (column.nullable) nullable.title = 'nullable';
+    row.append(badge, el('span', 'col-name', column.name), el('span', 'col-type', column.type), nullable);
     row.addEventListener('click', event => {
       if (!state.linkMode) return;
       event.stopPropagation();
@@ -852,6 +852,7 @@ function syncEdgeAnnotations(ref, path) {
   const sourceSide = Math.abs(a.x - graphPosition(ref.source.id).x) < 1 ? -1 : 1;
   const targetSide = Math.abs(b.x - graphPosition(ref.target.id).x) < 1 ? -1 : 1;
   ref.arrow = { x: b.x, y: b.y, direction: -targetSide };
+  ref.ends = { start: { x: a.x, y: a.y, dir: sourceSide }, end: { x: b.x, y: b.y, dir: targetSide } };
   ref.annotations = [];
   for (const [side, point, outward] of [['source', a, sourceSide], ['target', b, targetSide]]) {
     const label = ref.labels?.[side];
@@ -863,24 +864,51 @@ function syncEdgeAnnotations(ref, path) {
   }
 }
 
+const ER_MARKERS = {
+  many: [['path', { d: 'M 6 10 L 20 3 M 6 10 L 20 10 M 6 10 L 20 17' }]],
+  one: [['path', { d: 'M 13 3 L 13 17' }]],
+  'one-only': [['path', { d: 'M 9 3 L 9 17 M 14 3 L 14 17' }]],
+  'zero-one': [['circle', { cx: 6, cy: 10, r: 3.5, class: 'er-hole' }], ['path', { d: 'M 14 3 L 14 17' }]]
+};
+// Ends follow schema evidence only: many/one at the FK side when uniqueness is known,
+// exactly-one or zero-or-one at the referenced key depending on FK nullability.
+function relationEnds(relation, source, target) {
+  const cardinality = relationCardinality(relation, source, target);
+  const optional = relation.pairs.some(pair => source.columns.find(column => column.name === pair.source)?.nullable);
+  return { start: cardinality.source === '1' ? 'one' : cardinality.source === '*' ? 'many' : '', end: cardinality.target === '1' ? (optional ? 'zero-one' : 'one-only') : '' };
+}
+function drawErEnd(context, point, kind) {
+  const at = distance => point.x + point.dir * distance;
+  context.beginPath();
+  if (kind === 'many') { context.moveTo(at(14), point.y); context.lineTo(at(0), point.y - 7); context.moveTo(at(14), point.y); context.lineTo(at(0), point.y + 7); }
+  if (kind === 'one') { context.moveTo(at(7), point.y - 7); context.lineTo(at(7), point.y + 7); }
+  if (kind === 'one-only') for (const distance of [6, 11]) { context.moveTo(at(distance), point.y - 7); context.lineTo(at(distance), point.y + 7); }
+  if (kind === 'zero-one') { context.moveTo(at(6), point.y - 7); context.lineTo(at(6), point.y + 7); }
+  context.stroke();
+  if (kind === 'zero-one') { context.beginPath(); context.arc(at(14), point.y, 3.5, 0, Math.PI * 2); context.fillStyle = edgeColors().halo; context.fill(); context.stroke(); }
+}
 function renderEdges() {
   const generation = ++state.routeGeneration;
   const svg = $('edges');
   const canvasMode = visibleTables().length > 35;
   svg.replaceChildren();
   const ns = 'http://www.w3.org/2000/svg';
+  // Crow's-foot ends. Each marker is drawn with the table edge at x=20 and grows outward;
+  // auto-start-reverse lets the same shape serve the start (FK) and end (PK) of a wire.
   const defs = document.createElementNS(ns, 'defs');
-  const marker = document.createElementNS(ns, 'marker');
-  marker.setAttribute('id', 'relation-direction');
-  marker.setAttribute('viewBox', '0 0 10 10');
-  marker.setAttribute('refX', '9'); marker.setAttribute('refY', '5');
-  marker.setAttribute('markerWidth', '10'); marker.setAttribute('markerHeight', '10');
-  marker.setAttribute('markerUnits', 'userSpaceOnUse'); marker.setAttribute('orient', 'auto');
-  const arrow = document.createElementNS(ns, 'path');
-  arrow.setAttribute('d', 'M 1.5 1.5 L 8.5 5 L 1.5 8.5 Z');
-  arrow.setAttribute('fill', 'context-stroke'); arrow.setAttribute('stroke', 'context-stroke');
-  arrow.setAttribute('stroke-width', '1'); arrow.setAttribute('stroke-linejoin', 'round');
-  marker.append(arrow); defs.append(marker); svg.append(defs);
+  for (const [id, parts] of Object.entries(ER_MARKERS)) {
+    const marker = document.createElementNS(ns, 'marker');
+    for (const [key, value] of Object.entries({ id: `er-${id}`, viewBox: '0 0 20 20', refX: 20, refY: 10, markerWidth: 20, markerHeight: 20, markerUnits: 'userSpaceOnUse', orient: 'auto-start-reverse' })) marker.setAttribute(key, value);
+    for (const [tag, attrs] of parts) {
+      const shape = document.createElementNS(ns, tag);
+      for (const [key, value] of Object.entries(attrs)) shape.setAttribute(key, value);
+      shape.setAttribute('stroke', 'context-stroke'); shape.setAttribute('stroke-width', '1.6'); shape.setAttribute('stroke-linecap', 'round');
+      if (tag === 'path') shape.setAttribute('fill', 'none');
+      marker.append(shape);
+    }
+    defs.append(marker);
+  }
+  svg.append(defs);
   edgeRefs.clear();
   const byId = new Map(visibleTables().map(table => [table.id, table]));
   const laneKeyFor = (source, target) => {
@@ -939,7 +967,9 @@ function renderEdges() {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       line.setAttribute('d', path.d);
       line.setAttribute('class', `edge${relation.kind === 'proposed' ? ' proposed' : ''}`);
-      line.setAttribute('marker-end', 'url(#relation-direction)');
+      const ends = relationEnds(relation, source, target);
+      if (ends.start) line.setAttribute('marker-start', `url(#er-${ends.start})`);
+      if (ends.end) line.setAttribute('marker-end', `url(#er-${ends.end})`);
       const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       hit.setAttribute('d', path.d); hit.setAttribute('class', 'edge hit');
       hit.dataset.relation = relation.id;
@@ -947,21 +977,9 @@ function renderEdges() {
       hit.addEventListener('mouseenter', () => line.classList.add('hover'));
       hit.addEventListener('mouseleave', () => line.classList.remove('hover'));
       const labels = {};
-      // Composite foreign keys have one multiplicity, not one per column pair.
-      if (key.endsWith(':0')) {
-        const cardinality = relationCardinality(relation, source, target);
-        for (const side of ['source', 'target']) {
-          if (!cardinality[side]) continue;
-          const label = document.createElementNS(ns, 'text');
-          label.setAttribute('class', 'edge-cardinality');
-          label.setAttribute('text-anchor', 'middle');
-          label.textContent = cardinality[side] === '*' ? 'N' : cardinality[side];
-          labels[side] = label;
-        }
-      }
       if (!canvasMode) svg.append(line, ...Object.values(labels), hit);
       if (!edgeRefs.has(relation.id)) edgeRefs.set(relation.id, []);
-      const ref = { line, hit, source, target, pair, lane, key, labels,
+      const ref = { line, hit, source, target, pair, lane, key, labels, markers: ends,
         bounds: path.bounds, canvasPath: new Path2D(path.d) };
       syncEdgeAnnotations(ref, path);
       edgeRefs.get(relation.id).push(ref);
@@ -1088,15 +1106,7 @@ function drawCanvasEdges() {
     context.setLineDash(ref.canvasStyle.proposed ? [6, 6] : []);
     context.stroke(ref.canvasPath);
     context.setLineDash([]);
-    if (ref.arrow) {
-      const { x, y, direction } = ref.arrow;
-      context.beginPath();
-      context.moveTo(x - direction * 8, y - 4);
-      context.lineTo(x - direction, y);
-      context.lineTo(x - direction * 8, y + 4);
-      context.closePath();
-      context.fillStyle = ref.canvasStyle.stroke; context.fill(); context.stroke();
-    }
+    if (ref.ends) for (const end of ['start', 'end']) if (ref.markers?.[end]) drawErEnd(context, ref.ends[end], ref.markers[end]);
     context.font = '600 13px "Roboto Mono", monospace';
     context.textAlign = 'center';
     context.fillStyle = edgeColors().label;

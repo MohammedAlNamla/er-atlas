@@ -3422,3 +3422,33 @@ body .modal-header h2 { font-size: 20px; line-height: 30px; min-height: 0; }
 
 .node-more .figma-icon { width: 18px; height: 18px; }
 .node-more:hover { background: var(--context); }
+
+/* =====================================================================
+   ERD (direction A): compact rows and crow's-foot relations.
+   Geometry from public/ui.js: 300px wide, 52px header, 32px rows,
+   32px footer, 1px border.
+   ===================================================================== */
+.table-node { width: 300px; border-radius: 10px; }
+.node-head { height: 52px; padding: 0 6px 0 14px; gap: 6px; border-bottom: 1px solid var(--line); border-radius: 9px 9px 0 0; background: color-mix(in srgb, var(--node-color, var(--teal)) 11%, var(--surface)); box-shadow: none; }
+.table-node.dimmed .node-head { background: var(--surface); }
+.node-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.node-name { font: 650 15px/20px var(--ui); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node-meta { font: 500 11.5px/16px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node-more { width: 28px; height: 28px; flex: none; }
+.column { height: 32px; padding: 0 12px; gap: 10px; }
+.column + .column { background-size: calc(100% - 24px) 1px; background-position: 12px 0; }
+.col-key { display: block; width: 26px; height: 16px; flex: none; border-radius: 4px; background: transparent; font: 700 10px/16px var(--mono); text-align: center; letter-spacing: .02em; }
+.col-key.pk { background: color-mix(in srgb, var(--warn-ink) 16%, transparent); color: var(--warn-ink); }
+.col-key.fk { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--teal-deep); }
+.col-key.none { visibility: visible; background: transparent; }
+.col-name { display: block; flex: 1; min-width: 0; font: 400 13px/18px var(--mono); gap: 0; }
+.column.pk .col-name { font-weight: 600; }
+.col-type { font: 400 12px/18px var(--mono); color: var(--faint); max-width: 110px; }
+.col-null { width: 10px; flex: none; text-align: center; font: 600 11px/1 var(--mono); color: var(--faint); }
+.column.has-line::before, .column.has-line::after { display: none; }
+.node-expand { height: 32px; font-size: 12px; border-radius: 0 0 9px 9px; }
+.er-hole { fill: var(--paper); }
+.viewport.overview .node-meta { display: none; }
+.viewport.overview .node-title { align-items: center; flex: 0 1 auto; }
+.viewport.overview .node-name { font-size: 32px; line-height: 42px; white-space: normal; text-align: center; }
+.node-meta-count { font: 500 11.5px/16px var(--ui); unicode-bidi: isolate; direction: rtl; }

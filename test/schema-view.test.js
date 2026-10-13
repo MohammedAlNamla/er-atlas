@@ -4,15 +4,15 @@ import { previewColumns, nodeHeight, columnOffset, fitCamera, relationCardinalit
 
 const table = { columns: Array.from({ length: 12 }, (_, i) => ({ name: `column_${i}`, primary: i === 0, foreign: i === 9 })) };
 test('collapsed schema nodes retain keys in source order without losing columns on expansion', () => {
-  assert.deepEqual(previewColumns(table).map(column => column.name), ['column_0', 'column_1', 'column_2', 'column_3', 'column_4', 'column_9']);
+  assert.deepEqual(previewColumns(table).map(column => column.name), ['column_0', 'column_1', 'column_2', 'column_3', 'column_4', 'column_5', 'column_6', 'column_9']);
   assert.equal(previewColumns(table, true).length, 12);
-  assert.equal(nodeHeight(table), 330);
-  assert.equal(nodeHeight(table, true), 570);
+  assert.equal(nodeHeight(table), 342);
+  assert.equal(nodeHeight(table, true), 470);
 });
 test('relationship anchors agree with compact, hidden and expanded column geometry', () => {
-  assert.equal(columnOffset(table, 'column_9'), 268);
-  assert.equal(columnOffset(table, 'column_11'), 308);
-  assert.equal(columnOffset(table, 'column_11', true), 508);
+  assert.equal(columnOffset(table, 'column_9'), 292);
+  assert.equal(columnOffset(table, 'column_11'), 324);
+  assert.equal(columnOffset(table, 'column_11', true), 420);
 });
 
 test('cardinality uses complete keys and omits ambiguous composite uniqueness', () => {

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../public/assets/fonts/fonts.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  :root { --mono: "Roboto Mono", monospace; --ui: "Noto Sans Arabic", system-ui, sans-serif; --ink:#0f1117; --muted:#626675; --faint:#8b8f9c; --line:#e3e3e8; --accent:#7b4bf0; }
+  body { width: 1600px; font-family: var(--ui); background: #fff; color: var(--ink); }
+  .panel { position: relative; height: 560px; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .panel h1 { position: absolute; top: 22px; right: 32px; font-size: 26px; font-weight: 700; z-index: 3; }
+  .panel p.d { position: absolute; top: 60px; right: 32px; font-size: 15px; color: var(--muted); z-index: 3; max-width: 900px; }
+  .panel svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+  .t { position: absolute; z-index: 2; direction: ltr; }
+  .row { display: flex; align-items: center; }
+
+  /* ---------- A: Classic ERD, refined (crow's foot) ---------- */
+  .A { background: #f6f6f8; background-image: radial-gradient(circle, #d6d6de 1.1px, transparent 1.3px); background-size: 24px 24px; }
+  .A .t { width: 268px; background: #fff; border: 1px solid #d9d9e0; border-radius: 10px; box-shadow: 0 1px 2px rgba(15,17,23,.06); overflow: hidden; }
+  .A .t.sel { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(123,75,240,.22), 0 8px 24px rgba(15,17,23,.12); }
+  .A .h { padding: 10px 14px 9px; background: var(--tint); border-bottom: 1px solid #e3e3e8; }
+  .A .h b { display: block; font: 650 15px/20px var(--ui); }
+  .A .h small { font: 500 11.5px/16px var(--mono); color: var(--muted); }
+  .A .row { height: 32px; padding: 0 12px; gap: 10px; font: 400 13px/18px var(--mono); border-top: 1px solid #f0f0f4; }
+  .A .row:first-of-type { border-top: 0; }
+  .A .k { width: 26px; font: 700 10px/16px var(--mono); text-align: center; border-radius: 4px; }
+  .A .k.pk { background: #fbefd5; color: #8a5a10; } .A .k.fk { background: #ece4ff; color: #5b2fd4; }
+  .A .n { flex: 1; } .A .row.pk .n { font-weight: 600; }
+  .A .ty { color: var(--faint); font-size: 12px; }
+  .A .nn { width: 14px; color: var(--faint); font-size: 11px; text-align: center; }
+
+  /* ---------- B: Soft cards, focus on keys ---------- */
+  .B { background: #fafafb; }
+  .B .t { width: 250px; background: #fff; border-radius: 18px; box-shadow: 0 1px 2px rgba(15,17,23,.05), 0 10px 30px rgba(15,17,23,.07); padding: 14px 14px 10px; }
+  .B .t.sel { box-shadow: 0 0 0 2px var(--accent), 0 14px 36px rgba(123,75,240,.18); }
+  .B .h { display: flex; align-items: center; gap: 10px; padding: 2px 4px 12px; }
+  .B .h i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
+  .B .h b { font: 700 16px/22px var(--ui); flex: 1; }
+  .B .h small { font: 500 12px var(--mono); color: var(--faint); }
+  .B .row { height: 30px; padding: 0 8px; gap: 10px; font: 400 13px var(--mono); border-radius: 8px; }
+  .B .row.pk, .B .row.fk { background: #f6f6f9; margin-bottom: 4px; }
+  .B .row .dotk { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
+  .B .row.pk .dotk { background: #d9a13b; } .B .row.fk .dotk { background: var(--accent); }
+  .B .n { flex: 1; } .B .ty { color: var(--faint); font-size: 12px; }
+  .B .more { font: 500 12px var(--ui); color: var(--muted); padding: 8px 8px 2px; direction: rtl; }
+  .B .pill { position: absolute; z-index: 3; font: 500 12px var(--mono); background: var(--ink); color: #fff; padding: 5px 10px; border-radius: 999px; direction: ltr; }
+
+  /* ---------- C: Data sheet (grid, column header, dense) ---------- */
+  .C { background: #f3f4f7; background-image: linear-gradient(#e6e8ee 1px, transparent 1px), linear-gradient(90deg, #e6e8ee 1px, transparent 1px); background-size: 32px 32px; }
+  .C .t { width: 300px; background: #fff; border: 1.5px solid #c9ccd6; border-radius: 6px; overflow: hidden; }
+  .C .t.sel { border-color: var(--accent); outline: 3px solid rgba(123,75,240,.2); }
+  .C .h { display: flex; justify-content: space-between; align-items: center; padding: 0 12px; height: 36px; background: #14151c; color: #f3f3f7; font: 600 13.5px var(--mono); }
+  .C .h small { color: #9aa0b4; font: 500 11px var(--mono); }
+  .C .cols { display: flex; height: 24px; align-items: center; padding: 0 12px; gap: 10px; background: #eef0f5; font: 600 10px var(--mono); color: #6b7080; letter-spacing: .06em; border-bottom: 1px solid #dde0e8; }
+  .C .row { height: 28px; padding: 0 12px; gap: 10px; font: 400 12.5px var(--mono); border-bottom: 1px solid #edeff4; }
+  .C .row:nth-child(even) { background: #fafbfc; }
+  .C .k { width: 30px; font: 700 10px var(--mono); color: #6b7080; } .C .row.pk .k { color: #a86b0c; } .C .row.fk .k { color: #5b2fd4; }
+  .C .n { flex: 1; } .C .ty { width: 92px; color: #6b7080; } .C .nl { width: 30px; color: #9aa0b4; font-size: 11px; text-align: right; }
+  .C .cols .n { flex: 1; } .C .cols .ty { width: 92px; } .C .cols .k { width: 30px; } .C .cols .nl { width: 30px; text-align: right; }
+</style></head>
+<body>
+<section class="panel A" id="A"><h1>أ · ERD كلاسيكي محسّن</h1><p class="d">رموز Crow’s foot القياسية للعلاقات (واحد / كثير / اختياري)، صفوف مدمجة 32px، شارات PK/FK نصية، ونوع العمود وإمكانية NULL ظاهران. الأقرب لأدوات قواعد البيانات الاحترافية.</p><svg class="wires"></svg></section>
+<section class="panel B" id="B"><h1>ب · بطاقات ناعمة تركّز على المفاتيح</h1><p class="d">بطاقات بزوايا واسعة وظل ناعم، المفاتيح بالأعلى ومميزة، بقية الأعمدة مطوية «+3 أعمدة». العلاقات منحنيات هادئة بنقاط، والعلاقة المحددة تظهر بشارة <span dir="ltr">customer_id → id</span>.</p><svg class="wires"></svg></section>
+<section class="panel C" id="C"><h1>ج · ورقة بيانات (Data sheet)</h1><p class="d">كل جدول كجدول بيانات حقيقي: رأس داكن، صف عناوين أعمدة (COLUMN · TYPE · KEY · NULL)، صفوف كثيفة 28px وتظليل متناوب، وخطوط علاقات مستقيمة بزوايا حادة وسهم نحو المفتاح الأساسي.</p><svg class="wires"></svg></section>
+<script>
+const tables = {
+  customers: { tint: '#fde8e3', dot: '#c67966', cols: [['id','uuid','pk',0],['name','varchar','',0],['email','varchar','',1],['phone','varchar','',1]] },
+  orders: { tint: '#fde8e3', dot: '#c67966', cols: [['id','uuid','pk',0],['customer_id','uuid','fk',0],['created_by','uuid','fk',1],['status','varchar','',0],['total','numeric','',0],['created_at','timestamptz','',1]] },
+  order_items: { tint: '#fde8e3', dot: '#c67966', cols: [['id','uuid','pk',0],['order_id','uuid','fk',0],['product_id','uuid','fk',0],['quantity','integer','',0],['unit_price','numeric','',0]] },
+  products: { tint: '#ece6fb', dot: '#6551c7', cols: [['id','uuid','pk',0],['sku','varchar','',0],['name','varchar','',0],['category_id','uuid','fk',1],['price','numeric','',0],['is_active','boolean','',0]] }
+};
+const place = { customers: [40, 180], orders: [430, 130], order_items: [840, 190], products: [1250, 130] };
+const rels = [['orders','customer_id','customers','id', false], ['order_items','order_id','orders','id', false], ['order_items','product_id','products','id', false]];
+const selected = 'orders', highlight = 0;
+
+function build(panel, style) {
+  for (const [name, t] of Object.entries(tables)) {
+    const box = document.createElement('div'); box.className = 't' + (name === selected ? ' sel' : ''); box.style.left = place[name][0] + 'px'; box.style.top = (place[name][1] + (style === 'C' ? 10 : 0)) + 'px';
+    box.style.setProperty('--tint', t.tint); box.style.setProperty('--dot', t.dot); box.dataset.name = name;
+    let html = '';
+    if (style === 'A') html += `<div class="h"><b>${name}</b><small>public · ${t.cols.length} cols</small></div>`;
+    if (style === 'B') html += `<div class="h"><i></i><b>${name}</b><small>${t.cols.length}</small></div>`;
+    if (style === 'C') html += `<div class="h">${name}<small>${t.cols.length} cols</small></div><div class="cols"><span class="k">KEY</span><span class="n">COLUMN</span><span class="ty">TYPE</span><span class="nl">NULL</span></div>`;
+    let cols = t.cols;
+    if (style === 'B') { const keys = cols.filter(c => c[2]); cols = keys.concat(cols.filter(c => !c[2]).slice(0, 1)); }
+    for (const [col, type, key, nul] of cols) {
+      if (style === 'A') html += `<div class="row ${key}" data-col="${col}"><span class="k ${key}">${key ? key.toUpperCase() : ''}</span><span class="n">${col}</span><span class="ty">${type}</span><span class="nn">${nul ? '?' : ''}</span></div>`;
+      if (style === 'B') html += `<div class="row ${key}" data-col="${col}"><span class="dotk"></span><span class="n">${col}</span><span class="ty">${type}</span></div>`;
+      if (style === 'C') html += `<div class="row ${key}" data-col="${col}"><span class="k">${key ? key.toUpperCase() : ''}</span><span class="n">${col}</span><span class="ty">${type}</span><span class="nl">${nul ? 'yes' : 'no'}</span></div>`;
+    }
+    if (style === 'B' && t.cols.length > cols.length) html += `<div class="more">+${t.cols.length - cols.length} أعمدة</div>`;
+    box.innerHTML = html; panel.append(box);
+  }
+}
+function anchor(panel, table, col, side) {
+  const box = panel.querySelector(`.t[data-name="${table}"]`), row = box.querySelector(`[data-col="${col}"]`), p = panel.getBoundingClientRect();
+  const r = (row || box).getBoundingClientRect(), b = box.getBoundingClientRect();
+  return { x: (side === 'right' ? b.right : b.left) - p.left, y: r.top + r.height / 2 - p.top };
+}
+const NS = 'http://www.w3.org/2000/svg';
+function path(svg, d, attrs) { const e = document.createElementNS(NS, 'path'); e.setAttribute('d', d); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); svg.append(e); return e; }
+function draw(panel, style) {
+  const svg = panel.querySelector('svg');
+  rels.forEach(([ft, fc, tt, tc, optional], index) => {
+    const fBox = panel.querySelector(`.t[data-name="${ft}"]`).getBoundingClientRect(), tBox = panel.querySelector(`.t[data-name="${tt}"]`).getBoundingClientRect();
+    const leftToRight = fBox.left > tBox.left; // source is right of target: leave from its left side
+    const a = anchor(panel, ft, fc, leftToRight ? 'left' : 'right'), b = anchor(panel, tt, tc, leftToRight ? 'right' : 'left');
+    const dir = leftToRight ? -1 : 1, hot = index === highlight;
+    const color = hot ? '#7b4bf0' : (style === 'C' ? '#7a7f92' : '#9b9bb0'), width = hot ? 2.2 : 1.6;
+    if (style === 'B') {
+      const mx = (a.x + b.x) / 2;
+      path(svg, `M${a.x} ${a.y} C${mx} ${a.y} ${mx} ${b.y} ${b.x} ${b.y}`, { fill: 'none', stroke: color, 'stroke-width': width, 'stroke-linecap': 'round' });
+      for (const p of [a, b]) { const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', 4.5); c.setAttribute('fill', '#fff'); c.setAttribute('stroke', color); c.setAttribute('stroke-width', 2); svg.append(c); }
+      if (hot) { const pill = document.createElement('div'); pill.className = 'pill'; pill.textContent = `${fc} → ${tc}`; pill.style.left = (mx - 62) + 'px'; pill.style.top = ((a.y + b.y) / 2 - 14) + 'px'; panel.append(pill); }
+      return;
+    }
+    const s = { x: a.x + dir * 22, y: a.y }, t = { x: b.x - dir * 22, y: b.y }, mx = (s.x + t.x) / 2, r = style === 'C' ? 0 : 8;
+    const sy = Math.sign(t.y - s.y) || 1;
+    const d = r ? `M${a.x} ${a.y} H${mx - dir * r} Q${mx} ${a.y} ${mx} ${a.y + sy * r} V${b.y - sy * r} Q${mx} ${b.y} ${mx + dir * r} ${b.y} H${b.x}` : `M${a.x} ${a.y} H${mx} V${b.y} H${b.x}`;
+    path(svg, d, { fill: 'none', stroke: color, 'stroke-width': width, 'stroke-linejoin': 'round' });
+    if (style === 'A') {
+      // many side at the FK: crow's foot opening into the table
+      const fx = a.x + dir * 2;
+      path(svg, `M${fx + dir * 14} ${a.y} L${fx} ${a.y - 7} M${fx + dir * 14} ${a.y} L${fx} ${a.y} M${fx + dir * 14} ${a.y} L${fx} ${a.y + 7}`, { fill: 'none', stroke: color, 'stroke-width': width, 'stroke-linecap': 'round' });
+      path(svg, `M${fx + dir * 18} ${a.y - 7} V${a.y + 7}`, { stroke: color, 'stroke-width': width, 'stroke-linecap': 'round' });
+      // one side at the PK: two bars = exactly one (one bar + circle when optional)
+      const tx = b.x - dir * 2;
+      path(svg, `M${tx - dir * 9} ${b.y - 7} V${b.y + 7} M${tx - dir * 15} ${b.y - 7} V${b.y + 7}`, { stroke: color, 'stroke-width': width, 'stroke-linecap': 'round' });
+    }
+    if (style === 'C') path(svg, `M${b.x - dir * 10} ${b.y - 5} L${b.x - dir * 1} ${b.y} L${b.x - dir * 10} ${b.y + 5} Z`, { fill: color, stroke: color, 'stroke-width': 1 });
+  });
+}
+document.fonts.ready.then(() => { for (const id of ['A', 'B', 'C']) { const p = document.getElementById(id); build(p, id); } requestAnimationFrame(() => { for (const id of ['A', 'B', 'C']) draw(document.getElementById(id), id); document.title = 'ready'; }); });
+</script>
+</body></html>

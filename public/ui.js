@@ -238,11 +238,11 @@ export function renderMiniMap(
 
 
 // Shared geometry keeps collapsed rows and relationship endpoints in agreement.
-export const NODE_WIDTH = 320;
-export const HEADER_HEIGHT = 48;
-export const ROW_HEIGHT = 40;
-export const FOOTER_HEIGHT = 40;
-export const PREVIEW_LIMIT = 6;
+export const NODE_WIDTH = 300;
+export const HEADER_HEIGHT = 52;
+export const ROW_HEIGHT = 32;
+export const FOOTER_HEIGHT = 32;
+export const PREVIEW_LIMIT = 8;
 
 export function previewColumns(table, expanded = false) {
   if (expanded || table.columns.length <= PREVIEW_LIMIT) return table.columns;
