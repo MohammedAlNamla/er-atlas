@@ -874,15 +874,30 @@ function indexInvolvedColumns() {
   for (const relation of state.schema.relations) for (const pair of relation.pairs) { add(relation.source, pair.source); add(relation.target, pair.target); }
   return index;
 }
+// Largest title that fits the zoomed-out tile: words wrap only after underscores, so the
+// longest word decides the width and the line count decides the height.
+function overviewNameSize(table) {
+  const words = table.name.split(/(?<=_)/), height = measureNode(table);
+  for (let size = 44; size > 22; size -= 2) {
+    const perLine = Math.floor(256 / (size * .6));
+    if (words.some(word => word.length > perLine)) continue;
+    let lines = 1, used = 0;
+    for (const word of words) { if (used && used + word.length > perLine) { lines++; used = 0; } used += word.length; }
+    if (lines <= 3 && lines * size * 1.2 + 38 + 28 <= height) return size;
+  }
+  return 22;
+}
 function makeNode(table) {
   const card = el('article', `table-node${table.kind === 'proposed' ? ' proposed' : ''}`);
   card.dataset.table = table.id;
   const pos = graphPosition(table.id);
   card.style.left = `${pos.x}px`; card.style.top = `${pos.y}px`;
   card.style.setProperty('--node-color', groupForTable(table).color);
+  card.style.setProperty('--name-size', `${overviewNameSize(table)}px`);
   const head = el('div', 'node-head');
-  const title = el('div', 'node-title'), name = el('div', 'node-name', table.name); name.title = table.name;
-  const meta = el('div', 'node-meta', `${table.schema} · `); meta.append(el('span', 'node-meta-count', `${table.columns.length} أعمدة`));
+  const title = el('div', 'node-title'), name = el('div', 'node-name'); name.title = table.name;
+  for (const part of table.name.split(/(?<=_)/)) name.append(document.createTextNode(part), document.createElement('wbr'));
+  const meta = el('div', 'node-meta'); meta.append(el('span', 'node-schema', `${table.schema} · `), el('span', 'node-meta-count', `${table.columns.length} أعمدة`));
   title.append(name, meta);
   const more = uiButton('', event => { event.stopPropagation(); showContextMenu(event); }, 'node-more');
   more.append(icon('more')); more.setAttribute('aria-label', `إجراءات جدول ${table.name}`);

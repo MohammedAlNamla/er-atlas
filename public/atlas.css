@@ -3559,3 +3559,23 @@ body dialog.chat-dialog[open] { display: flex; flex-direction: column; padding: 
 .login-button:active:not(:disabled) { transform: scale(.97); }
 .login-button:disabled { opacity: .6; cursor: default; }
 .login-button .i { opacity: 1; }
+
+/* =====================================================================
+   Overview scale (< 42% zoom): every table is one calm tile. A topic tint
+   and outline, the name at the largest size that fits (it only wraps after
+   underscores), and the column count. Geometry is unchanged so wires keep
+   their anchors.
+   ===================================================================== */
+.viewport.overview .table-node { border-color: transparent; border-radius: 22px; background: color-mix(in srgb, var(--node-color, var(--teal)) 9%, var(--surface)); box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--node-color, var(--teal)) 42%, transparent); }
+.viewport.overview .table-node:hover { box-shadow: 0 0 0 3px var(--node-color, var(--teal)); }
+.viewport.overview .table-node.selected { box-shadow: 0 0 0 5px var(--accent); }
+.viewport.overview .table-node.proposed { border: 3px dashed var(--node-color, var(--teal)); box-shadow: none; }
+.viewport.overview .table-node.dimmed { background: var(--surface); box-shadow: 0 0 0 2px var(--line); }
+.viewport.overview .node-head { position: absolute; inset: 0; height: auto; padding: 12px 18px; flex-direction: column; justify-content: center; align-items: center; gap: 6px; border: 0; border-radius: inherit; background: transparent; box-shadow: none; }
+.viewport.overview .table-node.dimmed .node-head { background: transparent; box-shadow: none; }
+.viewport.overview .node-title { flex: 0 1 auto; width: 100%; align-items: center; gap: 6px; text-align: center; }
+.viewport.overview .node-name { display: block; width: 100%; max-width: 100%; font: 650 var(--name-size, 36px)/1.18 var(--ui); text-align: center; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: normal; word-break: normal; -webkit-line-clamp: unset; direction: ltr; }
+.viewport.overview .node-meta { display: block; font: 600 32px/38px var(--ui); color: var(--muted); }
+.viewport.overview .node-schema, .viewport.overview .node-draft { display: none; }
+.viewport.overview .table-node.dimmed .node-name { color: var(--muted); }
+.viewport.overview .edge:not(.selected):not(.trace) { stroke-width: 3.5px; }

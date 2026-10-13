@@ -1,4 +1,4 @@
----
+﻿---
 name: ER Atlas
 description: A full-bleed schema map with all chrome floating over it as small outlined pills, in a matched white and black theme pair with one violet.
 colors:
@@ -269,7 +269,7 @@ Hang 8px below their pill, 12px radius, surface with hairline and soft shadow, 4
 360px, 14px radius, slides in on the start side (panel-in 200ms). Header, scrolling body that fades out at the bottom, footer. Chips and key cells inside are muted, not violet.
 
 ### Table node
-Compact ERD card: 300px, 10px radius, 1px node-border, hairline resting shadow (hover lifts softly). The 52px header is tinted with the topic color and holds the name (15px/650) over a mono `schema · N أعمدة` line; proposed tables add a مسودة badge and a dashed border. Rows are 32px: a PK/FK text badge (amber / violet tint), the column in mono (semibold for primary keys), the type in faint mono, and `?` when nullable; inset 1px dividers. Up to eight columns preview, keys first; the 32px footer opens the full list. Selected: accent border and 3px ring; unrelated tables recede to 55%. Below 42% zoom each table becomes a labelled tile with an 8px topic band. Geometry lives in public/ui.js and must change together with the CSS.
+Compact ERD card: 300px, 10px radius, 1px node-border, hairline resting shadow (hover lifts softly). The 52px header is tinted with the topic color and holds the name (15px/650) over a mono `schema · N أعمدة` line; proposed tables add a مسودة badge and a dashed border. Rows are 32px: a PK/FK text badge (amber / violet tint), the column in mono (semibold for primary keys), the type in faint mono, and `?` when nullable; inset 1px dividers. Up to eight columns preview, keys first; the 32px footer opens the full list. Selected: accent border and 3px ring; unrelated tables recede to 55%. Below 42% zoom each table becomes one rounded tile: a 9% topic tint with a 2.5px topic outline, the name at the largest size that fits (it wraps only after underscores, never mid-word, in at most three lines) and the column count underneath; wires thicken to stay visible. Geometry lives in public/ui.js and must change together with the CSS.
 
 ### Column list
 Inspector and expanded table share one list: per column a mono name (LTR, semibold) with its PK/FK badge and type on the same line, then one muted sentence for the note. A note carries a small basis tag: database comment and code-backed notes are violet, schema-derived are neutral, name-only guesses are amber. Notes written by hand are editable in place (click, Enter saves, Esc cancels); database comments are read-only. The bar above the list holds the table summary, the AI action, and the explained count; on phones only errors show there.
