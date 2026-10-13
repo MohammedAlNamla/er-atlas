@@ -106,3 +106,10 @@ test('/api/ai ping works without a schema and chat answers come back with quick 
     assert.deepEqual(chat.json, { answer: 'الجواب.', followups: ['أولًا؟', 'ثانيًا؟'] });
   } finally { provider.close(); }
 });
+
+test('/api/ai/login refuses anything but a known local assistant', async () => {
+  const bad = await request('POST', '/api/ai/login', { body: { provider: 'cmd.exe /c calc' } });
+  assert.equal(bad.status, 500);
+  assert.match(bad.json.error, /غير مدعوم/);
+  assert.equal((await request('POST', '/api/ai/login', { host: 'evil.example:80', body: { provider: 'claude-cli' } })).status, 403);
+});

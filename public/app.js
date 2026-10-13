@@ -1996,9 +1996,12 @@ function providerCard(provider, { local }) {
   if (local) {
     const line = el('span', `provider-status ${info.tone}`); line.append(el('i', 'dot'), el('span', '', info.text)); copy.append(line);
     if (info.tone === 'warn') {
+      const app = provider.name.split(' ')[0];
+      const login = uiButton('', event => { event.stopPropagation(); startCliLogin(provider, login); }, 'login-button');
+      login.append(sprite('terminal', 'i i-small'), el('span', '', 'افتح الطرفية وسجّل الدخول'));
       const command = uiButton('', event => { event.stopPropagation(); copyText(provider.login); }, 'copy-command');
-      command.append(el('code', '', provider.login), sprite('copy', 'i i-small')); command.title = 'انسخ الأمر ثم نفّذه في الطرفية';
-      copy.append(el('small', '', `دخولك في تطبيق ${provider.name.split(' ')[0]} منفصل عن الطرفية. نفّذ هذا الأمر مرة واحدة في أي نافذة طرفية؛ يفتح المتصفح لتسجّل بحسابك نفسه.`), command);
+      command.append(el('code', '', provider.login), sprite('copy', 'i i-small')); command.title = 'أو انسخ الأمر ونفّذه بنفسك';
+      copy.append(el('small', '', `دخولك في تطبيق ${app} منفصل عن الطرفية. سنفتح نافذة طرفية ينفَّذ فيها الأمر مباشرة، وتسجّل بحسابك في المتصفح.`), login, command);
     } else if (info.tone === 'bad' && localAiStatuses.length) copy.append(el('small', '', 'ثبّته ثم اضغط «إعادة الفحص».'));
   } else copy.append(el('small', '', provider.note));
   const radio = el('span', 'provider-radio'); radio.append(sprite('check', 'i i-small'));
@@ -2097,9 +2100,29 @@ async function loadLocalAiStatus() {
   updateAiSettings();
   if ($('aiDialog').open && !state.aiController && !state.aiMessages.length) renderAiMessages();
 }
+function showAiTest(text, kind = '') {
+  const result = $('aiTestResult'); result.hidden = false; result.className = `notice ${kind}`.trim(); result.textContent = text;
+}
+// Opens a real terminal with the sign-in command already running, then waits for the CLI to report ready.
+async function startCliLogin(provider, trigger) {
+  if (trigger) trigger.disabled = true;
+  try {
+    const response = await fetch('/api/ai/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: provider.id }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'تعذّر فتح الطرفية');
+    showAiTest(`فُتحت نافذة طرفية تنفّذ ${provider.login}. أكمل الدخول في المتصفح؛ أتحقق تلقائيًا وستصبح البطاقة «جاهز».`);
+    clearInterval(state.aiLoginPoll);
+    const started = Date.now();
+    state.aiLoginPoll = setInterval(async () => {
+      if (Date.now() - started > 240000 || !$('aiSettingsDialog').open) { clearInterval(state.aiLoginPoll); return; }
+      await loadLocalAiStatus();
+      if (providerState(provider.id).tone === 'ok') { clearInterval(state.aiLoginPoll); showAiTest(`${provider.name} جاهز على جهازك.`, 'success'); showToast(`${provider.name} جاهز`); }
+    }, 3000);
+  } catch (error) { showAiTest(`${error.message}. انسخ الأمر ونفّذه في الطرفية: ${provider.login}`, 'error'); }
+  finally { if (trigger?.isConnected) trigger.disabled = false; }
+}
 async function testAiConnection() {
-  const result = $('aiTestResult'), button = $('testAiButton'), provider = $('aiProvider').value;
-  const show = (text, kind = '') => { result.hidden = false; result.className = `notice ${kind}`.trim(); result.textContent = text; };
+  const button = $('testAiButton'), provider = $('aiProvider').value, show = showAiTest;
   button.disabled = true; show('أختبر الاتصال…');
   try {
     if (isLocalProvider(provider)) {

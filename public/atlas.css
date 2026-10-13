@@ -3554,3 +3554,8 @@ body dialog.chat-dialog[open] { display: flex; flex-direction: column; padding: 
 .connect-group, .connect-model, .connect-fields, #aiTestResult { flex: none; }
 .connect-fields input, .connect-model input { width: 100%; box-sizing: border-box; }
 .chat-composer .composer-box textarea { min-height: 0; }
+.login-button { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); font: 600 13px/1 var(--ui); cursor: pointer; transition: transform .12s var(--ease-out), background-color .15s; }
+.login-button:hover:not(:disabled) { background: var(--accent-hover); }
+.login-button:active:not(:disabled) { transform: scale(.97); }
+.login-button:disabled { opacity: .6; cursor: default; }
+.login-button .i { opacity: 1; }

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { Pool } from 'pg';
 import { fingerprint, planChanges } from './planner.js';
-import { askLocal, cliStatus, localProviders } from './local-ai.js';
+import { askLocal, cliStatus, localProviders, openLoginTerminal } from './local-ai.js';
 import { analyzeSource, compactCodeContext, groundTopicSuggestions } from './code-context.js';
 import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, readColumnNotes, splitFollowups } from './ai-prompts.js';
 
@@ -297,6 +297,9 @@ const server = http.createServer(async (req, res) => {
         if (!res.destroyed) return send(res, 200, result);
         return;
       } finally { res.removeListener('close', cancel); }
+    }
+    if (req.method === 'POST' && req.url === '/api/ai/login') {
+      return send(res, 200, await openLoginTerminal((await readJson(req)).provider));
     }
     if (req.method === 'GET' && req.url === '/api/ai/local-status') {
       return send(res, 200, { providers: await Promise.all(localProviders.map(provider => cliStatus(provider, { fresh: true }))) });

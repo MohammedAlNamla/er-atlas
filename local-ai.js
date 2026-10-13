@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { access, mkdtemp, rm } from 'node:fs/promises';
+import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 
@@ -124,4 +124,40 @@ export async function askLocal({ provider, model, prompt, signal }) {
     if (directory) await rm(directory, { recursive: true, force: true }).catch(() => {});
     running = false;
   }
+}
+
+// ---- Opening a real terminal for the one-time CLI sign-in. Only a fixed command is ever run.
+const loginArguments = { 'claude-cli': ['auth', 'login'], 'codex-cli': ['login'] };
+
+export function loginEnvironment(source = process.env) {
+  const env = cliEnvironment(source);
+  for (const key of Object.keys(env)) if (/^(?:CLAUDE_CODE_|CLAUDE_AGENT|CLAUDECODE|ANTHROPIC_|AI_AGENT)/.test(key)) delete env[key];
+  return env;
+}
+
+export function loginScript(cli, provider, platform = process.platform) {
+  const parts = [cli.command, ...cli.prefix, ...loginArguments[provider]];
+  if (parts.some(part => /["\r\n]/.test(part))) throw new Error('مسار المساعد يحتوي رموزًا غير مدعومة. نفّذ الأمر يدويًا في الطرفية.');
+  if (platform === 'win32') {
+    const line = parts.map(part => `"${part.replace(/%/g, '%%')}"`).join(' ');
+    return { extension: 'cmd', content: `@echo off\r\nchcp 65001 >nul\r\ntitle ER Atlas - sign in\r\necho Running: ${provider === 'codex-cli' ? 'codex login' : 'claude auth login'}\r\necho.\r\n${line}\r\necho.\r\necho Done. Go back to ER Atlas - it checks the sign-in automatically.\r\npause >nul\r\n` };
+  }
+  const line = parts.map(part => `'${part.replace(/'/g, String.raw`'\''`)}'`).join(' ');
+  return { extension: 'command', content: `#!/bin/bash\n${line}\necho\necho "Done. Go back to ER Atlas - it checks the sign-in automatically."\nread -n 1 -s -r -p "Press any key to close"\n` };
+}
+
+export async function openLoginTerminal(provider) {
+  if (!localProviders.includes(provider)) throw new Error('مساعد الجهاز غير مدعوم');
+  if (!['win32', 'darwin'].includes(process.platform)) throw new Error('فتح الطرفية تلقائيًا غير مدعوم على هذا النظام');
+  const cli = await findCli(provider);
+  const script = loginScript(cli, provider);
+  const directory = await mkdtemp(join(tmpdir(), 'er-atlas-login-'));
+  const file = join(directory, `login.${script.extension}`);
+  await writeFile(file, script.content, { mode: 0o755 });
+  const launch = process.platform === 'win32' ? ['cmd.exe', ['/c', 'start', '', file]] : ['open', ['-a', 'Terminal', file]];
+  const child = spawn(launch[0], launch[1], { env: loginEnvironment(), detached: true, stdio: 'ignore', windowsHide: false, shell: false });
+  child.on('error', () => {});
+  child.unref();
+  setTimeout(() => rm(directory, { recursive: true, force: true }).catch(() => {}), 600000).unref();
+  return { opened: true, command: provider === 'codex-cli' ? 'codex login' : 'claude auth login' };
 }
