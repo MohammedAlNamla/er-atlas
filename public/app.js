@@ -2109,6 +2109,7 @@ async function startCliLogin(provider, trigger) {
   try {
     const response = await fetch('/api/ai/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: provider.id }) });
     const data = await response.json();
+    if (response.status === 404) throw new Error('الخادم يعمل بنسخة أقدم من الصفحة. أعد تشغيل ER Atlas ثم حدّث الصفحة');
     if (!response.ok) throw new Error(data.error || 'تعذّر فتح الطرفية');
     showAiTest(`فُتحت نافذة طرفية تنفّذ ${provider.login}. أكمل الدخول في المتصفح؛ أتحقق تلقائيًا وستصبح البطاقة «جاهز».`);
     clearInterval(state.aiLoginPoll);
