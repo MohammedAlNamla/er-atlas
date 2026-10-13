@@ -1,4 +1,4 @@
-/* ER Atlas — one stylesheet. Order: tokens, base and components, shell (floating chrome).
+﻿/* ER Atlas — one stylesheet. Order: tokens, base and components, shell (floating chrome).
    Light and dark are a matched pair; dark follows the system unless data-theme pins it. */
 :root {
   color-scheme: light;
@@ -3578,4 +3578,12 @@ body dialog.chat-dialog[open] { display: flex; flex-direction: column; padding: 
 .viewport.overview .node-meta { display: block; font: 600 32px/38px var(--ui); color: var(--muted); }
 .viewport.overview .node-schema, .viewport.overview .node-draft { display: none; }
 .viewport.overview .table-node.dimmed .node-name { color: var(--muted); }
-.viewport.overview .edge:not(.selected):not(.trace) { stroke-width: 3.5px; }
+.viewport.overview .edge:not(.selected):not(.trace) { stroke-width: 4.5px; }
+
+/* Overview tile, final: the title block sits in the exact middle (the hidden menu button no
+   longer takes space), and the column count is a pill in the topic tint. */
+.viewport.overview .node-head .node-more { display: none; }
+.viewport.overview .node-title { gap: 0; }
+.viewport.overview .node-meta { display: flex; justify-content: center; margin-top: 12px; overflow: visible; }
+.viewport.overview .node-meta-count { display: inline-block; padding: 9px 20px; border-radius: 999px; background: color-mix(in srgb, var(--node-color, var(--teal)) 18%, var(--surface)); color: var(--ink); font: 600 30px/1.1 var(--ui); white-space: nowrap; }
+.viewport.overview .table-node.dimmed .node-meta-count { background: var(--context); color: var(--faint); }

@@ -876,6 +876,9 @@ function indexInvolvedColumns() {
 }
 // Largest title that fits the zoomed-out tile: words wrap only after underscores, so the
 // longest word decides the width and the line count decides the height.
+function columnsLabel(count) {
+  return count === 0 ? 'بلا أعمدة' : count === 1 ? 'عمود واحد' : count === 2 ? 'عمودان' : count <= 10 ? `${count} أعمدة` : `${count} عمودًا`;
+}
 function overviewNameSize(table) {
   const words = table.name.split(/(?<=_)/), height = measureNode(table);
   for (let size = 44; size > 22; size -= 2) {
@@ -883,7 +886,7 @@ function overviewNameSize(table) {
     if (words.some(word => word.length > perLine)) continue;
     let lines = 1, used = 0;
     for (const word of words) { if (used && used + word.length > perLine) { lines++; used = 0; } used += word.length; }
-    if (lines <= 3 && lines * size * 1.2 + 38 + 28 <= height) return size;
+    if (lines <= 3 && lines * size * 1.2 + 58 + 28 <= height) return size;
   }
   return 22;
 }
@@ -897,7 +900,7 @@ function makeNode(table) {
   const head = el('div', 'node-head');
   const title = el('div', 'node-title'), name = el('div', 'node-name'); name.title = table.name;
   for (const part of table.name.split(/(?<=_)/)) name.append(document.createTextNode(part), document.createElement('wbr'));
-  const meta = el('div', 'node-meta'); meta.append(el('span', 'node-schema', `${table.schema} · `), el('span', 'node-meta-count', `${table.columns.length} أعمدة`));
+  const meta = el('div', 'node-meta'); meta.append(el('span', 'node-schema', `${table.schema} · `), el('span', 'node-meta-count', columnsLabel(table.columns.length)));
   title.append(name, meta);
   const more = uiButton('', event => { event.stopPropagation(); showContextMenu(event); }, 'node-more');
   more.append(icon('more')); more.setAttribute('aria-label', `إجراءات جدول ${table.name}`);
@@ -963,12 +966,35 @@ function renderNodes() {
   scheduleView();
 }
 
-function anchor(table, columnName, side) {
-  const pos = graphPosition(table.id);
+function anchor(table, columnName, side, end) {
+  const pos = graphPosition(table.id), slot = end ? state.overviewSlots?.get(end) : undefined;
   return {
     x: pos.x + (side === 'right' ? NODE_WIDTH : 0),
-    y: pos.y + columnOffset(table, columnName, nodeExpanded(table))
+    y: pos.y + (slot !== undefined ? slot : columnOffset(table, columnName, nodeExpanded(table)))
   };
+}
+
+// Overview scale hides the rows, so a wire anchored to its column would end at a random
+// height. Instead each tile's wires share its middle band, ordered by where the other
+// table sits so they leave without crossing each other.
+function overviewSlots(relations, byId) {
+  const center = table => graphPosition(table.id).y + nodeHeight(table) / 2;
+  const ends = new Map();
+  const add = (id, end, other) => { if (!ends.has(id)) ends.set(id, []); ends.get(id).push({ end, other }); };
+  for (const relation of relations) {
+    const source = byId.get(relation.source), target = byId.get(relation.target);
+    if (!source || !target) continue;
+    add(source.id, `${relation.id}:0:s`, center(target));
+    add(target.id, `${relation.id}:0:t`, center(source));
+  }
+  const slots = new Map();
+  for (const [id, list] of ends) {
+    const height = nodeHeight(byId.get(id));
+    list.sort((a, b) => a.other - b.other);
+    const step = list.length > 1 ? Math.min(26, (height - 48) / (list.length - 1)) : 0;
+    list.forEach((item, index) => slots.set(item.end, height / 2 + (index - (list.length - 1) / 2) * step));
+  }
+  return slots;
 }
 
 function routingBoxes() {
@@ -981,31 +1007,32 @@ function routingBoxes() {
 
 function routingConnection(source, target, pair, lane, key) {
   return { key, sourceId: source.id, targetId: target.id, lane,
-    source: { left: anchor(source, pair.source, 'left'), right: anchor(source, pair.source, 'right') },
-    target: { left: anchor(target, pair.target, 'left'), right: anchor(target, pair.target, 'right') } };
+    source: { left: anchor(source, pair.source, 'left', `${key}:s`), right: anchor(source, pair.source, 'right', `${key}:s`) },
+    target: { left: anchor(target, pair.target, 'left', `${key}:t`), right: anchor(target, pair.target, 'right', `${key}:t`) } };
 }
 
-function edgePath(sourceTable, targetTable, pair, lane = 0) {
+function edgePath(sourceTable, targetTable, pair, lane = 0, key = '') {
+  const s = key && `${key}:s`, t = key && `${key}:t`;
   const sourcePos = graphPosition(sourceTable.id);
   const targetPos = graphPosition(targetTable.id);
   if (sourceTable.id === targetTable.id) {
-    const a = anchor(sourceTable, pair.source, 'right');
-    const b = anchor(targetTable, pair.target, 'right');
+    const a = anchor(sourceTable, pair.source, 'right', s);
+    const b = anchor(targetTable, pair.target, 'right', t);
     const loop = 82 + Math.abs(a.y - b.y) * .25 + Math.abs(lane);
     return { d: `M ${a.x} ${a.y} C ${a.x + loop} ${a.y - 25}, ${b.x + loop} ${b.y + 25}, ${b.x} ${b.y}`, a, b };
   }
   if (Math.abs(sourcePos.x - targetPos.x) < NODE_WIDTH * .6) {
     const useRight = sourcePos.x > 180 && lane > 0;
     const side = useRight ? 'right' : 'left';
-    const a = anchor(sourceTable, pair.source, side);
-    const b = anchor(targetTable, pair.target, side);
+    const a = anchor(sourceTable, pair.source, side, s);
+    const b = anchor(targetTable, pair.target, side, t);
     const outerX = side === 'left' ? Math.min(a.x, b.x) - 92 - Math.abs(lane) : Math.max(a.x, b.x) + 92 + Math.abs(lane);
     return { d: `M ${a.x} ${a.y} L ${outerX} ${a.y} C ${outerX + lane * .15} ${a.y}, ${outerX + lane * .15} ${b.y}, ${outerX} ${b.y} L ${b.x} ${b.y}`, a, b };
   }
   const sourceSide = sourcePos.x + NODE_WIDTH / 2 < targetPos.x + NODE_WIDTH / 2 ? 'right' : 'left';
   const targetSide = sourceSide === 'right' ? 'left' : 'right';
-  const a = anchor(sourceTable, pair.source, sourceSide);
-  const b = anchor(targetTable, pair.target, targetSide);
+  const a = anchor(sourceTable, pair.source, sourceSide, s);
+  const b = anchor(targetTable, pair.target, targetSide, t);
   const direction = sourceSide === 'right' ? 1 : -1;
   const sourceStub = a.x + 34 * direction, targetStub = b.x - 34 * direction;
   const center = (sourceStub + targetStub) / 2 + lane;
@@ -1044,19 +1071,20 @@ function relationEnds(relation, source, target) {
   return { start: cardinality.source === '1' ? 'one' : cardinality.source === '*' ? 'many' : '', end: cardinality.target === '1' ? (optional ? 'zero-one' : 'one-only') : '' };
 }
 function drawErEnd(context, point, kind) {
-  const at = distance => point.x + point.dir * distance;
+  const k = state.overviewMode ? 1.8 : 1, at = distance => point.x + point.dir * distance * k;
   context.beginPath();
-  if (kind === 'many') { context.moveTo(at(14), point.y); context.lineTo(at(0), point.y - 7); context.moveTo(at(14), point.y); context.lineTo(at(0), point.y + 7); }
-  if (kind === 'one') { context.moveTo(at(7), point.y - 7); context.lineTo(at(7), point.y + 7); }
-  if (kind === 'one-only') for (const distance of [6, 11]) { context.moveTo(at(distance), point.y - 7); context.lineTo(at(distance), point.y + 7); }
-  if (kind === 'zero-one') { context.moveTo(at(6), point.y - 7); context.lineTo(at(6), point.y + 7); }
+  const h = 7 * k;
+  if (kind === 'many') { context.moveTo(at(14), point.y); context.lineTo(at(0), point.y - h); context.moveTo(at(14), point.y); context.lineTo(at(0), point.y + h); }
+  if (kind === 'one') { context.moveTo(at(7), point.y - h); context.lineTo(at(7), point.y + h); }
+  if (kind === 'one-only') for (const distance of [6, 11]) { context.moveTo(at(distance), point.y - h); context.lineTo(at(distance), point.y + h); }
+  if (kind === 'zero-one') { context.moveTo(at(6), point.y - h); context.lineTo(at(6), point.y + h); }
   context.stroke();
-  if (kind === 'zero-one') { context.beginPath(); context.arc(at(14), point.y, 3.5, 0, Math.PI * 2); context.fillStyle = edgeColors().halo; context.fill(); context.stroke(); }
+  if (kind === 'zero-one') { context.beginPath(); context.arc(at(14), point.y, 3.5 * k, 0, Math.PI * 2); context.fillStyle = edgeColors().halo; context.fill(); context.stroke(); }
 }
 function renderEdges() {
   const generation = ++state.routeGeneration;
   const svg = $('edges');
-  const canvasMode = visibleTables().length > 35;
+  const canvasMode = visibleTables().length > 35, overview = Boolean(state.overviewMode), markerScale = overview ? 1.8 : 1;
   svg.replaceChildren();
   const ns = 'http://www.w3.org/2000/svg';
   // Crow's-foot ends. Each marker is drawn with the table edge at x=20 and grows outward;
@@ -1064,7 +1092,7 @@ function renderEdges() {
   const defs = document.createElementNS(ns, 'defs');
   for (const [id, parts] of Object.entries(ER_MARKERS)) {
     const marker = document.createElementNS(ns, 'marker');
-    for (const [key, value] of Object.entries({ id: `er-${id}`, viewBox: '0 0 20 20', refX: 20, refY: 10, markerWidth: 20, markerHeight: 20, markerUnits: 'userSpaceOnUse', orient: 'auto-start-reverse' })) marker.setAttribute(key, value);
+    for (const [key, value] of Object.entries({ id: `er-${id}`, viewBox: '0 0 20 20', refX: 20, refY: 10, markerWidth: 20 * markerScale, markerHeight: 20 * markerScale, markerUnits: 'userSpaceOnUse', orient: 'auto-start-reverse' })) marker.setAttribute(key, value);
     for (const [tag, attrs] of parts) {
       const shape = document.createElementNS(ns, tag);
       for (const [key, value] of Object.entries(attrs)) shape.setAttribute(key, value);
@@ -1077,6 +1105,7 @@ function renderEdges() {
   svg.append(defs);
   edgeRefs.clear();
   const byId = new Map(visibleTables().map(table => [table.id, table]));
+  state.overviewSlots = overview ? overviewSlots(visibleRelations(), byId) : null;
   const laneKeyFor = (source, target) => {
     const sourceColumn = Math.round(graphPosition(source.id).x / (NODE_WIDTH + 170));
     const targetColumn = Math.round(graphPosition(target.id).x / (NODE_WIDTH + 170));
@@ -1087,7 +1116,7 @@ function renderEdges() {
     const source = byId.get(relation.source), target = byId.get(relation.target);
     if (!source || !target) continue;
     const key = laneKeyFor(source, target);
-    laneTotals.set(key, (laneTotals.get(key) || 0) + relation.pairs.length);
+    laneTotals.set(key, (laneTotals.get(key) || 0) + (overview ? 1 : relation.pairs.length));
   }
   const lanes = new Map();
   const connections = [];
@@ -1095,6 +1124,7 @@ function renderEdges() {
     const source = byId.get(relation.source), target = byId.get(relation.target);
     if (!source || !target) continue;
     relation.pairs.forEach((pair, index) => {
+      if (overview && index > 0) return;
       const laneKey = laneKeyFor(source, target);
       const laneIndex = lanes.get(laneKey) || 0; lanes.set(laneKey, laneIndex + 1);
       const laneTotal = laneTotals.get(laneKey) || 1;
@@ -1129,7 +1159,7 @@ function renderEdges() {
   }
   for (const item of connections) {
       const { relation, source, target, pair, lane, key } = item;
-      const path = state.edgeRoutes?.get(key) || edgePath(source, target, pair, lane);
+      const path = state.edgeRoutes?.get(key) || edgePath(source, target, pair, lane, key);
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       line.setAttribute('d', path.d);
       line.setAttribute('class', `edge${relation.kind === 'proposed' ? ' proposed' : ''}`);
@@ -1158,7 +1188,7 @@ function updateEdgesForTable(id) {
   for (const relation of visibleRelations()) {
     if (relation.source !== id && relation.target !== id) continue;
     for (const ref of edgeRefs.get(relation.id) || []) {
-      const path = edgePath(ref.source, ref.target, ref.pair, ref.lane);
+      const path = edgePath(ref.source, ref.target, ref.pair, ref.lane, ref.key);
       ref.bounds = { left: Math.min(path.a.x, path.b.x) - 120, right: Math.max(path.a.x, path.b.x) + 120,
         top: Math.min(path.a.y, path.b.y) - 120, bottom: Math.max(path.a.y, path.b.y) + 120 };
       ref.line.setAttribute('d', path.d); ref.hit.setAttribute('d', path.d);
@@ -1309,7 +1339,9 @@ function scheduleView() {
   if (state.viewFrame) return;
   state.viewFrame = requestAnimationFrame(() => {
     state.viewFrame = null;
-    $('viewport').classList.toggle('overview', state.scale < .42);
+    const overview = state.scale < .42;
+    $('viewport').classList.toggle('overview', overview);
+    if (overview !== Boolean(state.overviewMode)) { state.overviewMode = overview; state.edgeRoutes = null; renderEdges(); }
     $('world').style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
     $('zoomLabel').textContent = `${Math.round(state.scale * 100)}%`;
     updateVisible();
