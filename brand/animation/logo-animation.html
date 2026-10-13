@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ar"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../public/assets/fonts/fonts.css">
+<style>
+  html, body { margin: 0; background: #0d0b14; overflow: hidden; }
+  svg { display: block; width: 1920px; height: 1080px; }
+  .word { font: 600 170px "Segoe UI Semibold", "Segoe UI", sans-serif; letter-spacing: -3px; fill: #f4f1fb; }
+  .tag { font: 500 44px "Noto Sans Arabic", sans-serif; fill: #a8a3b8; }
+</style></head>
+<body>
+<svg id="stage" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="48%" r="75%"><stop offset="0" stop-color="#1d1836"/><stop offset=".55" stop-color="#120f20"/><stop offset="1" stop-color="#0a0810"/></radialGradient>
+    <radialGradient id="fade"><stop offset="0" stop-color="#fff"/><stop offset=".7" stop-color="#fff" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <pattern id="dots" width="48" height="48" patternUnits="userSpaceOnUse"><circle cx="24" cy="24" r="2.2" fill="#b9a8ff"/></pattern>
+    <mask id="reveal" maskUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080"><circle id="revealCircle" cx="965" cy="514" r="0" fill="url(#fade)"/></mask>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="22"/></filter>
+    <clipPath id="wordClip"><rect id="wordClipRect" x="965" y="380" width="0" height="320"/></clipPath>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#dots)" opacity=".16" mask="url(#reveal)"/>
+
+  <g id="mark">
+    <g id="ripples" fill="none" stroke="#9a73ff" stroke-width="3">
+      <circle id="r0" cx="640" cy="520" r="0"/><circle id="r1" cx="640" cy="520" r="0"/>
+    </g>
+    <g id="glowLayer">
+      <path id="starGlow" fill="#7b4bf0" filter="url(#glow)" opacity="0" d="M572 413C578 455 602 485 636 500C676 504 726 502 766 498C706 506 650 540 636 630C632 586 614 530 572 483Z"/>
+    </g>
+    <g fill="#f4f1fb">
+      <path id="b0" d="M322 453V377C322 327 362 287 412 287H558V398C558 428 532 453 502 453Z"/>
+      <path id="b1" d="M322 612V527C322 512 334 499 349 499H538C578 499 608 531 608 571V612Z"/>
+      <path id="b2" d="M322 657H586C635 657 672 697 672 746V795H414C364 795 322 753 322 703Z"/>
+      <path id="b3" d="M594 287H772C860 287 932 358 932 446C932 500 906 548 866 580C858 520 836 482 806 462C790 452 772 452 750 452H682C632 452 594 414 594 372Z"/>
+      <path id="b4" d="M674 608C674 568 720 538 762 540C790 541 812 556 830 582L946 756C958 774 944 795 922 795H775L683 654C677 644 674 626 674 608Z"/>
+    </g>
+    <g id="star">
+      <path fill="#8f63ff" d="M572 413C578 455 602 485 636 500C676 504 726 502 766 498C706 506 650 540 636 630C632 586 614 530 572 483Z"/>
+    </g>
+  </g>
+
+  <g clip-path="url(#wordClip)"><g id="wordSlide"><text id="word" class="word" x="980" y="601">ER Atlas</text></g></g>
+  <text id="tag" class="tag" x="1283" y="690" text-anchor="middle" direction="rtl" opacity="0">خريطة قاعدة بياناتك، بوضوح</text>
+</svg>
+<script>
+const $ = id => document.getElementById(id);
+const clamp = x => Math.min(1, Math.max(0, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, u) => a + (b - a) * u;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eBack = x => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+
+const blocks = [
+  { id: 'b0', from: [-560, -40], delay: .25 }, { id: 'b1', from: [-640, 10], delay: .37 }, { id: 'b2', from: [-560, 90], delay: .49 },
+  { id: 'b3', from: [260, -460], delay: .61 }, { id: 'b4', from: [240, 460], delay: .73 }
+];
+const CENTER = [636, 541], STAR = [640, 520];
+let wordWidth = 0;
+
+function draw(t) {
+  // Blocks assemble (E from the left, R from the top and bottom right).
+  for (const block of blocks) {
+    const u = seg(t, block.delay, block.delay + .95), e = eOut(u), s = lerp(.9, 1, eOut(u));
+    const dx = block.from[0] * (1 - e), dy = block.from[1] * (1 - e);
+    const el = $(block.id);
+    el.setAttribute('transform', `translate(${dx} ${dy}) translate(${CENTER[0]} ${CENTER[1]}) scale(${s}) translate(${-CENTER[0]} ${-CENTER[1]})`);
+    el.setAttribute('opacity', clamp(u * 2.4));
+  }
+  // The connection point: springs in, then breathes.
+  const su = seg(t, 1.35, 2.0), pulse = t > 3.9 ? 1 + .05 * Math.sin((t - 3.9) * Math.PI * 1.25) : 1;
+  const sc = Math.max(0.001, eBack(su)) * pulse;
+  $('star').setAttribute('transform', `translate(${STAR}) rotate(${(1 - eOut(su)) * -100}) scale(${sc}) translate(${-STAR[0]} ${-STAR[1]})`);
+  $('star').setAttribute('opacity', clamp(su * 3));
+  $('starGlow').setAttribute('transform', $('star').getAttribute('transform'));
+  $('starGlow').setAttribute('opacity', (t < 3.9 ? .5 * seg(t, 1.5, 2.4) : .4 + .15 * Math.sin((t - 3.9) * Math.PI * 1.25)));
+  // Two ripples travelling outward like a relation being discovered.
+  [[1.75, 'r0'], [2.15, 'r1']].forEach(([start, id]) => {
+    const u = seg(t, start, start + 1.3), el = $(id);
+    el.setAttribute('r', lerp(10, 640, eOut(u))); el.setAttribute('opacity', u === 0 ? 0 : .6 * (1 - u));
+  });
+  // The canvas grid is revealed by the same wave.
+  $('revealCircle').setAttribute('r', lerp(0, 1500, eOut(seg(t, 1.75, 3.4))));
+  // Mark glides left and shrinks to make room for the wordmark.
+  const m = eInOut(seg(t, 2.45, 3.45)), S = lerp(1.25, .9, m), cx = lerp(960, 627, m);
+  const intro = lerp(1.04, 1, eOut(seg(t, 0, 1.2)));
+  $('mark').setAttribute('transform', `translate(${cx} 540) scale(${S * intro}) translate(${-CENTER[0]} ${-CENTER[1]})`);
+  // Wordmark wipes in with a short slide.
+  const w = eOut(seg(t, 3.0, 3.85));
+  $('wordClipRect').setAttribute('width', (wordWidth + 80) * w);
+  $('wordSlide').setAttribute('transform', `translate(${lerp(-50, 0, w)} 0)`);
+  const g = eOut(seg(t, 3.75, 4.45));
+  $('tag').setAttribute('opacity', g); $('tag').setAttribute('transform', `translate(0 ${lerp(18, 0, g)})`);
+}
+async function boot() {
+  await document.fonts.ready;
+  wordWidth = $('word').getBBox().width;
+  $('tag').setAttribute('x', 980 + wordWidth / 2);
+  draw(parseFloat(new URLSearchParams(location.search).get('t') || '0'));
+  document.title = 'ready';
+}
+boot();
+</script>
+</body></html>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ER Atlas">
+  <title>ER Atlas</title>
+  <!-- Small-size version: dark tile, light mark, and wider gaps (a thick stroke in the tile color) so the blocks stay separate at 16px. -->
+  <rect width="64" height="64" rx="14" fill="#151b2d"/>
+  <g transform="translate(10 12.2) scale(.0838) translate(-316 -280)" stroke="#151b2d" stroke-width="22" stroke-linejoin="round">
+    <g fill="#f4f1fb">
+      <path d="M322 453V377C322 327 362 287 412 287H558V398C558 428 532 453 502 453Z"/>
+      <path d="M322 612V527C322 512 334 499 349 499H538C578 499 608 531 608 571V612Z"/>
+      <path d="M322 657H586C635 657 672 697 672 746V795H414C364 795 322 753 322 703Z"/>
+      <path d="M594 287H772C860 287 932 358 932 446C932 500 906 548 866 580C858 520 836 482 806 462C790 452 772 452 750 452H682C632 452 594 414 594 372Z"/>
+      <path d="M674 608C674 568 720 538 762 540C790 541 812 556 830 582L946 756C958 774 944 795 922 795H775L683 654C677 644 674 626 674 608Z"/>
+    </g>
+    <path fill="#9a73ff" stroke="none" d="M572 413C578 455 602 485 636 500C676 504 726 502 766 498C706 506 650 540 636 630C632 586 614 530 572 483Z"/>
+  </g>
+</svg>

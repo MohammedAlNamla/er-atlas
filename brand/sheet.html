@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../public/assets/fonts/fonts.css">
+<style>
+  :root { --ink:#151b2d; --violet:#7b4bf0; --line:#e6e2ed; --paper:#fcfbfd; }
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1600px; background: var(--paper); font-family: "Noto Sans Arabic", "Segoe UI", sans-serif; color: var(--ink); padding: 48px 56px 56px; }
+  h1 { font-size: 30px; font-weight: 700; } .sub { color:#6b6680; margin-top:6px; font-size:16px; }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; margin-top: 32px; }
+  .card { border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 28px; position: relative; overflow: hidden; }
+  .card h3 { font-size: 13px; font-weight: 600; color:#6b6680; margin-bottom: 18px; letter-spacing: .02em; }
+  .dark { background: #15131c; border-color:#15131c; } .dark h3 { color:#a8a3b8; }
+  .lockup { display:flex; align-items:center; gap: 28px; direction: ltr; }
+  .lockup svg { height: 150px; width: auto; }
+  .word { font-family: "Segoe UI Semibold", "Segoe UI", sans-serif; font-weight: 600; font-size: 84px; letter-spacing: -.02em; line-height: 1; }
+  .center { display:flex; align-items:center; justify-content:center; }
+  .sizes { display:flex; align-items:flex-end; gap: 28px; direction: ltr; }
+  .sizes figure { display:flex; flex-direction:column; align-items:center; gap:10px; font-size:12px; color:#6b6680; font-family: "Segoe UI", sans-serif; }
+  .sizes img { display:block; }
+  .tile { width:150px; height:150px; border-radius:34px; overflow:hidden; }
+  .tile img { width:100%; height:100%; }
+  .header { height: 74px; display:flex; align-items:center; justify-content:space-between; padding: 0 24px; background:#fff; border:1px solid var(--line); border-radius: 12px; direction: rtl; }
+  .brand { display:flex; align-items:center; gap: 12px; direction: ltr; }
+  .brand img { height: 30px; } .brand b { font-family:"Segoe UI Semibold","Segoe UI",sans-serif; font-weight:600; font-size: 22px; }
+  .actions { display:flex; gap: 10px; align-items:center; }
+  .btn { height: 44px; padding: 0 16px; border-radius: 8px; display:flex; align-items:center; gap: 8px; font-weight:700; font-size:14px; border:1px solid var(--line); background:#fff; }
+  .btn.ai { background:#f2eefb; border-color:#f2eefb; color:#5d4bb1; }
+  .btn svg { width:20px; height:20px; }
+  .search { width: 320px; height: 44px; border-radius:8px; background:#faf8fe; border:1px solid var(--line); display:flex; align-items:center; padding:0 12px; color:#6b6680; font-size:14px; }
+  .col-7 { grid-column: span 7; } .col-5 { grid-column: span 5; } .col-12 { grid-column: span 12; } .col-4 { grid-column: span 4; } .col-8 { grid-column: span 8; }
+  .note { font-size: 14px; line-height: 24px; color:#4a4560; margin-top: 14px; }
+</style></head>
+<body>
+  <h1>ER Atlas — الهوية المحدّثة</h1>
+  <p class="sub">شعار SVG نظيف، نسخة favicon مبسّطة بفراغات أعرض، وأيقونة بديلة لزر المساعد حتى لا تلتبس النجمة بالذكاء الاصطناعي.</p>
+  <div class="grid">
+    <div class="card col-7"><h3>الشعار الرئيسي · SVG</h3>
+      <div class="center" style="height:230px"><div class="lockup"><img src="logo-mark.svg" style="height:150px"><span class="word">ER Atlas</span></div></div>
+    </div>
+    <div class="card dark col-5"><h3>على الخلفية الداكنة · النسخة المعكوسة</h3>
+      <div class="center" style="height:230px"><div class="lockup"><img src="logo-mark-reverse.svg" style="height:150px"><span class="word" style="color:#f4f1fb;font-size:70px">ER Atlas</span></div></div>
+    </div>
+
+    <div class="card col-7"><h3>الأحجام الصغيرة · الشعار الكامل مقابل نسخة favicon</h3>
+      <div class="sizes">
+        <figure><img src="logo-mark.svg" height="64"><span>64</span></figure>
+        <figure><img src="logo-mark.svg" height="32"><span>32</span></figure>
+        <figure><img src="logo-mark.svg" height="16"><span>16 · الفراغات تذوب</span></figure>
+        <span style="width:28px"></span>
+        <figure><img src="favicon.svg" height="64"><span>64</span></figure>
+        <figure><img src="favicon.svg" height="32"><span>32</span></figure>
+        <figure><img src="favicon.svg" height="16"><span>16 · واضح</span></figure>
+      </div>
+      <p class="note">نسخة الـ favicon: مربع كحلي بزوايا مدورة وعلامة فاتحة، والفراغات بين الكتل أعرض بنحو الضعف حتى تبقى الكتل منفصلة على 16px.</p>
+    </div>
+    <div class="card col-5"><h3>أيقونة التطبيق / favicon</h3>
+      <div class="center" style="height:190px"><div class="tile"><img src="favicon.svg"></div></div>
+    </div>
+
+    <div class="card col-12"><h3>داخل الواجهة · الشعار الجديد وأيقونة المساعد البديلة (فقاعة حوار بدل النجمة)</h3>
+      <div class="header">
+        <div class="brand"><img src="logo-mark.svg"><b>ER Atlas</b></div>
+        <div class="search">ابحث عن جدول أو عمود…</div>
+        <div class="actions">
+          <div class="btn ai">مساعد AI
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5.5h14a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2h-7l-4.5 3.5V17H5a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2Z"/><path d="M8 10h8M8 13h5"/></svg>
+          </div>
+          <div class="btn">الأدوات
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+          </div>
+        </div>
+      </div>
+      <p class="note">اللون: كحلي <b>#151B2D</b> للعلامة، وبنفسجي <b>#7B4BF0</b> لنقطة الاتصال. النجمة صارت حصريًا للشعار، وزر المساعد له أيقونة حوار.</p>
+    </div>
+  </div>
+</body></html>
