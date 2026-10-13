@@ -1978,7 +1978,7 @@ function providerState(id = $('aiProvider').value) {
     const status = localAiStatuses.find(item => item.provider === id);
     if (!status) return localAiFailed ? { tone: 'bad', text: 'تعذّر فحص الجهاز' } : { tone: 'idle', text: 'أفحص الجهاز…' };
     if (status.ready) return { tone: 'ok', text: 'جاهز · يستخدم اشتراكك' };
-    return status.installed ? { tone: 'warn', text: 'سجّل الدخول مرة واحدة' } : { tone: 'bad', text: 'غير مثبّت على هذا الجهاز' };
+    return status.installed ? { tone: 'warn', text: 'الطرفية لم تسجّل الدخول بعد' } : { tone: 'bad', text: 'غير مثبّت على هذا الجهاز' };
   }
   if (id === 'compatible') return $('aiEndpoint').value.trim() ? { tone: 'ok', text: 'جاهز' } : { tone: 'warn', text: 'أدخل رابط الخدمة' };
   return $('aiKey').value ? { tone: 'ok', text: 'المفتاح جاهز' } : { tone: 'warn', text: 'أدخل مفتاح API' };
@@ -1997,7 +1997,8 @@ function providerCard(provider, { local }) {
     const line = el('span', `provider-status ${info.tone}`); line.append(el('i', 'dot'), el('span', '', info.text)); copy.append(line);
     if (info.tone === 'warn') {
       const command = uiButton('', event => { event.stopPropagation(); copyText(provider.login); }, 'copy-command');
-      command.append(el('code', '', provider.login), sprite('copy', 'i i-small')); command.title = 'انسخ الأمر ثم نفّذه في الطرفية'; copy.append(command);
+      command.append(el('code', '', provider.login), sprite('copy', 'i i-small')); command.title = 'انسخ الأمر ثم نفّذه في الطرفية';
+      copy.append(el('small', '', `دخولك في تطبيق ${provider.name.split(' ')[0]} منفصل عن الطرفية. نفّذ هذا الأمر مرة واحدة في أي نافذة طرفية؛ يفتح المتصفح لتسجّل بحسابك نفسه.`), command);
     } else if (info.tone === 'bad' && localAiStatuses.length) copy.append(el('small', '', 'ثبّته ثم اضغط «إعادة الفحص».'));
   } else copy.append(el('small', '', provider.note));
   const radio = el('span', 'provider-radio'); radio.append(sprite('check', 'i i-small'));

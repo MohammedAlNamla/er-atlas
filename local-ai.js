@@ -80,10 +80,10 @@ async function readCliStatus(provider) {
     const cli = await findCli(provider);
     const output = await run(cli.command, [...cli.prefix, ...(provider === 'codex-cli' ? ['login', 'status'] : ['auth', 'status'])], { timeout: 10000, includeStderr: provider === 'codex-cli' });
     const ready = provider === 'claude-cli' ? (() => { const data = JSON.parse(output); return data.loggedIn === true && ['oauth', 'claude.ai'].includes(data.authMethod); })() : output.includes('ChatGPT');
-    return { provider, installed: true, ready, message: ready ? 'جاهز باستخدام الاشتراك' : `سجّل الدخول باستخدام ${provider === 'codex-cli' ? 'codex login' : 'claude auth login'} دون API key` };
+    return { provider, installed: true, ready, message: ready ? 'جاهز باستخدام الاشتراك' : `سجّل دخول الطرفية مرة واحدة بالأمر ${provider === 'codex-cli' ? 'codex login' : 'claude auth login'}. تسجيل دخول تطبيق ${provider === 'codex-cli' ? 'Codex' : 'Claude'} لا يكفي لأنه منفصل عن الطرفية.` };
   } catch (error) {
     const installed = await findCli(provider).then(() => true, () => false);
-    return { provider, installed, ready: false, message: installed ? `سجّل الدخول باستخدام ${provider === 'codex-cli' ? 'codex login' : 'claude auth login'}` : error.message };
+    return { provider, installed, ready: false, message: installed ? `سجّل دخول الطرفية مرة واحدة بالأمر ${provider === 'codex-cli' ? 'codex login' : 'claude auth login'}` : error.message };
   }
 }
 
