@@ -37,9 +37,9 @@
   --wire-selected: #6a3ee6;
   --wire-proposed: #8b63f5;
   --wire-label: #4a4d5c;
-  --code-bg: #14151c;
-  --code-ink: #ececf4;
-  --code-label: #a3a6b8;
+  --code-bg: #f1f1f5;
+  --code-ink: #1b1e2b;
+  --code-label: #6b6f7d;
   --icon-filter: none;
   --shadow-rgb: 15 17 23;
   --scrim: rgb(15 17 23 / .35);
@@ -3068,3 +3068,172 @@ html[dir="rtl"] .tool kbd { transform: translateX(50%); }
 .details-panel .modal-body { padding-bottom: 32px; -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent); }
 @media (max-width: 900px) { .tool kbd { display: none; } .tool:has(kbd) .i { margin-top: 0; } .tool { height: 38px; } }
 .details-panel .modal-body { padding-bottom: 60px; -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent); mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent); }
+
+/* =====================================================================
+   Overlays — dialogs, sheets, menus, fields, notices, code, tables.
+   One grammar: 16px dialogs, 12px menus, 10px fields and cards, 9px buttons.
+   Modals scale from the center; menus grow from their trigger; nothing
+   appears from scale(0). Press feedback is scale(.97). Easing is ease-out.
+   ===================================================================== */
+@keyframes dialog-in { from { opacity: 0; transform: scale(.97) translateY(6px); } }
+@keyframes sheet-in { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes sheet-up { from { opacity: 0; transform: translateY(24px); } }
+@keyframes fade-in { from { opacity: 0; } }
+
+/* ---- Dialog shell ---- */
+dialog { width: min(var(--modal-width, 560px), calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 28px rgb(var(--shadow-rgb) / .22); }
+dialog[open] { animation: dialog-in .18s var(--ease-out); }
+dialog::backdrop { background: var(--scrim); animation: fade-in .18s ease-out; }
+.modal-header { padding: 20px 24px 14px; gap: 2px; }
+.modal-header h2 { font-size: 19px; line-height: 28px; font-weight: 700; padding-left: 44px; }
+.modal-header p { font-size: 13px; line-height: 20px; color: var(--muted); }
+.dialog-close, .details-close { left: 14px; top: 14px; width: 32px; height: 32px; padding: 0; border-radius: 9px; background: transparent; color: var(--muted); transition: background-color .15s, color .15s, transform .12s var(--ease-out); }
+.dialog-close:hover { background: var(--context); color: var(--ink); }
+.dialog-close:active { transform: scale(.94); }
+.modal-body { padding: 4px 24px 22px; gap: 16px; }
+.modal-body h3 { font-size: 15px; line-height: 24px; font-weight: 650; }
+.modal-footer { padding: 14px 24px 18px; gap: 10px; background: var(--surface); }
+.modal-footer > p { font-size: 12px; line-height: 18px; }
+.footer-actions { gap: 8px; }
+
+/* ---- Buttons ---- */
+.primary-button, .secondary-button, .ghost-button, .inline-action { height: 40px; min-height: 40px; padding: 0 16px; border-radius: 9px; font-size: 14px; line-height: 20px; font-weight: 600; transition: background-color .15s, border-color .15s, color .15s, transform .12s var(--ease-out); }
+.primary-button { min-width: 0; }
+.secondary-button, .inline-action { min-width: 0; border-color: var(--line); }
+.secondary-button:hover, .inline-action:hover { background: var(--context); border-color: var(--outline-mid); }
+.ghost-button:hover { background: var(--context); }
+.primary-button:active, .secondary-button:active, .ghost-button:active { transform: scale(.97); }
+.primary-button:disabled, .secondary-button:disabled { opacity: .45; pointer-events: none; }
+.text-button { font-weight: 600; }
+.primary-button.danger { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+.ghost-button.danger, .text-button.danger { color: var(--danger); }
+.ghost-button.danger:hover { background: var(--danger-bg); }
+
+/* ---- Fields ---- */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea,
+.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input {
+  height: 40px; padding: 0 12px; background: var(--context); border: 1px solid transparent; border-radius: 10px; box-shadow: none;
+  transition: border-color .15s, background-color .15s, box-shadow .15s;
+}
+textarea { height: auto; padding: 10px 12px; line-height: 22px; }
+input:not([type="checkbox"]):not([type="radio"]):hover, select:hover, textarea:hover { border-color: var(--line); }
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus,
+.form-grid input:focus, .edit-field input:focus, .workspace-field input:focus {
+  background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+input:disabled, select:disabled { opacity: .6; cursor: not-allowed; }
+select, .ai-settings select, .edit-field select {
+  appearance: none; padding-inline-end: 36px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b8f9c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: left 12px center; background-size: 16px;
+}
+.form-grid label, .edit-field, .ai-settings label, .workspace-field { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--ink); }
+.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input { margin-top: 6px; }
+.field-hint, .status-message { font-weight: 400; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+.edit-field:has(input[type="checkbox"]), .choice { border-radius: 10px; padding: 12px 14px; transition: background-color .15s, border-color .15s; }
+.edit-field:has(input[type="checkbox"]):hover, .choice:hover { background: var(--context); }
+.choice:has(input:checked) { background: var(--selected); border-color: var(--accent); }
+.choice strong { font-weight: 650; }
+.advanced-options summary { font-weight: 600; color: var(--muted); padding: 4px 0; }
+
+/* ---- Notices, code, tabs, tables, cards ---- */
+.notice { padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--context); color: var(--ink); font-size: 13px; line-height: 21px; }
+.notice strong { font-weight: 650; }
+.notice > .figma-icon, .notice-copy + .figma-icon { color: var(--muted); }
+.notice.success { background: var(--ok-bg); color: var(--success); border-color: color-mix(in srgb, var(--success) 28%, transparent); }
+.notice.error { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 28%, transparent); }
+.notice.warning { background: var(--warn-bg); color: var(--warn-ink); border-color: color-mix(in srgb, var(--warn-ink) 28%, transparent); }
+.code-block { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font: 12.5px/20px var(--mono); }
+.code-label { font: 500 11.5px/18px var(--mono); color: var(--code-label); margin-bottom: 6px; letter-spacing: 0; }
+.ui-tabs { height: auto; gap: 2px; padding: 3px; background: var(--context); border-radius: 11px; }
+.ui-tab { height: 34px; border-radius: 8px; padding: 0 12px; font: 600 13px/20px var(--ui); transition: background-color .15s, color .15s; }
+.ui-tab:hover { color: var(--ink); }
+.ui-tab.active { background: var(--surface); color: var(--teal-deep); box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / .12); }
+.data-table-wrap { border-radius: 12px; }
+.data-table th { background: transparent; border-bottom: 1px solid var(--line); color: var(--faint); font: 500 11.5px/18px var(--mono); padding: 10px 12px; letter-spacing: .02em; }
+.data-table td { padding: 10px 12px; border-top: 1px solid var(--divider-soft); }
+.data-table tbody tr:first-child td { border-top: 0; }
+.data-table tbody tr { transition: background-color .12s; }
+.data-table tbody tr:hover { background: var(--context); }
+.relation-card { border-radius: 10px; padding: 12px 14px; transition: border-color .15s, background-color .15s; }
+.relation-card:hover { border-color: var(--outline-strong); background: var(--context); }
+.chip { border-radius: 6px; }
+.layout-preview { border-radius: 10px; }
+
+/* ---- Menus and dropdowns: one item grammar ---- */
+.header-popover, .workspace-menu, .view-mode-menu, .topics, .context-menu { padding: 6px; min-width: 232px; border-radius: 12px; }
+.header-popover button, .workspace-menu-actions button, .view-mode-menu .view-option, .topics .topic, .context-menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; height: auto; padding: 0 10px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--ink); font: 500 13.5px/20px var(--ui); text-align: right; cursor: pointer; transition: background-color .12s, color .12s;
+}
+.header-popover button:hover, .workspace-menu-actions button:hover, .view-mode-menu .view-option:hover, .topics .topic:hover, .context-menu button:hover { background: var(--context); }
+.header-popover button:focus-visible, .workspace-menu-actions button:focus-visible, .view-option:focus-visible, .topics .topic:focus-visible, .context-menu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.header-popover button kbd { margin-inline-start: auto; font: 500 11px/1 var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; background: var(--surface); }
+.workspace-menu-head, .view-mode-menu h3 { padding: 8px 10px 6px; margin: 0; font: 600 12px/18px var(--ui); color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+.workspace-menu-head h2 { font: 600 12px/18px var(--ui); color: var(--muted); margin: 0; }
+.workspace-list { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; }
+.workspace-option { border-radius: 9px; padding: 8px 10px; }
+.workspace-option.active, .view-option.active, .topics .topic.active { background: var(--selected); }
+.workspace-menu-actions { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 2px; }
+.topics .topic .topic-count { margin-inline-start: auto; font: 500 12px/1 var(--mono); color: var(--muted); }
+.topics .topic .topic-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+#deleteWorkspaceButton { border-top: 0; margin-top: 2px; }
+.context-menu { box-shadow: 0 4px 14px rgb(var(--shadow-rgb) / .16); }
+.context-action.danger, .context-menu .danger { color: var(--danger); }
+
+/* ---- Command palette: top-anchored, keyboard first ---- */
+.quick-actions-dialog { --modal-width: 560px; margin: 12vh auto auto; max-height: min(68dvh, 520px); }
+.quick-actions-dialog .modal-header { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); }
+.quick-actions-dialog .modal-body { padding: 10px; gap: 6px; }
+.quick-actions-dialog #quickSearch { height: 46px; padding: 0 12px; font-size: 15px; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+.quick-actions-dialog #quickSearch:focus { background: transparent; border-bottom-color: var(--accent); box-shadow: none; }
+#quickActionList { display: flex; flex-direction: column; gap: 2px; overflow: auto; padding-top: 4px; }
+.quick-command { height: 40px; padding: 0 12px; border-radius: 9px; font: 500 14px/20px var(--ui); transition: background-color .12s; }
+.quick-command:hover, .quick-command:focus-visible { background: var(--selected); outline: none; }
+.quick-command kbd { font: 500 11px/1 var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; background: var(--surface); }
+
+/* ---- AI: a side sheet that keeps the map in view ---- */
+.drawer-dialog { width: min(440px, calc(100vw - 24px)); height: calc(100dvh - 24px); max-height: none; margin: 0; inset-block: 12px; inset-inline-start: auto; inset-inline-end: 12px; border-radius: 16px; }
+.drawer-dialog[open] { animation: sheet-in .22s var(--ease-out); }
+.drawer-dialog::backdrop { background: rgb(var(--shadow-rgb) / .14); }
+.ai-message.user { align-self: flex-start; max-width: 90%; background: var(--selected); color: var(--ink); padding: 10px 14px; border-radius: 12px; }
+.ai-message.status, .ai-message.error { padding: 10px 14px; border-radius: 10px; }
+.ai-suggestions .secondary-button { height: auto; min-height: 40px; padding: 8px 14px; font-weight: 500; }
+.ai-dialog textarea { height: 96px; }
+
+/* ---- Topic manager: rail and members read as one list ---- */
+.topic-rail { max-height: 380px; padding: 0; gap: 6px; }
+.topic-rail .choice { padding: 10px 12px; }
+.topic-editor-split { gap: 20px; }
+
+/* ---- Inspector sidebar ---- */
+.details-panel .modal-header { padding: 18px 18px 10px; }
+.details-panel .modal-header h2 { font: 600 16px/24px var(--mono); direction: ltr; text-align: right; padding-left: 40px; }
+.details-panel .modal-header p { font-size: 12.5px; }
+.details-panel .ui-tabs { margin-top: 2px; }
+.details-panel .modal-footer { padding: 12px 18px; flex-direction: row; }
+.details-panel .footer-actions { gap: 8px; }
+.details-panel .primary-button, .details-panel .secondary-button { height: 36px; min-height: 36px; padding: 0 14px; font-size: 13px; }
+
+/* ---- Small screens: dialogs become bottom sheets ---- */
+@media (max-width: 600px) {
+  dialog:not(.quick-actions-dialog):not(.drawer-dialog) { width: 100vw; max-width: none; margin: auto 0 0; border-radius: 16px 16px 0 0; border-bottom: 0; max-height: 92dvh; }
+  dialog[open]:not(.quick-actions-dialog) { animation-name: sheet-up; }
+  .drawer-dialog { inset: auto 0 0 0; width: 100vw; height: 88dvh; border-radius: 16px 16px 0 0; border-bottom: 0; margin: 0; }
+  .quick-actions-dialog { margin: 8vh 12px auto; width: calc(100vw - 24px); }
+  .footer-actions { flex-wrap: wrap; }
+  .form-grid, .edit-fields, .arrange-scope, .layout-comparison { grid-template-columns: 1fr; }
+  .topic-editor-split { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog[open], .drawer-dialog[open], dialog::backdrop { animation: none; }
+  .primary-button:active, .secondary-button:active, .ghost-button:active, .dialog-close:active { transform: none; }
+}
+/* Identifier fields stay LTR but sit at the reading start, under their Arabic labels. */
+.form-grid input, .edit-field input:not([type="checkbox"]), .ai-settings input, .code-dialog input, .workspace-field input { text-align: right; }
+.form-grid input::placeholder, .edit-field input::placeholder { text-align: right; }
+/* Chat: the conversation scrolls, the composer stays pinned under it. */
+.ai-dialog .modal-body { overflow: hidden; }
+#aiResponse { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 4px; }
+#aiForm { flex: none; }

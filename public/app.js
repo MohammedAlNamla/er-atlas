@@ -2048,9 +2048,14 @@ function openCodeDialog() {
 }
 function openQuickActions() {
   closeHeaderMenus();
+  const hints = { 'جدول جديد': 'T', 'إضافة علاقة': 'R', 'ترتيب الجداول': 'A', 'إظهار كامل المخطط': 'F' };
   const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
   const root = $('quickActionList'); root.replaceChildren();
-  for (const [label, action] of commands) root.append(uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'));
+  for (const [label, action] of commands) {
+    const command = uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'); command.dataset.label = label;
+    if (hints[label]) command.append(el('kbd', '', hints[label]));
+    root.append(command);
+  }
   $('quickSearch').value = ''; openDialog($('quickActionsDialog')); $('quickSearch').focus();
 }
 
@@ -2086,7 +2091,19 @@ function installEvents() {
   $('quickActionsButton').addEventListener('click', openQuickActions);
   $('themeButton').addEventListener('click', cycleTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (currentTheme() === 'auto') applyTheme('auto'); });
-  $('quickSearch').addEventListener('input', event => { for (const item of $('quickActionList').children) item.hidden = !item.textContent.includes(event.target.value.trim()); });
+  $('quickSearch').addEventListener('input', event => { for (const item of $('quickActionList').children) item.hidden = !item.dataset.label.includes(event.target.value.trim()); });
+  const visibleCommands = () => [...$('quickActionList').children].filter(item => !item.hidden);
+  $('quickSearch').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); visibleCommands()[0]?.click(); }
+    if (event.key === 'ArrowDown') { event.preventDefault(); visibleCommands()[0]?.focus(); }
+  });
+  $('quickActionList').addEventListener('keydown', event => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    const items = visibleCommands(), index = items.indexOf(document.activeElement);
+    if (event.key === 'ArrowUp' && index <= 0) $('quickSearch').focus();
+    else items[Math.max(0, Math.min(items.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))]?.focus();
+  });
   $('applyArrangementButton').addEventListener('click', () => {
     if (!state.arrangement?.proposed) { arrangeWithAi(); return; }
     if (applyArrangement()) $('arrangeDialog').close();

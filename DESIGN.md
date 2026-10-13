@@ -305,3 +305,19 @@ Light is `:root`; dark applies under `prefers-color-scheme: dark` unless `data-t
 - **Don't** use gradient text.
 - **Don't** give nodes a resting shadow or use hard offset shadows.
 - **Don't** thicken the node border above 1px or change node header and row heights in CSS alone.
+
+## Overlays
+
+Dialogs, sheets, menus, fields, notices, code blocks, tabs and tables share one grammar, defined in the final "Overlays" section of `public/atlas.css`.
+
+- **Dialogs:** 16px radius, 1px outline, soft shadow. Header carries a 19px title with a 13px muted subtitle and a ghost close button at the end edge; no divider. The footer is separated by a 1px rule; the primary action sits at the end. At 600px and below every dialog becomes a bottom sheet that slides up.
+- **Entrance:** modals scale from 0.97 and fade in 180ms with the shared ease-out curve; menus grow from their trigger (`pop-in`, 160ms); the AI conversation is a side sheet that slides in from the end edge and leaves the map visible. Nothing appears from `scale(0)`. Buttons press to `scale(.97)`. Reduced motion removes the movement.
+- **Fields:** 40px high, 10px radius, resting fill `--context` with no border, a hover outline, and an accent border plus a 3px accent ring on focus. Selects are custom (chevron, no native arrow). Identifier fields stay LTR but align to the reading start.
+- **Choice cards:** 10px radius; the checked card takes `--selected` and an accent border. Checkboxes and radios use native controls tinted with `--accent`.
+- **Notices:** neutral (`--context`, 1px outline) by default; success, warning and error tint with their own semantic colors. Violet is never used for a notice.
+- **Code blocks:** follow the theme (`--code-bg` is light in light mode) with a 1px outline and 12.5px mono.
+- **Tabs:** a segmented control on `--context`; the active tab is a raised surface with `--teal-deep` text.
+- **Menus and dropdowns:** every item is 38px, 8px radius, 13.5px/500, hover `--context`, active `--selected`, optional mono `kbd` hint at the end. Menu groups are separated by a 1px rule; destructive items are red and sit last.
+- **Command palette:** top-anchored (12vh), 560px wide, large search line, items with shortcut hints, arrow-key and Enter navigation.
+
+**Do:** reuse these item, field and card shapes for any new overlay. **Don't:** add a new radius, a saturated notice, a black code block in light mode, or a modal for a task that a menu or the inspector can carry.
