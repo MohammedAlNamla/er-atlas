@@ -234,7 +234,7 @@ Flat with one soft lift. Surfaces are separated by 1px outlines and tone (paper,
 - **Selection ring** (`0 0 0 2px accent at 35%` plus the violet 1px border): the selected table node.
 
 ### Named Rules
-**The Outline First Rule.** A boundary is a 1px outline before it is a shadow. Nodes carry no resting shadow at all.
+**The Outline First Rule.** A boundary is a 1px outline before it is a shadow. Nodes carry only a hairline resting shadow; hover and selection lift them.
 
 ## Shapes
 
@@ -269,10 +269,10 @@ Hang 8px below their pill, 12px radius, surface with hairline and soft shadow, 4
 360px, 14px radius, slides in on the start side (panel-in 200ms). Header, scrolling body that fades out at the bottom, footer. Chips and key cells inside are muted, not violet.
 
 ### Table node
-Outlined surface card, 320px, 10px radius, 1px node-border. The header (48px) carries a 3px topic-color band as an inset shadow so geometry is unchanged. Hover darkens the border to a soft violet; selected is a violet border with a 2px ring; neighbors use the mid outline; dimmed nodes drop to line-color border and muted name. Proposed nodes are dashed. Columns are 40px mono rows with 1px soft dividers and 5px relation dots. Below 42% zoom each node becomes a labelled tile: columns hide, the name grows to 36px and the topic band thickens to 8px.
+Compact ERD card: 300px, 10px radius, 1px node-border, hairline resting shadow (hover lifts softly). The 52px header is tinted with the topic color and holds the name (15px/650) over a mono `schema · N أعمدة` line; proposed tables add a مسودة badge and a dashed border. Rows are 32px: a PK/FK text badge (amber / violet tint), the column in mono (semibold for primary keys), the type in faint mono, and `?` when nullable; inset 1px dividers. Up to eight columns preview, keys first; the 32px footer opens the full list. Selected: accent border and 3px ring; unrelated tables recede to 55%. Below 42% zoom each table becomes a labelled tile with an 8px topic band. Geometry lives in public/ui.js and must change together with the CSS.
 
 ### Edges
-SVG edges and the canvas renderer read the wire tokens: 1.6px at 75% opacity by default, trace 2.25px, selected 2.5px, proposed dashed 6/6. Cardinality labels are mono 600 13px with a paper halo.
+Crow's-foot notation, from schema evidence only: at the foreign-key end a crow's foot (many) or a bar (one) when uniqueness is known; at the referenced key two bars (exactly one) or a circle plus bar (zero or one, when the FK is nullable). Markers are SVG markers with auto-start-reverse and are redrawn the same way in the canvas renderer. Wires read the wire tokens: 1.5px at 80% by default, 2.2px on hover, trace 2.25px, selected 2.6px, proposed dashed 6/6, unrelated 28%. No text labels.
 
 ### Catalog and topic overview
 The catalog is a sortable list on a surface band: 64px grid rows (name mono 500, counts, topic chips with their color dot). Topic cards are 12px-radius cards with a 4px topic band across the top, a pill count tinted from the topic color, and the first tables as mono chips; hover lifts 2px.
