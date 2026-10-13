@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../public/assets/fonts/fonts.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  :root { --mono: "Roboto Mono", monospace; --ui: "Noto Sans Arabic", system-ui, sans-serif; }
+  .light { --bg:#e9e9ef; --surface:#fff; --ink:#12141c; --muted:#5d6170; --line:#d5d6de; --soft:#f4f4f7; --accent:#7b4bf0; --accent-ink:#fff; --sel:#f0eaff; --danger:#c2334d; --scrim:rgba(15,17,23,.45); }
+  .dark { --bg:#08080a; --surface:#1b1b22; --ink:#f3f3f7; --muted:#a6a8b6; --line:#3a3a46; --soft:#24242d; --accent:#9a73ff; --accent-ink:#0e0e11; --sel:#2d2552; --danger:#ff7d92; --scrim:rgba(0,0,0,.6); }
+  body { width: 1600px; display: grid; grid-template-columns: 1fr 1fr; font-family: var(--ui); }
+  .stage { height: 900px; background: var(--bg); position: relative; padding: 56px 40px; display: flex; flex-direction: column; align-items: center; gap: 28px; overflow: hidden; color: var(--ink); }
+  .stage::before { content: ""; position: absolute; inset: 0; background: var(--scrim); backdrop-filter: blur(3px); }
+  .label { position: relative; font-size: 13px; color: var(--muted); align-self: flex-start; }
+  .dialog { position: relative; width: 520px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.28); }
+  .dialog.small { width: 420px; }
+  header { padding: 24px 24px 8px; position: relative; }
+  h2 { font-size: 20px; line-height: 30px; font-weight: 700; padding-inline-end: 40px; }
+  header p { font-size: 14px; line-height: 22px; color: var(--muted); margin-top: 4px; }
+  .x { position: absolute; top: 18px; inset-inline-end: 18px; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); }
+  .body { padding: 16px 24px 8px; display: flex; flex-direction: column; gap: 20px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .field .input { height: 44px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0 14px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+  .field .input.mono { font-family: var(--mono); font-size: 14px; direction: ltr; justify-content: flex-start; }
+  .field .input.focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .ok { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink); }
+  .ok i { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 700; }
+  .sql { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; }
+  .sql span { color: var(--muted); font-weight: 400; font-size: 13px; font-family: var(--mono); direction: ltr; }
+  footer { padding: 20px 24px 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  footer .hint { margin: 0; max-width: 240px; }
+  .actions { display: flex; gap: 10px; flex-direction: row-reverse; }
+  .btn { height: 44px; padding: 0 20px; border-radius: 10px; font: 600 15px var(--ui); display: inline-flex; align-items: center; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.danger { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+  .btn.ghost { border-color: transparent; }
+  .list { display: flex; flex-direction: column; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; font-size: 15px; border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; }
+  .item.sel { background: var(--sel); font-weight: 600; }
+  .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+  .item.sel .radio { border: 5px solid var(--accent); }
+  .item small { display: block; font-size: 13px; color: var(--muted); font-weight: 400; }
+</style></head><body>
+<div class="stage light">
+  <div class="label">المقترح · فاتح</div>
+  <div class="dialog">
+    <header><h2>إضافة علاقة</h2><p>اربط عمودًا بمفتاح أساسي في جدول آخر.</p><div class="x">✕</div></header>
+    <div class="body">
+      <div class="row">
+        <div class="field"><label>الجدول المصدر</label><div class="input mono focus">products<span>⌄</span></div></div>
+        <div class="field"><label>الجدول الهدف</label><div class="input mono">categories<span>⌄</span></div></div>
+        <div class="field"><label>عمود المصدر</label><div class="input mono">category_id<span>⌄</span></div></div>
+        <div class="field"><label>عمود الهدف</label><div class="input mono">id<span>⌄</span></div></div>
+      </div>
+      <div class="ok"><i>✓</i> النوعان متوافقان · uuid → uuid</div>
+      <div class="sql"><div>معاينة SQL</div><span>ALTER TABLE … ADD FOREIGN KEY ⌄</span></div>
+    </div>
+    <footer><p class="hint">يُحفظ في المسودة ويمكن التراجع عنه.</p><div class="actions"><span class="btn primary">إضافة إلى المسودة</span><span class="btn">إلغاء</span></div></footer>
+  </div>
+  <div class="dialog small">
+    <header><h2>تجاهل المسودة؟</h2><p>سيُزال تغييران من هذه المساحة. لا تتغير قاعدة البيانات.</p></header>
+    <footer><span></span><div class="actions"><span class="btn danger">تجاهل المسودة</span><span class="btn">إلغاء</span></div></footer>
+  </div>
+</div>
+<div class="stage dark">
+  <div class="label">المقترح · ليلي</div>
+  <div class="dialog">
+    <header><h2>مساحة عمل جديدة</h2><p>لكل مساحة خريطتها ومسودتها ومحادثاتها المستقلة.</p><div class="x">✕</div></header>
+    <div class="body">
+      <div class="field"><label>اسم المساحة</label><div class="input focus">متجر Sufra</div></div>
+      <div class="list">
+        <div class="item sel"><span class="radio"></span><div>قاعدة بيانات<small>اتصال PostgreSQL وخريطة مستقلة</small></div></div>
+        <div class="item"><span class="radio"></span><div>أفكار<small>مساحة فارغة للرسم والنقاش مع AI</small></div></div>
+      </div>
+    </div>
+    <footer><span></span><div class="actions"><span class="btn primary">إنشاء المساحة</span><span class="btn">إلغاء</span></div></footer>
+  </div>
+  <div class="dialog small">
+    <header><h2>حذف مساحة العمل؟</h2><p>ستُحذف الخريطة والمواضيع والمسودة من هذا الجهاز. لا يمكن التراجع.</p></header>
+    <footer><span></span><div class="actions"><span class="btn danger">حذف المساحة</span><span class="btn">إلغاء</span></div></footer>
+  </div>
+</div>
+</body></html>
