@@ -599,13 +599,18 @@
         </button>
         <h2 id="aiDialogTitle">اسأل عن المخطط</h2>
         <p id="aiContext">مساعد بجانب الخريطة، مع سياق واضح لكل سؤال.</p>
-        <button
-          id="conversationSettingsButton"
-          class="text-button"
-          type="button"
-        >
-          إعدادات المساعد
-        </button>
+        <div class="header-links">
+          <button
+            id="conversationSettingsButton"
+            class="text-button"
+            type="button"
+          >
+            إعدادات المساعد
+          </button>
+          <button id="clearAiButton" class="text-button" type="button" hidden>
+            محادثة جديدة
+          </button>
+        </div>
       </div>
       <div class="modal-body">
         <div id="aiResponse" class="ai-response" aria-live="polite"></div>
@@ -766,6 +771,7 @@
           role="status"
           aria-live="polite"
         ></p>
+        <ul id="arrangeZones" class="arrange-zones"></ul>
         <label class="choice"
           ><input id="persistArrangement" type="checkbox" checked /><span
             ><strong>احفظ ترتيب هذا العرض</strong

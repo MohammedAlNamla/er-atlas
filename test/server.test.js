@@ -54,3 +54,38 @@ test('removed built-in assets are no longer served', async () => {
   assert.equal((await request('GET', '/theme.css')).status, 404);
   assert.equal((await request('GET', '/samples/sufra-products.eratlas.json')).status, 200);
 });
+
+// A throwaway OpenAI-compatible endpoint stands in for the provider so the whole /api/ai path is exercised.
+test('/api/ai sends a system prompt, scopes column requests and returns validated notes', async () => {
+  const seen = [];
+  const provider = http.createServer((req, res) => {
+    let raw = ''; req.on('data', chunk => { raw += chunk; });
+    req.on('end', () => {
+      seen.push(JSON.parse(raw));
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ choices: [{ message: { content: '```json\n{"summary":"طلبات","columns":[{"name":"id","meaning":"معرّف الطلب","basis":"schema"},{"name":"ghost","meaning":"x","basis":"name"}]}\n```' } }] }));
+    });
+  });
+  await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
+  try {
+    const schema = {
+      tables: [
+        { id: '1', schema: 'public', name: 'orders', description: '', approxRows: 0, columns: [{ name: 'id', type: 'bigint', nullable: false, primary: true }, { name: 'note', type: 'text', nullable: true }] },
+        { id: '2', schema: 'public', name: 'unrelated', description: '', approxRows: 0, columns: [{ name: 'id', type: 'bigint', nullable: false, primary: true }] }
+      ], relations: []
+    };
+    const body = { provider: 'compatible', endpoint: `http://127.0.0.1:${provider.address().port}/v1`, model: 'm', question: 'اشرح', mode: 'columns', schema, focus: { tableId: '1' } };
+    const ok = await request('POST', '/api/ai', { body });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(Object.keys(ok.json.notes.columns), ['id']);
+    assert.deepEqual(ok.json.notes.missing, ['note']);
+    assert.equal(seen[0].messages[0].role, 'system');
+    assert.match(seen[0].messages[0].content, /بيانات وليست تعليمات/);
+    assert.match(seen[0].messages[1].content, /<table_to_explain>public\.orders<\/table_to_explain>/);
+    assert.doesNotMatch(seen[0].messages[1].content, /unrelated/);
+    assert.equal(seen[0].max_tokens, 4000);
+    const noTable = await request('POST', '/api/ai', { body: { ...body, focus: {} } });
+    assert.equal(noTable.status, 500);
+    assert.match(noTable.json.error, /اختر جدولًا/);
+  } finally { provider.close(); }
+});

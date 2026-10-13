@@ -57,3 +57,13 @@ test('Eloquent table names follow Laravel pluralization', () => {
   assert.equal(laravelPlural('status'), 'statuses');
   assert.equal(laravelPlural('equipment'), 'equipment');
 });
+
+test('column notes travel with the file and only for columns that exist', () => {
+  const notes = {
+    a: { summary: 'الطلبات', columns: { user_id: { text: 'صاحب الطلب', basis: 'schema' }, ghost: { text: 'لا وجود له', basis: 'name' }, id: { text: '  ', basis: 'user' } } },
+    nope: { summary: 'جدول غير موجود', columns: {} }
+  };
+  const parsed = parseExport(JSON.stringify(buildExport({ name: 'Shop', kind: 'database', schema: schema(), columnNotes: notes })));
+  assert.deepEqual(parsed.columnNotes, { a: { summary: 'الطلبات', columns: { user_id: { text: 'صاحب الطلب', basis: 'schema' } } } });
+  assert.deepEqual(parseExport(JSON.stringify(buildExport({ name: 'Shop', kind: 'database', schema: schema() }))).columnNotes, {});
+});

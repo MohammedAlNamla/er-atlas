@@ -48,8 +48,26 @@ export function validateSchema(schema) {
     ...(typeof schema.fingerprint === 'string' ? { fingerprint: schema.fingerprint } : {}) };
 }
 
-export function buildExport({ name, kind, schema, topics = [], positions = {}, operations = [], cursor = 0 }) {
-  return { format: FORMAT, version: VERSION, exportedAt: new Date().toISOString(), name, kind, schema, topics, positions, operations, cursor };
+// Column notes written by the user or by AI. A note only survives for a column that still exists in the file.
+export function readColumnNotes(value, schema) {
+  const notes = {};
+  if (!value || typeof value !== 'object') return notes;
+  for (const table of schema.tables) {
+    const entry = value[table.id];
+    if (!entry || typeof entry !== 'object') continue;
+    const columns = {};
+    for (const column of table.columns) {
+      const note = entry.columns?.[column.name];
+      if (typeof note?.text === 'string' && note.text.trim()) columns[column.name] = { text: note.text.trim().slice(0, 240), basis: ['documented', 'schema', 'name', 'user'].includes(note.basis) ? note.basis : 'user' };
+    }
+    const summary = typeof entry.summary === 'string' ? entry.summary.trim().slice(0, 300) : '';
+    if (Object.keys(columns).length || summary) notes[table.id] = { summary, columns };
+  }
+  return notes;
+}
+
+export function buildExport({ name, kind, schema, topics = [], positions = {}, operations = [], cursor = 0, columnNotes = {} }) {
+  return { format: FORMAT, version: VERSION, exportedAt: new Date().toISOString(), name, kind, schema, topics, positions, operations, cursor, columnNotes: readColumnNotes(columnNotes, schema) };
 }
 
 export function parseExport(source) {
@@ -67,7 +85,7 @@ export function parseExport(source) {
   return {
     name: typeof data.name === 'string' && data.name.trim() ? data.name.trim().slice(0, 80) : schema.database,
     kind: ['database', 'ideas', 'demo'].includes(data.kind) ? data.kind : 'ideas',
-    schema, topics: Array.isArray(data.topics) ? data.topics : [], positions, operations,
+    schema, topics: Array.isArray(data.topics) ? data.topics : [], positions, operations, columnNotes: readColumnNotes(data.columnNotes, schema),
     cursor: Math.max(0, Math.min(operations.length, Number(data.cursor) || 0))
   };
 }

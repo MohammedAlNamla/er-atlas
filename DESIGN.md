@@ -271,6 +271,12 @@ Hang 8px below their pill, 12px radius, surface with hairline and soft shadow, 4
 ### Table node
 Compact ERD card: 300px, 10px radius, 1px node-border, hairline resting shadow (hover lifts softly). The 52px header is tinted with the topic color and holds the name (15px/650) over a mono `schema · N أعمدة` line; proposed tables add a مسودة badge and a dashed border. Rows are 32px: a PK/FK text badge (amber / violet tint), the column in mono (semibold for primary keys), the type in faint mono, and `?` when nullable; inset 1px dividers. Up to eight columns preview, keys first; the 32px footer opens the full list. Selected: accent border and 3px ring; unrelated tables recede to 55%. Below 42% zoom each table becomes a labelled tile with an 8px topic band. Geometry lives in public/ui.js and must change together with the CSS.
 
+### Column list
+Inspector and expanded table share one list: per column a mono name (LTR, semibold) with its PK/FK badge and type on the same line, then one muted sentence for the note. A note carries a small basis tag: database comment and code-backed notes are violet, schema-derived are neutral, name-only guesses are amber. Notes written by hand are editable in place (click, Enter saves, Esc cancels); database comments are read-only. The bar above the list holds the table summary, the AI action, and the explained count; on phones only errors show there.
+
+### AI answers
+Answers render as short paragraphs, `##` headings and bullets with identifiers in LTR code chips. `[مثبت]` (violet) marks what the schema states, `[استنتاج]` (amber) what was inferred. The scope shown under the dialog title is exactly what a question sends. A new answer opens at its first line, not at the end.
+
 ### Edges
 Crow's-foot notation, from schema evidence only: at the foreign-key end a crow's foot (many) or a bar (one) when uniqueness is known; at the referenced key two bars (exactly one) or a circle plus bar (zero or one, when the FK is nullable). Markers are SVG markers with auto-start-reverse and are redrawn the same way in the canvas renderer. Wires read the wire tokens: 1.5px at 80% by default, 2.2px on hover, trace 2.25px, selected 2.6px, proposed dashed 6/6, unrelated 28%. No text labels.
 

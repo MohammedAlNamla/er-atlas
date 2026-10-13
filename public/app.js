@@ -12,7 +12,7 @@ const state = {
   drag: null, groups: [], toastTimer: null, suppressClickUntil: 0,
   base: null, operations: [], cursor: 0, customGroups: null,
   linkMode: false, linkSource: null, editContext: null, plan: null, handoffPrompt: '', hoveredTable: null, aiLayout: null,
-  workspaces: [], workspaceId: null, connectionLive: false, aiMessages: [], editingWorkspace: false,
+  workspaces: [], workspaceId: null, connectionLive: false, aiMessages: [], columnBusy: null, columnError: '', columnController: null, editingWorkspace: false,
   edgeRoutes: null, edgeFrame: null, viewFrame: null, routeGeneration: 0, routeWorker: null,
   viewMode: 'map', focusTable: null, focusPositions: null, topicPositions: null,
   inspectorTab: 'columns', topicEditorId: null, arrangement: null, arrangementMode: 'relations', aiController: null, layoutController: null
@@ -98,26 +98,79 @@ function renderEmptyWorkspace() {
   $('emptyPrimaryButton').textContent = ideas ? '+ ارسم جدولًا' : 'ربط PostgreSQL';
   $('emptyAiButton').hidden = !ideas;
 }
+// What a question will actually send: the selection wins, then the open topic or focus, then everything.
+function aiScope() {
+  if (!state.schema?.tables) return { kind: 'all', label: 'المخطط', schema: { tables: [], relations: [] }, focus: {} };
+  const table = state.schema.tables.find(item => item.id === state.selectedTable);
+  if (table) return { kind: 'table', table, label: `جدول ${table.name} وجيرانه`, schema: state.schema, focus: { tableId: table.id } };
+  const relation = state.schema.relations.find(item => item.id === state.selectedRelation);
+  if (relation) return { kind: 'relation', relation, label: `علاقة ${relation.name}`, schema: state.schema, focus: { relationId: relation.id } };
+  if (state.viewMode === 'focus' || (state.viewMode === 'topics' && state.topic !== 'all')) {
+    const tables = visibleTables();
+    const name = state.viewMode === 'focus' ? `جدول ${state.schema.tables.find(item => item.id === state.focusTable)?.name || ''} وجيرانه` : `موضوع ${state.groups.find(group => group.id === state.topic)?.label || ''}`;
+    return { kind: 'topic', label: `${name} · ${tables.length} جدول`, schema: { ...state.schema, tables, relations: visibleRelations() }, focus: {} };
+  }
+  return { kind: 'all', label: `كل المخطط · ${state.schema.tables.length} جدول`, schema: state.schema, focus: {} };
+}
+function aiSuggestions(scope) {
+  if (activeWorkspace()?.kind === 'ideas') return ['ما الجداول التي تحتاجها هذه الفكرة؟', 'ما العلاقات الناقصة في مسودتي؟', 'اقترح أعمدة الجدول الأساسي'];
+  if (scope.kind === 'table') return [`اشرح دور ${scope.table.name} وأهم أعمدته`, 'ماذا يحدث للجداول المرتبطة عند حذف صف منه؟', 'هل تصميم مفاتيحه وعلاقاته سليم؟'];
+  if (scope.kind === 'relation') return ['اشرح هذه العلاقة بجملة بسيطة', 'ما أثر الحذف والتعديل عبرها؟', 'هل هي واحد-إلى-كثير أم اختيارية؟'];
+  if (scope.kind === 'topic') return ['ما وظيفة هذه المجموعة من الجداول؟', 'ما الجدول المحوري هنا ولماذا؟', 'كيف تتدفق البيانات بين هذه الجداول؟'];
+  return ['ما الجداول المحورية في هذا المخطط؟', 'اشرح العلاقات الرئيسية بين الجداول', 'راجع تصميم المفاتيح الأجنبية وأثر الحذف'];
+}
+// Small, safe markdown: headings, bullets, **bold** and `code`. Everything is built with textContent.
+function richText(source) {
+  const root = el('div', 'rich');
+  const inline = (parent, text) => {
+    for (const part of text.split(/(\`[^\`]+\`|\*\*[^*]+\*\*)/g)) {
+      if (!part) continue;
+      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) parent.append(el('code', '', part.slice(1, -1)));
+      else if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        const inner = part.slice(2, -2);
+        parent.append(el('strong', inner === '[مثبت]' ? 'tag-fact' : inner === '[استنتاج]' ? 'tag-guess' : '', inner));
+      } else parent.append(document.createTextNode(part));
+    }
+  };
+  let list = null;
+  for (const raw of source.split('\n')) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { list = null; continue; }
+    const heading = /^#{1,4}\s+(.*)$/.exec(line), bullet = /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/.exec(line);
+    if (bullet) { if (!list) { list = el('ul'); root.append(list); } const item = el('li'); inline(item, bullet[1]); list.append(item); continue; }
+    list = null;
+    const block = el(heading ? 'h4' : 'p'); inline(block, heading ? heading[1] : line); root.append(block);
+  }
+  return root;
+}
+function answerNodes(text) {
+  return String(text).split(/```(?:[^\n]*)\n?([\s\S]*?)```/g).flatMap((part, index) => !part.trim() ? []
+    : [index % 2 ? codeBlock(part.trim(), /\b(?:CREATE|ALTER|SELECT|INSERT|UPDATE|DELETE|BEGIN|DROP|COMMENT)\b/i.test(part) ? 'SQL' : 'AI') : richText(part.trim())]);
+}
 function renderAiMessages(status = '', failed = false) {
   const box = $('aiResponse'); box.replaceChildren();
+  const scope = aiScope();
+  $('clearAiButton').hidden = !state.aiMessages.length;
   if (!state.aiMessages.length && !status) {
     box.append(el('h3', '', 'ماذا تريد أن تفهم؟'), el('p', 'ai-empty', activeWorkspace()?.kind === 'ideas' ? 'اكتب فكرتك وابدأ النقاش.' : 'اختر سؤالًا أو اكتب سؤالك مباشرة.'));
     const suggestions = el('div', 'ai-suggestions');
-    for (const question of ['اشرح العلاقات بين الجداول الظاهرة', 'لماذا يظهر جدول في أكثر من موضوع؟', 'راجع تصميم المفاتيح الأجنبية']) suggestions.append(uiButton(question, () => { $('aiQuestion').value = question; $('aiQuestion').focus(); }));
-    box.append(suggestions, notice('سياق السؤال: المخطط', 'نرسل البنية والعلاقات والمحادثة، دون صفوف البيانات أو كلمة مرور PostgreSQL.'));
+    for (const question of aiSuggestions(scope)) suggestions.append(uiButton(question, () => { $('aiQuestion').value = question; $('aiQuestion').focus(); }));
+    box.append(suggestions, notice(`السياق المرسل: ${scope.label}`, 'نرسل البنية والعلاقات والتعليقات والمحادثة، دون صفوف البيانات أو كلمة مرور PostgreSQL. حدّد جدولًا على الخريطة لتركيز الإجابة عليه.'));
   }
   for (const message of state.aiMessages) {
     const bubble = el('div', `ai-message ${message.role}`);
     if (message.role === 'user') bubble.textContent = message.content;
-    else for (const [index, part] of message.content.split(/```(?:[^\n]*)\n?([\s\S]*?)```/g).entries()) {
-      if (!part.trim()) continue;
-      bubble.append(index % 2 ? codeBlock(part.trim(), 'AI') : el('div', '', part.trim()));
+    else {
+      bubble.append(...answerNodes(message.content));
+      const actions = el('div', 'ai-message-actions'); actions.append(uiButton('نسخ الإجابة', () => copyText(message.content), 'text-button')); bubble.append(actions);
     }
     box.append(bubble);
   }
   if (status) box.append(el('div', `ai-message ${failed ? 'error' : 'status'}`, status));
   if (failed) box.append(uiButton('إعدادات المساعد', () => openDialog($('aiSettingsDialog'))), uiButton('إعادة المحاولة', () => $('aiForm').requestSubmit()));
-  box.scrollTop = box.scrollHeight;
+  // A new answer is read from its first line; only a pending status or error jumps to the end.
+  const latest = box.querySelector('.ai-message.assistant:last-of-type');
+  box.scrollTop = latest && !status ? Math.max(0, latest.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8) : box.scrollHeight;
 }
 function saveAiMessages() { store.setItem(`${storageKey()}.conversation`, JSON.stringify(state.aiMessages)); }
 async function activateWorkspace(id, { initial = false, live = false } = {}) {
@@ -743,7 +796,7 @@ function makeNode(table) {
   for (const column of previewColumns(table, nodeExpanded(table))) {
     const row = el('div', `column${involved.has(column.name) ? ' has-line' : ''}${column.primary ? ' pk' : ''}${column.kind === 'proposed' ? ' proposed' : ''}`);
     row.dataset.column = column.name;
-    row.title = `${column.name} · ${column.type}${column.nullable ? ' · nullable' : ' · not null'}`;
+    row.title = columnTitle(table, column);
     const badge = el('span', `col-key ${column.primary ? 'pk' : column.foreign ? 'fk' : 'none'}`, column.primary ? 'PK' : column.foreign ? 'FK' : '');
     const nullable = el('span', 'col-null', column.nullable ? '?' : ''); if (column.nullable) nullable.title = 'nullable';
     row.append(badge, el('span', 'col-name', column.name), el('span', 'col-type', column.type), nullable);
@@ -1039,6 +1092,8 @@ function searchMatches(search) {
 }
 
 function updateEmphasis() {
+  const scopeKey = `${state.selectedTable}|${state.selectedRelation}|${state.viewMode}|${state.topic}|${state.focusTable}`;
+  if (scopeKey !== state.aiScopeKey) { state.aiScopeKey = scopeKey; if ($('aiDialog').open) { updateAiSettings(); if (!state.aiMessages.length && !state.aiController) renderAiMessages(); } }
   const active = state.groups.find(group => group.id === state.topic)?.ids;
   const search = $('searchInput').value.trim().toLowerCase();
   const matches = search ? searchMatches(search) : null;
@@ -1259,16 +1314,132 @@ function confirmAction(title, description, message, apply, label = 'حذف من 
     uiButton('إلغاء', () => dialog.close())
   ])); openDialog(dialog);
 }
-function columnTable(table, expanded = false, query = '') {
-  const rows = table.columns.filter(column => `${column.name} ${column.type}`.toLowerCase().includes(query.toLowerCase())).map(column => {
+// Column notes. A comment in the database always wins; then what you wrote; then what AI explained.
+const NOTE_BASIS = { db: 'من قاعدة البيانات', documented: 'من التعليق أو الكود', schema: 'من بنية المخطط', name: 'تخمين من الاسم', user: 'كتبته أنت' };
+function readColumnNotesStore() {
+  if (state.columnNotesCache) return state.columnNotesCache;
+  let value = {};
+  try {
+    const saved = JSON.parse(store.getItem(`${storageKey()}.columnNotes`) || '{}');
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) value = saved;
+  } catch { /* unreadable notes are ignored */ }
+  return (state.columnNotesCache = value);
+}
+function writeColumnNotes() { store.setItem(`${storageKey()}.columnNotes`, JSON.stringify(readColumnNotesStore())); }
+function columnNote(table, column) {
+  if (column.description) return { text: column.description, basis: 'db' };
+  return readColumnNotesStore()[table.id]?.columns?.[column.name] || null;
+}
+function columnTitle(table, column) {
+  const note = columnNote(table, column);
+  return `${column.name} · ${column.type}${column.nullable ? ' · nullable' : ' · not null'}${note ? `\n${note.text}` : ''}`;
+}
+function applyColumnTitles(tableId) {
+  const table = state.schema.tables.find(item => item.id === tableId); if (!table) return;
+  for (const row of document.querySelectorAll(`.table-node[data-table="${CSS.escape(tableId)}"] .column`)) {
+    const column = table.columns.find(item => item.name === row.dataset.column);
+    if (column) row.title = columnTitle(table, column);
+  }
+}
+function setColumnNote(table, columnName, text, basis = 'user') {
+  const entry = (readColumnNotesStore()[table.id] ||= { summary: '', columns: {} });
+  entry.columns ||= {};
+  const clean = text.trim().slice(0, 240);
+  if (clean) entry.columns[columnName] = { text: clean, basis }; else delete entry.columns[columnName];
+  writeColumnNotes(); applyColumnTitles(table.id);
+}
+function clearAiColumnNotes(table) {
+  const entry = readColumnNotesStore()[table.id]; if (!entry) return;
+  for (const [name, note] of Object.entries(entry.columns || {})) if (note.basis !== 'user') delete entry.columns[name];
+  entry.summary = ''; writeColumnNotes(); applyColumnTitles(table.id); state.columnError = ''; refreshColumnViews();
+}
+function refreshColumnViews() {
+  if (!$('details').hidden && state.inspectorTab === 'columns') renderDetails();
+  if ($('tableDialog').open) state.redrawColumns?.();
+}
+function columnNoteLine(table, column, refresh) {
+  const note = columnNote(table, column), line = el('div', 'column-note');
+  const edit = () => {
+    const input = el('input', 'column-note-input'); input.value = note?.text || ''; input.maxLength = 240;
+    input.placeholder = 'ماذا يخزّن هذا العمود؟'; input.setAttribute('aria-label', `شرح العمود ${column.name}`);
+    let done = false;
+    const finish = save => { if (done) return; done = true; if (save) setColumnNote(table, column.name, input.value, 'user'); refresh(); };
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); finish(true); }
+      else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+    line.replaceChildren(input); input.focus(); input.select();
+  };
+  if (note?.basis === 'db') line.append(el('span', 'column-note-text', note.text), el('span', 'note-basis db', NOTE_BASIS.db));
+  else if (note) {
+    const text = uiButton(note.text, edit, 'column-note-text editable'); text.title = 'انقر لتعديل الشرح';
+    line.append(text, el('span', `note-basis ${note.basis}`, NOTE_BASIS[note.basis] || ''));
+  } else line.append(uiButton('+ أضف شرحًا', edit, 'column-note-add'));
+  return line;
+}
+function columnList(table, { expanded = false, query = '', refresh = refreshColumnViews } = {}) {
+  const list = el('ul', 'column-list');
+  const needle = query.toLowerCase();
+  for (const column of table.columns.filter(item => `${item.name} ${item.type}`.toLowerCase().includes(needle))) {
+    const item = el('li', 'column-item');
     const name = uiButton(column.name, () => openEditor('editColumn', { tableId: table.id, columnName: column.name }), 'column-name-action');
     name.title = `تعديل العمود ${column.name}`;
-    const key = el('span', 'column-key-cell', column.primary ? 'PK' : column.foreign ? 'FK' : '');
-    return expanded ? [name, column.type, key, column.nullable ? 'YES' : 'NO', column.default || '—'] : [name, column.type, key];
-  });
-  const wrap = dataTable(expanded ? ['COLUMN', 'TYPE', 'KEY', 'NULLABLE', 'DEFAULT'] : ['COLUMN', 'TYPE', 'KEY'], rows);
-  if (!rows.length) wrap.append(el('p', 'table-empty', query ? 'لا توجد أعمدة تطابق البحث.' : 'هذا الجدول لا يحتوي أعمدة بعد.'));
-  return wrap;
+    const head = el('div', 'column-item-head'); head.append(name);
+    if (column.primary || column.foreign) head.append(el('span', `col-key ${column.primary ? 'pk' : 'fk'}`, column.primary ? 'PK' : 'FK'));
+    head.append(el('span', 'column-item-type', column.type));
+    item.append(head, columnNoteLine(table, column, refresh));
+    if (expanded) {
+      const facts = el('div', 'column-facts');
+      if (column.nullable) facts.append(el('span', 'chip mono', 'NULL'));
+      if (column.unique) facts.append(el('span', 'chip mono', 'UNIQUE'));
+      if (column.default) facts.append(el('span', 'chip mono', `DEFAULT ${column.default}`));
+      if (facts.children.length) item.append(facts);
+    }
+    list.append(item);
+  }
+  if (!list.children.length) list.append(el('li', 'table-empty', query ? 'لا توجد أعمدة تطابق البحث.' : 'هذا الجدول لا يحتوي أعمدة بعد.'));
+  return list;
+}
+function columnNotesBar(table) {
+  const bar = el('div', 'column-notes-bar'), busy = state.columnBusy === table.id;
+  const summary = table.description || readColumnNotesStore()[table.id]?.summary;
+  if (summary) bar.append(el('p', 'column-summary', summary));
+  const explained = table.columns.filter(column => columnNote(table, column)).length;
+  const actions = el('div', 'column-notes-actions');
+  const status = el('span', `field-hint${state.columnError && !busy ? ' error' : ''}`, busy ? 'AI يقرأ بنية الجدول وعلاقاته…' : state.columnError || `${explained} من ${table.columns.length} أعمدة لها شرح`);
+  status.setAttribute('role', 'status');
+  const run = uiButton(busy ? 'إيقاف' : explained ? 'أعد الشرح بالـAI' : 'اشرح الأعمدة بالـAI', () => busy ? state.columnController?.abort() : explainColumns(table.id), 'secondary-button');
+  actions.append(status, run);
+  if (!busy && Object.values(readColumnNotesStore()[table.id]?.columns || {}).some(note => note.basis !== 'user')) actions.append(uiButton('مسح شروح AI', () => clearAiColumnNotes(table), 'text-button'));
+  bar.append(actions);
+  return bar;
+}
+async function explainColumns(tableId) {
+  const table = state.schema.tables.find(item => item.id === tableId);
+  if (!table || state.columnBusy) return;
+  const workspaceId = state.workspaceId, signature = JSON.stringify(table.columns.map(column => [column.name, column.type, column.nullable, column.primary, column.foreign]));
+  const controller = new AbortController();
+  state.columnController = controller; state.columnBusy = tableId; state.columnError = ''; refreshColumnViews();
+  try {
+    const relations = state.schema.relations.filter(relation => relation.source === tableId || relation.target === tableId);
+    const near = new Set([tableId, ...relations.flatMap(relation => [relation.source, relation.target])]);
+    const scoped = { ...state.schema, tables: state.schema.tables.filter(item => near.has(item.id)), relations };
+    const data = await askAi('columns', `اشرح أعمدة الجدول ${table.schema}.${table.name}`, scoped, controller.signal, { focus: { tableId }, evidence: sourceEvidence(tableId).slice(0, 8) });
+    if (workspaceId !== state.workspaceId) return;
+    const current = state.schema.tables.find(item => item.id === tableId);
+    if (!current || signature !== JSON.stringify(current.columns.map(column => [column.name, column.type, column.nullable, column.primary, column.foreign]))) throw new Error('تغيرت أعمدة الجدول أثناء الشرح. أعد المحاولة.');
+    const entry = (readColumnNotesStore()[tableId] ||= { summary: '', columns: {} });
+    entry.columns ||= {}; entry.summary = data.notes.summary || entry.summary || ''; entry.at = Date.now();
+    for (const [name, note] of Object.entries(data.notes.columns)) if (entry.columns[name]?.basis !== 'user') entry.columns[name] = note;
+    writeColumnNotes(); applyColumnTitles(tableId);
+    const skipped = data.notes.missing.filter(name => !current.columns.find(column => column.name === name)?.description);
+    if (skipped.length) state.columnError = `لم يشرح AI ${skipped.length} عمودًا: ${skipped.slice(0, 3).map(name => `⁦${name}⁩`).join('، ')}${skipped.length > 3 ? '…' : ''}. أعد الشرح أو اكتبه بنفسك.`;
+  } catch (error) { if (workspaceId === state.workspaceId && error.name !== 'AbortError') state.columnError = error.message; }
+  finally {
+    if (state.columnController === controller) { state.columnController = null; state.columnBusy = null; }
+    if (workspaceId === state.workspaceId) refreshColumnViews();
+  }
 }
 function relationCards(table) {
   const section = el('div', 'table-relations');
@@ -1311,7 +1482,7 @@ function renderDetails() {
     tab => { state.inspectorTab = tab; renderDetails(); }));
   const groups = state.groups.filter(group => group.id !== 'all' && group.ids.has(table.id));
   if (state.inspectorTab === 'columns') {
-    body.append(columnTable(table), el('h3', '', 'يظهر في هذه المواضيع'), el('p', 'field-hint', 'عضوية الجدول مستقلة عن تعريفه؛ يمكن مشاركته بين المواضيع.'));
+    body.append(columnNotesBar(table), columnList(table, { refresh: renderDetails }), el('h3', '', 'يظهر في هذه المواضيع'), el('p', 'field-hint', 'عضوية الجدول مستقلة عن تعريفه؛ يمكن مشاركته بين المواضيع.'));
     const memberships = el('div', 'chip-row'); groups.forEach(group => memberships.append(el('span', 'chip', group.label)));
     if (!groups.length) memberships.append(el('p', 'field-hint', 'لم يُضف هذا الجدول إلى موضوع بعد.'));
     body.append(memberships, notice('تعديلات محفوظة في المسودة', 'تعديل المخطط لا يكتب مباشرة إلى قاعدة البيانات.'));
@@ -1339,9 +1510,11 @@ function openExpandedTable(id) {
     if (tab === 'columns') {
       const row = el('div', 'inspector-title-row'), search = el('input'); search.type = 'search'; search.placeholder = 'ابحث في الأعمدة…'; search.setAttribute('aria-label', 'ابحث في أعمدة الجدول');
       row.append(search);
-      const list = el('div'); list.append(columnTable(table, true)); search.addEventListener('input', () => list.replaceChildren(columnTable(table, true, search.value)));
-      content.append(row, list, notice('تعريف واحد بين المواضيع', 'كل نسخة على الخريطة تشير إلى تعريف الجدول نفسه.'));
-    } else content.append(tab === 'relations' ? relationCards(table) : tab === 'sql' ? codeBlock(tableSql(table)) : tableCodeDetails(table, false));
+      const bar = el('div'), list = el('div');
+      const draw = () => { bar.replaceChildren(columnNotesBar(table)); list.replaceChildren(columnList(table, { expanded: true, query: search.value, refresh: draw })); };
+      search.addEventListener('input', draw); draw(); state.redrawColumns = draw;
+      content.append(bar, row, list, notice('تعريف واحد بين المواضيع', 'كل نسخة على الخريطة تشير إلى تعريف الجدول نفسه.'));
+    } else state.redrawColumns = null, content.append(tab === 'relations' ? relationCards(table) : tab === 'sql' ? codeBlock(tableSql(table)) : tableCodeDetails(table, false));
   };
   body.append(uiTabs(entries, selected, show), content); show(selected);
   root.append(body, modalFooter([uiButton('إضافة عمود', () => openEditor('addColumn', { tableId: id }), 'primary-button'), uiButton('إغلاق', () => dialog.close())])); openDialog(dialog);
@@ -1696,7 +1869,7 @@ function updateAiSettings({ save = false } = {}) {
   const message = local ? (status?.message || 'يستخدم تسجيل دخول المساعد على الجهاز، دون مفتاح API.') : 'يستخدم الخدمة المحددة في إعدادات AI.';
   $('aiLocalStatus').textContent = message;
   $('topicAiStatus').textContent = message;
-  $('aiContext').textContent = `${state.schema?.tables?.find(table => table.id === state.selectedTable)?.name || state.groups.find(group => group.id === state.topic)?.label || 'المخطط'} · ${providerLabel()}`;
+  $('aiContext').textContent = `${state.schema ? aiScope().label : 'المخطط'} · ${providerLabel()}`;
   $('aiFootnote').textContent = local ? 'استخدام تسجيل الدخول على الجهاز · الطلب ضمن حدود الاشتراك.' : 'يستخدم المزوّد المحدد في إعدادات المساعد.';
   renderProviderChoices();
   if (save) store.setItem('eratlas.ai.settings.v1', JSON.stringify({ provider, model: $('aiModel').value.trim(), endpoint: $('aiEndpoint').value.trim() }));
@@ -1764,16 +1937,16 @@ async function loadLocalAiStatus() {
     $('aiLocalStatus').textContent = $('topicAiStatus').textContent = 'تعذّر فحص مساعد الجهاز. أعد تشغيل ER Atlas ثم حدّث الصفحة.';
   }
 }
-async function askAi(mode, question, schema = state.schema, signal) {
+async function askAi(mode, question, schema = state.schema, signal, { focus, evidence } = {}) {
   updateAiSettings({ save: true });
   const response = await fetch('/api/ai', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider: $('aiProvider').value, model: $('aiModel').value.trim(),
-      endpoint: $('aiEndpoint').value.trim(), key: $('aiKey').value, question, mode, schema,
+      endpoint: $('aiEndpoint').value.trim(), key: $('aiKey').value, question, mode, schema, focus, evidence,
       ...(mode === 'topics' ? { sourceRoot: $('topicSourceRoot').value.trim() } : {}),
       history: mode === 'explain' || mode === 'ideas' ? state.aiMessages.slice(-12) : [] }) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'تعذّر الاتصال بخدمة AI');
-  if (mode === 'topics') return data;
+  if (mode === 'topics' || mode === 'columns') return data;
   return data.answer;
 }
 function parseTopicSuggestions(answer) {
@@ -1788,7 +1961,7 @@ function normalizeAiLayout(value, tables = state.schema.tables) {
     const ids = [...new Set(Array.isArray(zone.tableIds) ? zone.tableIds : [])]
       .filter(id => validIds.has(id) && !used.has(id));
     ids.forEach(id => used.add(id));
-    return { name: String(zone.name || `منطقة ${index + 1}`).trim().slice(0, 48), tableIds: ids };
+    return { name: String(zone.name || `منطقة ${index + 1}`).trim().slice(0, 48), reason: String(zone.reason || '').trim().slice(0, 200), tableIds: ids };
   }).filter(zone => zone.tableIds.length);
   if (!zones.length) throw new Error('لم يحدد AI أي جدول صالح للترتيب');
   const remaining = [...validIds].filter(id => !used.has(id));
@@ -1830,6 +2003,20 @@ function renderArrangement() {
   } else preview.replaceChildren(el('p', 'field-hint', proposal.error ? 'تعذّر إنشاء المعاينة. يمكنك إعادة المحاولة.' : 'اضغط «اقتراح ترتيب» لإنشاء المعاينة.'));
   $('arrangeStatus').className = `notice${proposal.error ? ' error' : ''}`;
   $('arrangeStatus').textContent = proposal.error || proposal.status || `معاينة ${proposal.schema.tables.length} جدول. تتغيّر المواقع فقط؛ تبقى تعريفات الجداول وعلاقاتها كما هي.`;
+  const zones = $('arrangeZones'); zones.replaceChildren();
+  if (proposal.layout && !proposal.error) {
+    const names = new Map(proposal.schema.tables.map(table => [table.id, table.name]));
+    for (const zone of proposal.layout.zones) {
+      const item = el('li', 'arrange-zone'), head = el('div', 'arrange-zone-head');
+      head.append(el('strong', '', zone.name), el('span', 'chip', `${zone.tableIds.length} جدول`));
+      item.append(head);
+      if (zone.reason) item.append(el('p', 'field-hint', zone.reason));
+      item.append(el('p', 'arrange-zone-tables', zone.tableIds.map(id => names.get(id)).filter(Boolean).slice(0, 8).join(' · ') + (zone.tableIds.length > 8 ? ` · +${zone.tableIds.length - 8}` : '')));
+      zones.append(item);
+    }
+    const central = proposal.layout.centralTableIds.map(id => names.get(id)).filter(Boolean);
+    if (central.length) zones.append(el('li', 'arrange-central', `الجداول المحورية في المركز: ${central.join(' · ')}`));
+  }
   $('arrangeErrorActions').hidden = !proposal.error;
   $('applyArrangementButton').disabled = proposal.pending;
   $('applyArrangementButton').textContent = proposal.pending ? 'جارٍ التحليل…' : proposal.proposed ? 'تطبيق الترتيب' : proposal.error ? 'إعادة المحاولة' : 'اقتراح ترتيب';
@@ -1866,7 +2053,7 @@ async function arrangeWithAi() {
     if (!arrangementIsCurrent(proposal)) throw new Error('تغيرت المساحة أو طريقة العرض أثناء الترتيب. أعد المحاولة.');
     proposal.layout = parseAiLayout(answer, proposal.schema.tables);
     proposal.proposed = layoutTables(proposal.schema, proposal.layout);
-    proposal.status = `اقتراح ${proposal.schema.tables.length} جدول في ${proposal.layout.zones.length} مناطق: ${proposal.layout.zones.map(zone => zone.name).join(' · ')}`;
+    proposal.status = `اقتراح ${proposal.schema.tables.length} جدول في ${proposal.layout.zones.length} مناطق. راجع المناطق أدناه قبل التطبيق.`;
   } catch (error) {
     proposal.error = error.name === 'AbortError' ? '' : error.message;
     if (error.name === 'AbortError') proposal.status = 'أُوقف الطلب. يمكنك إنشاء اقتراح جديد.';
@@ -1906,6 +2093,7 @@ ${plan.sql || '-- لا توجد أوامر'}
 }
 
 function setSchema(schema, demo = false) {
+  state.columnNotesCache = null;
   state.linkMode = false; state.linkSource = null;
   $('selectionModeButton').setAttribute('aria-pressed', 'true');
   state.base = clone(schema); state.schema = clone(schema); state.demo = demo; state.topic = 'all';
@@ -1985,7 +2173,7 @@ function exportWorkspace() {
   closeWorkspaceMenu();
   const workspace = activeWorkspace();
   const topics = state.groups.slice(1).map(group => ({ id: group.id, label: group.label, color: group.color, ids: [...group.ids], ...(group.reason ? { reason: group.reason } : {}) }));
-  const file = buildExport({ name: workspace.name, kind: workspace.kind, schema: clone(state.base), topics, positions: Object.fromEntries(state.positions), operations: state.operations, cursor: state.cursor });
+  const file = buildExport({ name: workspace.name, kind: workspace.kind, schema: clone(state.base), topics, positions: Object.fromEntries(state.positions), operations: state.operations, cursor: state.cursor, columnNotes: readColumnNotesStore() });
   const link = document.createElement('a'), url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }));
   link.href = url; link.download = `${slug(workspace.name)}.eratlas.json`; document.body.append(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
@@ -2001,6 +2189,7 @@ function importWorkspace() {
       const id = crypto.randomUUID(), prefix = `eratlas.v4.ws.${id}`;
       store.setItem(prefix, JSON.stringify(data.positions));
       if (data.topics.length) store.setItem(`${prefix}.topics`, JSON.stringify(data.topics));
+      if (Object.keys(data.columnNotes).length) store.setItem(`${prefix}.columnNotes`, JSON.stringify(data.columnNotes));
       if (data.operations.length) store.setItem(`${prefix}.draft${data.schema.fingerprint ? `.${data.schema.fingerprint}` : ''}`, JSON.stringify({ operations: data.operations, cursor: data.cursor }));
       state.workspaces.push({ id, name: data.name, kind: data.kind, schema: data.schema, topic: 'all', connection: null });
       await activateWorkspace(id);
@@ -2237,6 +2426,10 @@ function installEvents() {
   $('aiButton').addEventListener('click', openAiConversation);
   $('aiArrangeButton').addEventListener('click', () => openArrangement('ai'));
   $('closeAiDialog').addEventListener('click', () => $('aiDialog').close());
+  $('clearAiButton').addEventListener('click', () => {
+    if (state.aiController || !state.aiMessages.length) return;
+    state.aiMessages = []; saveAiMessages(); renderAiMessages(); $('aiQuestion').focus();
+  });
   const defaultModels = { 'codex-cli': '', 'claude-cli': '', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-4-5', gemini: 'gemini-2.5-flash', compatible: 'llama3.2' };
   try {
     const settings = JSON.parse(store.getItem('eratlas.ai.settings.v1') || 'null');
@@ -2262,10 +2455,9 @@ function installEvents() {
     $('aiQuestion').disabled = true;
     $('stopAiButton').hidden = false; button.textContent = 'جارٍ إعداد الإجابة…';
     renderAiMessages('جارٍ إعداد الإجابة...');
-    const selected = state.selectedTable ? `الجدول المحدد: ${state.schema.tables.find(t => t.id === state.selectedTable)?.name}. `
-      : state.selectedRelation ? `العلاقة المحددة: ${state.schema.relations.find(r => r.id === state.selectedRelation)?.name}. ` : '';
+    const scope = aiScope();
     try {
-      const answer = await askAi(activeWorkspace()?.kind === 'ideas' ? 'ideas' : 'explain', `${selected}${question}`, state.schema, controller.signal);
+      const answer = await askAi(activeWorkspace()?.kind === 'ideas' ? 'ideas' : 'explain', question, scope.schema, controller.signal, { focus: scope.focus });
       if (controller.signal.aborted || workspaceId !== state.workspaceId) return;
       state.aiMessages.push({ role: 'user', content: question }, { role: 'assistant', content: answer });
       state.aiMessages = state.aiMessages.slice(-30); saveAiMessages(); renderAiMessages(); $('aiQuestion').value = '';
@@ -2318,7 +2510,7 @@ function installEvents() {
     const button = $('sendToAiButton'); button.disabled = true; $('planError').hidden = true;
     $('handoffResult').hidden = false; $('handoffResult').textContent = 'AI يراجع متغيرات المسودة ويجهز خطة التعديل...';
     try {
-      $('handoffResult').textContent = await askAi('migration', state.handoffPrompt);
+      $('handoffResult').replaceChildren(...answerNodes(await askAi('migration', state.handoffPrompt)));
     } catch (error) { $('handoffResult').hidden = true; $('planError').textContent = `${error.message} — يمكنك نسخ الـPrompt وإرساله إلى وكيل AI آخر.`; $('planError').hidden = false; }
     finally { button.disabled = false; }
   });
