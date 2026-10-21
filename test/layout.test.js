@@ -1,32 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
-import { NODE_WIDTH, HEADER_HEIGHT, ROW_HEIGHT, previewColumns, nodeHeight as measureNode, columnOffset, fitCamera } from '../public/ui.js';
 
-const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
-  .replace(/^import .*;\r?\n/gm, '').replace(/bootstrap\(\);\s*$/, '');
+// The modules expect a browser; give them just enough page before they load.
+let elements = new Map();
+globalThis.window ??= { addEventListener() {} };
+globalThis.document = { getElementById(id) {
+  if (!elements.has(id)) elements.set(id, { clientWidth: 1400, clientHeight: 800 });
+  return elements.get(id);
+} };
+globalThis.requestAnimationFrame = callback => callback();
+const { state } = await import('../public/core.js');
+const { store } = await import('../public/storage.js');
+const layout = await import('../public/layout.js');
+const initialState = structuredClone(state), defaultHooks = { ...layout.hooks };
 const snapshot = positions => JSON.stringify(Object.fromEntries(positions));
 
 function harness(mode = 'map') {
-  const saved = new Map(), elements = new Map(), messages = [];
-  const context = vm.createContext({
-    AbortController,
-    NODE_WIDTH, HEADER_HEIGHT, ROW_HEIGHT, previewColumns, measureNode, columnOffset, fitCamera,
-    document: { getElementById(id) {
-      if (!elements.has(id)) elements.set(id, { clientWidth: 1400, clientHeight: 800 });
-      return elements.get(id);
-    } },
-    store: { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) },
-    requestAnimationFrame: callback => callback(),
-    notify: message => messages.push(message)
-  });
-  vm.runInContext(source + `
-    renderNodes = () => {}; fitView = () => {}; showToast = notify; renderArrangement = () => {};
-    globalThis.api = { state, arrangeTables, arrangeWithAi, applyArrangement, captureArrangement, buildTopicPositions, buildFocusPositions, layoutTables, nodeHeight,
-      setAsk: callback => { askAi = callback; } };
-  `, context);
-  const api = context.api;
+  const saved = new Map(), messages = [];
+  elements = new Map();
+  for (const key of Object.keys(state)) delete state[key];
+  Object.assign(state, structuredClone(initialState));
+  Object.assign(store, { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) });
+  Object.assign(layout.hooks, defaultHooks, { renderNodes: () => {}, fitView: () => {}, showToast: message => messages.push(message), renderArrangement: () => {} });
+  const { arrangeTables, arrangeWithAi, applyArrangement, captureArrangement, buildTopicPositions, buildFocusPositions, layoutTables, nodeHeight } = layout;
+  const api = { state, arrangeTables, arrangeWithAi, applyArrangement, captureArrangement, buildTopicPositions, buildFocusPositions, layoutTables, nodeHeight,
+    setAsk: callback => { layout.hooks.askAi = callback; } };
   api.state.schema = { tables: ['store', 'meal', 'recipe', 'item', 'order', 'payment'].map((id, index) => ({
     id, name: id, columns: Array.from({ length: 2 + index * 4 }, () => ({ name: 'id' }))
   })), relations: [

@@ -68,7 +68,23 @@ const paths = {
   '/storage.js': 'storage.js',
   '/workspace-io.js': 'workspace-io.js',
   '/lint.js': 'lint.js',
-  '/exporters.js': 'exporters.js'
+  '/exporters.js': 'exporters.js',
+  '/core.js': 'core.js',
+  '/chrome.js': 'chrome.js',
+  '/workspaces.js': 'workspaces.js',
+  '/views.js': 'views.js',
+  '/layout.js': 'layout.js',
+  '/canvas.js': 'canvas.js',
+  '/edges.js': 'edges.js',
+  '/inspector.js': 'inspector.js',
+  '/notes.js': 'notes.js',
+  '/editor.js': 'editor.js',
+  '/groups.js': 'groups.js',
+  '/chat.js': 'chat.js',
+  '/ai.js': 'ai.js',
+  '/sheets.js': 'sheets.js',
+  '/commands.js': 'commands.js',
+  '/connect.js': 'connect.js'
 };
 
 function send(res, status, body) {
