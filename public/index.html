@@ -56,6 +56,15 @@
         <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></symbol>
         <symbol id="i-compose" viewBox="0 0 24 24"><path d="M12 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /><path d="M17.5 3.5a1.8 1.8 0 0 1 2.5 2.5L12 14l-3.5 1 1-3.5Z" /></symbol>
         <symbol id="i-draft" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></symbol>
+        <symbol id="i-more" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="12" cy="5.5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="18.5" r="1.6" /></g></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.75h.01" /></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7" /><path d="m6.5 7 .8 11.6a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9L17.5 7M10.25 11v5.5M13.75 11v5.5" /></symbol>
+        <symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 20 1-4.5L16 4.5a2.12 2.12 0 0 1 3 3L8 18.5Z" /><path d="m14.5 6 3 3" /></symbol>
+        <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l3-3a3.54 3.54 0 0 0-5-5l-1 1" /><path d="M13.5 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.54 3.54 0 0 0 5 5l1-1" /></symbol>
+        <symbol id="i-code" viewBox="0 0 24 24"><path d="m8.5 7.5-4.5 4.5 4.5 4.5M15.5 7.5l4.5 4.5-4.5 4.5M13.25 5l-2.5 14" /></symbol>
+        <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="2.75" /><path d="M4.5 6v12c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75V6" /><path d="M4.5 12c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75" /></symbol>
+        <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.5h.01M17 13.5h.01M9.5 14h5" /></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M5 19.5h14" /></symbol>
       </g>
     </svg>
     <a class="skip-link" href="#map">الانتقال إلى الخريطة</a>
@@ -140,9 +149,11 @@
         <!-- Top center: one tool strip, and a quiet context row beneath it -->
         <div class="chrome-zone chrome-center">
           <div class="pill toolbar" role="toolbar" aria-label="أدوات الخريطة">
-            <div class="segmented" role="group" aria-label="مساحة العمل">
-              <button id="mapTabButton" class="seg active" type="button" aria-pressed="true">الخريطة</button>
-              <button id="tablesTabButton" class="seg" type="button" aria-pressed="false">الجداول</button>
+            <div id="viewTabs" class="segmented" role="group" aria-label="طريقة العرض">
+              <button class="seg active" type="button" data-view="map" aria-pressed="true" title="كل الجداول والعلاقات">الخريطة</button>
+              <button class="seg" type="button" data-view="tables" aria-pressed="false" title="قائمة الجداول قابلة للبحث والترتيب">الجداول</button>
+              <button class="seg" type="button" data-view="topics" aria-pressed="false" title="ابدأ بالأقسام ثم افتح جداولها">المواضيع</button>
+              <button class="seg" type="button" data-view="focus" aria-pressed="false" title="جدول واحد وعلاقاته المباشرة">جدول واحد</button>
             </div>
             <span class="divider" aria-hidden="true"></span>
             <button id="selectionModeButton" class="tool" type="button" aria-pressed="true" title="تحديد (V)" aria-label="تحديد جدول">
@@ -177,16 +188,6 @@
               </button>
               <nav id="topics" class="topics" aria-label="مواضيع قاعدة البيانات" hidden></nav>
             </div>
-            <div class="pill view-switcher">
-              <button id="viewModeButton" class="pill-button" type="button" aria-expanded="false" aria-controls="viewModeMenu" aria-label="خيارات عرض المخطط" title="خيارات عرض المخطط">
-                <span id="viewModeLabel">الخريطة</span>
-                <svg class="i i-small" aria-hidden="true"><use href="#i-chevron" /></svg>
-              </button>
-              <div id="viewModeMenu" class="view-mode-menu" hidden>
-                <h3>طريقة العرض</h3>
-                <div id="viewModeOptions" role="group" aria-label="طريقة عرض المخطط"></div>
-              </div>
-            </div>
             <button id="backTopicsButton" class="pill pill-button" type="button" hidden>كل المواضيع</button
             ><button id="chooseFocusButton" class="pill pill-button" type="button" hidden>اختيار جدول</button>
           </div>
@@ -215,7 +216,7 @@
 
         <!-- Bottom end: view, history, help. The start edge stays free for sidebars. -->
         <div class="chrome-zone chrome-bottom-end">
-          <button id="helpButton" class="pill pill-button icon-only" type="button" aria-label="الأوامر والاختصارات" title="الأوامر والاختصارات (Ctrl K)">
+          <button id="helpButton" class="pill pill-button icon-only" type="button" aria-label="اختصارات لوحة المفاتيح" title="اختصارات لوحة المفاتيح (?)">
             <svg class="i" aria-hidden="true"><use href="#i-help" /></svg>
           </button>
           <div class="pill history" role="group" aria-label="السجل">
@@ -812,6 +813,9 @@
     </dialog>
     <dialog id="exportDialog" class="export-dialog sheet wide" aria-labelledby="exportTitle">
       <div id="exportContent"></div>
+    </dialog>
+    <dialog id="shortcutsDialog" class="shortcuts-dialog" aria-labelledby="shortcutsTitle">
+      <div id="shortcutsContent"></div>
     </dialog>
     <dialog
       id="confirmationDialog"

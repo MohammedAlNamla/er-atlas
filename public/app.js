@@ -711,29 +711,13 @@ function renderTopics() {
   }
 }
 
-const viewChoices = [
-  { id: 'map', icon: '▦', label: 'الخريطة', description: 'كل الجداول والعلاقات مباشرة' },
-  { id: 'tables', label: 'الجداول', description: 'قائمة الجداول والأعمدة والعلاقات' },
-  { id: 'topics', icon: '◫', label: 'حسب المواضيع', description: 'ابدأ بالأقسام ثم افتح جداولها' },
-  { id: 'focus', icon: '◎', label: 'جدول محدد', description: 'جدول واحد وعلاقاته المباشرة' }
-];
-function closeViewMenu() {
-  $('viewModeMenu').hidden = true;
-  $('viewModeButton').setAttribute('aria-expanded', 'false');
-}
-function renderViewMenu() {
-  const options = $('viewModeOptions'); options.replaceChildren();
-  for (const choice of viewChoices) {
-    const button = el('button', `view-option${state.viewMode === choice.id ? ' active' : ''}`);
-    button.type = 'button'; button.setAttribute('aria-pressed', String(state.viewMode === choice.id));
-    button.append(icon(choice.id === 'focus' ? 'fit' : choice.id === 'topics' ? 'arrange' : 'table'));
-    const copy = el('span', 'view-option-copy');
-    copy.append(el('strong', '', choice.label), el('small', '', choice.description));
-    button.append(copy); if (state.viewMode === choice.id) button.append(icon('check'));
-    button.addEventListener('click', () => { closeViewMenu(); setViewMode(choice.id); });
-    options.append(button);
+// One segmented control carries the four ways to read the schema; the row beneath only
+// appears when the view has a context of its own (an open topic, a focused table).
+function renderViewTabs() {
+  for (const button of $('viewTabs').querySelectorAll('.seg')) {
+    const active = button.dataset.view === state.viewMode;
+    button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active));
   }
-  $('viewModeLabel').textContent = ['topics', 'focus'].includes(state.viewMode) ? viewChoices.find(choice => choice.id === state.viewMode).label : 'عرض';
   document.querySelector('.chrome').dataset.view = state.viewMode;
 }
 function renderTopicOverview(overlay) {
@@ -784,7 +768,7 @@ function renderFocusPicker(overlay) {
   overlay.append(heading, search, list);
 }
 function renderView() {
-  renderViewMenu();
+  renderViewTabs();
   const catalog = state.viewMode === 'tables' && state.schema.tables.length > 0;
   const topicOverview = state.viewMode === 'topics' && state.topic === 'all' && state.schema.tables.length > 0;
   const focusPicker = state.viewMode === 'focus' && !state.focusTable && state.schema.tables.length > 0;
@@ -794,10 +778,7 @@ function renderView() {
   if (topicOverview) renderTopicOverview(overlay);
   if (focusPicker) renderFocusPicker(overlay);
   if (catalog) renderTableCatalog(overlay);
-  for (const [id, selected] of [['mapTabButton', !catalog], ['tablesTabButton', catalog]]) {
-    $(id).classList.toggle('active', selected);
-    $(id).setAttribute('aria-pressed', String(selected));
-  }
+  document.querySelector('.topic-switcher').hidden = state.viewMode !== 'topics' || topicOverview;
   $('backTopicsButton').hidden = state.viewMode !== 'topics' || topicOverview;
   $('chooseFocusButton').hidden = state.viewMode !== 'focus' || focusPicker;
   $('topicManageButton').hidden = false;
@@ -896,7 +877,7 @@ function overviewNameSize(table) {
   return 22;
 }
 function makeNode(table) {
-  const card = el('article', `table-node${table.kind === 'proposed' ? ' proposed' : ''}`);
+  const card = el('article', `table-node${isDraftTable(table) ? ' proposed' : ''}`);
   card.dataset.table = table.id;
   const pos = graphPosition(table.id);
   card.style.left = `${pos.x}px`; card.style.top = `${pos.y}px`;
@@ -910,12 +891,12 @@ function makeNode(table) {
   const more = uiButton('', event => { event.stopPropagation(); showContextMenu(event); }, 'node-more');
   more.append(icon('more')); more.setAttribute('aria-label', `إجراءات جدول ${table.name}`);
   more.addEventListener('pointerdown', event => event.stopPropagation());
-  head.append(title, ...(table.kind === 'proposed' ? [el('span', 'node-draft', 'مسودة')] : []), more);
+  head.append(title, ...(isDraftTable(table) ? [el('span', 'node-draft', 'مسودة')] : []), more);
   head.addEventListener('pointerdown', event => startDrag(event, table.id, card));
   const columns = el('div', 'node-columns');
   const involved = involvedColumns.get(table.id) || new Set();
   for (const column of previewColumns(table, nodeExpanded(table))) {
-    const row = el('div', `column${involved.has(column.name) ? ' has-line' : ''}${column.primary ? ' pk' : ''}${column.kind === 'proposed' ? ' proposed' : ''}`);
+    const row = el('div', `column${involved.has(column.name) ? ' has-line' : ''}${column.primary ? ' pk' : ''}${isDraftColumn(table, column) ? ' proposed' : ''}`);
     row.dataset.column = column.name;
     row.title = columnTitle(table, column);
     const badge = el('span', `col-key ${column.primary ? 'pk' : column.foreign ? 'fk' : 'none'}`, column.primary ? 'PK' : column.foreign ? 'FK' : '');
@@ -1073,7 +1054,8 @@ const ER_MARKERS = {
 // Ends follow schema evidence only: many/one at the FK side when uniqueness is known,
 // exactly-one or zero-or-one at the referenced key depending on FK nullability.
 function relationEnds(relation, source, target) {
-  const cardinality = relationCardinality(relation, source, target);
+  // Schema-sourced and imported relations carry real uniqueness; only draft additions stay cautious.
+  const cardinality = relationCardinality(isDraftRelation(relation) ? relation : { ...relation, kind: 'actual' }, source, target);
   const optional = relation.pairs.some(pair => source.columns.find(column => column.name === pair.source)?.nullable);
   return { start: cardinality.source === '1' ? 'one' : cardinality.source === '*' ? 'many' : '', end: cardinality.target === '1' ? (optional ? 'zero-one' : 'one-only') : '' };
 }
@@ -1169,7 +1151,7 @@ function renderEdges() {
       const path = state.edgeRoutes?.get(key) || edgePath(source, target, pair, lane, key);
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       line.setAttribute('d', path.d);
-      line.setAttribute('class', `edge${relation.kind === 'proposed' ? ' proposed' : ''}`);
+      line.setAttribute('class', `edge${isDraftRelation(relation) ? ' proposed' : ''}`);
       const ends = relationEnds(relation, source, target);
       if (ends.start) line.setAttribute('marker-start', `url(#er-${ends.start})`);
       if (ends.end) line.setAttribute('marker-end', `url(#er-${ends.end})`);
@@ -1440,7 +1422,7 @@ function openRelationDetails(id) {
   const relation = state.schema.relations.find(item => item.id === id); if (!relation) return;
   const from = state.schema.tables.find(table => table.id === relation.source), to = state.schema.tables.find(table => table.id === relation.target);
   const dialog = $('relationshipDialog'), root = $('relationshipContent'); root.replaceChildren();
-  root.append(modalHeader('تفاصيل العلاقة', relation.kind === 'proposed' ? 'علاقة مقترحة ضمن المسودة.' : 'علاقة مفتاح أجنبي في المخطط.', () => dialog.close(), 'relationshipTitle'));
+  root.append(headerIcon(modalHeader('تفاصيل العلاقة', isDraftRelation(relation) ? 'علاقة مقترحة ضمن المسودة.' : 'علاقة مفتاح أجنبي في المخطط.', () => dialog.close(), 'relationshipTitle'), 'relation'));
   const body = el('div', 'modal-body');
   body.append(el('h3', '', 'عمود المصدر · Foreign key'), el('div', 'relation-identifier', relation.pairs.map(pair => `${from.name}.${pair.source}`).join('\n')), el('h3', '', 'العمود المشار إليه'), el('div', 'relation-identifier referenced', relation.pairs.map(pair => `${to.name}.${pair.target}`).join('\n')));
   const tags = el('div', 'chip-row');
@@ -1473,13 +1455,44 @@ function breakableTitle(header) {
   heading.classList.add('identifier-title'); heading.dir = 'ltr';
   return header;
 }
+// Every modal header opens with a quiet icon tile that names the kind of task.
+const DIALOG_ICONS = { connectDialog: 'database', workspaceDialog: 'arrange', planDialog: 'sparkle', changesPanel: 'draft', topicsDialog: 'arrange', codeDialog: 'code', aiSettingsDialog: 'key', arrangeDialog: 'arrange' };
+function headerIcon(header, name, tone = '') {
+  header.querySelector(':scope > .modal-icon')?.remove();
+  if (!name) return header;
+  const tile = el('span', `modal-icon${tone ? ` ${tone}` : ''}`); tile.setAttribute('aria-hidden', 'true'); tile.append(sprite(name));
+  header.prepend(tile); return header;
+}
+const SHORTCUTS = [
+  ['الخريطة', [['تحديد', ['V']], ['جدول جديد', ['T']], ['علاقة جديدة', ['R']], ['ترتيب الجداول', ['A']], ['تقريب / تبعيد', ['+', '−']], ['حجم مقروء', ['0']], ['كامل المخطط', ['F']], ['تحريك الخريطة', ['←', '↑', '→', '↓']]]],
+  ['البحث والتنقل', [['البحث في الخريطة', ['/']], ['النتيجة التالية', ['Enter']], ['النتيجة السابقة', ['Shift', 'Enter']], ['مسح البحث', ['Esc']], ['الأوامر والقفز إلى جدول', ['Ctrl', 'K']]]],
+  ['المسودة والأدوات', [['تراجع', ['Ctrl', 'Z']], ['إعادة', ['Ctrl', 'Y']], ['مراجعة المسودة', ['D']], ['فحص المخطط', ['L']], ['تصدير المخطط', ['E']], ['إغلاق النافذة أو التحديد', ['Esc']]]]
+];
+function openShortcuts() {
+  closeHeaderMenus();
+  const dialog = $('shortcutsDialog'), root = $('shortcutsContent'); root.replaceChildren();
+  root.append(headerIcon(modalHeader('اختصارات لوحة المفاتيح', 'كل ما في الخريطة يُنجز من لوحة المفاتيح أيضًا.', () => dialog.close(), 'shortcutsTitle'), 'keyboard'));
+  const body = el('div', 'modal-body'), groups = el('div', 'shortcut-groups');
+  for (const [title, rows] of SHORTCUTS) {
+    const group = el('section', 'shortcut-group'), list = el('dl');
+    for (const [label, keys] of rows) {
+      const row = el('div', 'shortcut-row'), combo = el('dd');
+      keys.forEach(key => combo.append(el('kbd', '', key)));
+      row.append(el('dt', '', label), combo); list.append(row);
+    }
+    group.append(el('h3', '', title), list); groups.append(group);
+  }
+  body.append(groups);
+  root.append(body, modalFooter([uiButton('كل الأوامر', () => { dialog.close(); openQuickActions(); }, 'secondary-button')], 'Ctrl K يفتح لوحة الأوامر من أي مكان.'));
+  openDialog(dialog);
+}
 function closeInspector() {
   state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis();
 }
 function confirmAction(title, description, message, apply, label = 'حذف من المسودة', danger = true, detail = 'يمكن التراجع عن هذا التغيير من مراجعة المسودة.') {
   const dialog = $('confirmationDialog'), root = $('confirmationContent'); root.replaceChildren();
   const workspaceId = state.workspaceId;
-  root.append(modalHeader(title, description, () => dialog.close(), 'confirmationTitle'));
+  root.append(headerIcon(modalHeader(title, description, () => dialog.close(), 'confirmationTitle'), danger ? 'trash' : 'info', danger ? 'danger' : ''));
   const body = el('div', 'modal-body'); body.append(notice(message, detail, 'warning')); root.append(body);
   root.append(modalFooter([
     uiButton(label, () => { if (workspaceId !== state.workspaceId) { dialog.close(); return; } apply(); dialog.close(); }, danger ? 'primary-button danger' : 'primary-button'),
@@ -1547,7 +1560,11 @@ function columnNoteLine(table, column, refresh) {
   else if (note) {
     const text = uiButton(note.text, edit, 'column-note-text editable'); text.title = 'انقر لتعديل الشرح';
     line.append(text, el('span', `note-basis ${note.basis}`, NOTE_BASIS[note.basis] || ''));
-  } else line.append(uiButton('+ أضف شرحًا', edit, 'column-note-add'));
+  } else {
+    // No note yet: the add control lives in the column's own row, so empty notes take no height.
+    const add = uiButton('+ شرح', () => { if (!line.isConnected) add.closest('.column-item')?.append(line); edit(); }, 'column-note-add');
+    add.title = 'أضف شرحًا لهذا العمود'; add.setAttribute('aria-label', `أضف شرحًا للعمود ${column.name}`); line.append(add);
+  }
   return line;
 }
 function columnList(table, { expanded = false, query = '', refresh = refreshColumnViews } = {}) {
@@ -1559,8 +1576,9 @@ function columnList(table, { expanded = false, query = '', refresh = refreshColu
     name.title = `تعديل العمود ${column.name}`;
     const head = el('div', 'column-item-head'); head.append(name);
     if (column.primary || column.foreign) head.append(el('span', `col-key ${column.primary ? 'pk' : 'fk'}`, column.primary ? 'PK' : 'FK'));
-    head.append(el('span', 'column-item-type', column.type));
-    item.append(head, columnNoteLine(table, column, refresh));
+    const type = el('span', 'column-item-type', column.type), note = columnNoteLine(table, column, refresh), add = note.querySelector(':scope > .column-note-add');
+    head.append(type);
+    if (add && note.children.length === 1) { head.insertBefore(add, type); item.append(head); } else item.append(head, note);
     if (expanded) {
       const facts = el('div', 'column-facts');
       if (column.nullable) facts.append(el('span', 'chip mono', 'NULL'));
@@ -1646,10 +1664,10 @@ function renderDetails() {
   $('details').hidden = !table;
   if (!table) return;
   const relevant = state.schema.relations.filter(relation => relation.source === table.id || relation.target === table.id);
-  root.append(breakableTitle(modalHeader(`${table.schema}.${table.name}`, 'بنية الجدول وعلاقاته في مكان واحد، والخريطة تبقى ظاهرة.', closeInspector)));
+  root.append(headerIcon(breakableTitle(modalHeader(`${table.schema}.${table.name}`, '', closeInspector)), 'table'));
   const body = el('div', 'modal-body'), chips = el('div', 'chip-row');
   const membership = state.groups.find(group => group.id !== 'all' && group.ids.has(table.id));
-  chips.append(el('span', 'chip', `${table.columns.length} أعمدة`), el('span', 'chip', `${relevant.length} علاقات`), ...(table.approxRows > 0 ? [el('span', 'chip', `≈ ${table.approxRows.toLocaleString('en-US')} صف`)] : []), el('span', 'chip', table.kind === 'proposed' ? 'مسودة' : membership?.label || table.schema));
+  chips.append(el('span', 'chip', `${table.columns.length} أعمدة`), el('span', 'chip', `${relevant.length} علاقات`), ...(table.approxRows > 0 ? [el('span', 'chip', `≈ ${table.approxRows.toLocaleString('en-US')} صف`)] : []), el('span', 'chip', isDraftTable(table) ? 'مسودة' : membership?.label || table.schema));
   body.append(chips, uiTabs([['details', 'التفاصيل'], ['relations', 'العلاقات'], ['columns', 'الأعمدة']], state.inspectorTab,
     tab => { state.inspectorTab = tab; renderDetails(); }));
   const groups = state.groups.filter(group => group.id !== 'all' && group.ids.has(table.id));
@@ -1674,7 +1692,7 @@ function openExpandedTable(id) {
   const table = state.schema.tables.find(item => item.id === id); if (!table) return;
   const dialog = $('tableDialog'), root = $('expandedTableContent'); root.replaceChildren();
   dialog.dataset.tableId = id;
-  root.append(breakableTitle(modalHeader(`${table.schema}.${table.name}`, 'عرض موسّع لبنية الجدول. هذه أعمدة المخطط وليست صفوف بيانات.', () => dialog.close(), 'expandedTableTitle')));
+  root.append(headerIcon(breakableTitle(modalHeader(`${table.schema}.${table.name}`, 'عرض موسّع لبنية الجدول. هذه أعمدة المخطط وليست صفوف بيانات.', () => dialog.close(), 'expandedTableTitle')), 'table'));
   const body = el('div', 'modal-body'), content = el('div', 'expanded-table-tab'); let selected = 'columns';
   const entries = [['details', 'مصادر الكود'], ['sql', 'SQL'], ['relations', 'العلاقات'], ['columns', 'الأعمدة']];
   const show = tab => {
@@ -1699,7 +1717,7 @@ function showToast(message) {
   clearTimeout(state.toastTimer); state.toastTimer = setTimeout(() => toast.classList.remove('show'), 2700);
 }
 
-function svgIcon(name) { return icon({ plus: 'add', inspect: 'table', edit: 'tools', trash: 'close' }[name] || name); }
+function svgIcon(name) { return icon(name); }
 function actionButton(label, handler, extra = '', iconName = '') {
   const button = el('button', `inline-action ${extra}`);
   if (iconName) button.append(svgIcon(iconName));
@@ -1746,7 +1764,7 @@ function showContextMenu(event) {
   } else {
     item('إنشاء جدول هنا', 'table', () => openEditor('addTable', { position: point }));
     item('إنشاء علاقة', 'link', () => openEditor('addRelation'));
-    item('توزيع على كامل الشاشة', 'inspect', arrangeTables);
+    item('توزيع على كامل الشاشة', 'fit', arrangeTables);
   }
   menu.replaceChildren(...items); menu.hidden = false;
   const x = event.clientX - mapRect.left, y = event.clientY - mapRect.top;
@@ -1795,9 +1813,14 @@ function updateDraftView() {
   $('redoButton').disabled = $('redoQuick').disabled = state.cursor === state.operations.length;
   $('reviewButton').disabled = state.cursor === 0;
   $('discardDraftButton').disabled = !state.operations.length;
-  $('draftSummary').textContent = `${state.cursor} تغييرات محلية جاهزة للمراجعة والتسليم إلى المساعد.`;
+  $('draftSummary').textContent = state.operations.length ? `${state.cursor} تغييرات محلية جاهزة للمراجعة والتسليم إلى المساعد.` : 'التعديلات تُجمع هنا قبل أن تصل إلى قاعدة البيانات.';
+  $('changesPanel').classList.toggle('is-empty', !state.operations.length);
   const list = $('changeList'); list.replaceChildren();
-  if (!state.operations.length) list.append(el('p', 'empty-changes', 'لا توجد تغييرات بعد. اختر جدولًا لتعديله.'));
+  if (!state.operations.length) {
+    const empty = el('div', 'empty-state'), mark = el('span', 'empty-state-icon'); mark.append(sprite('draft'));
+    empty.append(mark, el('strong', '', 'لا توجد تغييرات بعد'), el('p', '', 'أضف جدولًا أو عدّل عمودًا من الخريطة أو من قائمة الجدول. كل تعديل يظهر هنا ويمكن التراجع عنه.'));
+    list.append(empty);
+  }
   // Each change is described against the schema just before it, so drops still name what they removed.
   let before = state.base;
   state.operations.forEach((operation, index) => {
@@ -1824,8 +1847,23 @@ function locateTable(id) {
   if (state.viewMode === 'focus') chooseFocusTable(id);
   selectTable(id); centerTable(id);
 }
+// Only what the current draft adds wears the dashed draft look. A schema imported as a proposal
+// (every element already marked proposed) reads as a normal map until you change it.
+function markDraft() {
+  const marks = { tables: new Set(), relations: new Set(), columns: new Set() }, key = (tableId, name) => `${tableId}|${name}`;
+  for (const operation of state.operations.slice(0, state.cursor)) {
+    if (operation.type === 'addTable') marks.tables.add(operation.id);
+    if (operation.type === 'addRelation') marks.relations.add(operation.relation.id);
+    if (operation.type === 'addColumn') marks.columns.add(key(operation.tableId, operation.column.name));
+    if (operation.type === 'updateColumn' && operation.patch.name && marks.columns.delete(key(operation.tableId, operation.columnName))) marks.columns.add(key(operation.tableId, operation.patch.name));
+  }
+  state.draftMarks = { has: (kind, id, name) => marks[kind].has(name === undefined ? id : key(id, name)) };
+}
+const isDraftTable = table => Boolean(state.draftMarks?.has('tables', table.id));
+const isDraftRelation = relation => Boolean(state.draftMarks?.has('relations', relation.id));
+const isDraftColumn = (table, column) => Boolean(state.draftMarks?.has('columns', table.id, column.name));
 function refreshDraft({ fit = false } = {}) {
-  state.schema = replay(state.base, state.operations.slice(0, state.cursor));
+  state.schema = replay(state.base, state.operations.slice(0, state.cursor)); markDraft();
   buildGroups();
   for (const [id, point] of layoutTables()) if (!state.positions.has(id)) state.positions.set(id, point);
   for (const id of [...state.positions.keys()]) if (!state.schema.tables.some(t => t.id === id)) state.positions.delete(id);
@@ -1878,6 +1916,7 @@ function openEditor(kind, context = {}) {
   const column = table?.columns.find(c => c.name === context.columnName);
   const titles = { addTable: 'جدول جديد', renameTable: 'تغيير اسم الجدول', addColumn: 'إضافة عمود', editColumn: 'تعديل العمود', addRelation: 'إضافة علاقة' };
   $('editTitle').textContent = titles[kind];
+  headerIcon($('editTitle').parentElement, { addTable: 'table', renameTable: 'edit', addColumn: 'plus', editColumn: 'edit', addRelation: 'relation' }[kind]);
   $('editDescription').textContent = kind === 'addTable' ? 'أضف تعريف الجدول إلى المسودة ثم جهّز أعمدته.' : kind === 'renameTable' ? 'سيبقى الجدول مرتبطًا بمواضيعه وعلاقاته.' : kind === 'addRelation' ? 'عمود المفتاح الأجنبي يشير إلى عمود المفتاح الأساسي في الجدول الهدف.' : `تعديل أعمدة ${table.name} ضمن المسودة.`;
   $('editDialog').style.setProperty('--modal-width', `${kind === 'addRelation' ? 560 : kind === 'renameTable' ? 440 : 520}px`);
   if (kind === 'addTable') fields.append(field('name', 'اسم الجدول', '', 'text', { required: true }), field('schema', 'Schema', 'public', 'text', { required: true }));
@@ -1967,7 +2006,7 @@ function openTopicSettings(group, newlyCreated = false) {
   const dialog = $('topicSettingsDialog'), root = $('topicSettingsContent'); root.replaceChildren();
   const workspaceId = state.workspaceId, selected = new Set(group.ids);
   const cancel = () => dialog.close();
-  root.append(modalHeader('إعدادات الموضوع', 'غيّر الاسم والجداول الظاهرة دون تكرار تعريف الجدول.', cancel, 'topicSettingsTitle'));
+  root.append(headerIcon(modalHeader('إعدادات الموضوع', 'غيّر الاسم والجداول الظاهرة دون تكرار تعريف الجدول.', cancel, 'topicSettingsTitle'), 'edit'));
   const body = el('div', 'modal-body'), nameLabel = el('label', '', 'اسم الموضوع'), name = el('input'); name.value = group.label; name.maxLength = 50; nameLabel.append(name);
   const colorLabel = el('label', '', 'لون الموضوع'), color = el('input'); color.type = 'color'; color.value = group.color; colorLabel.append(color);
   const search = el('input'); search.type = 'search'; search.placeholder = 'ابحث لإضافة جدول…'; search.setAttribute('aria-label', 'ابحث لإضافة جدول');
@@ -2037,7 +2076,7 @@ function renderTopicEditor() {
 }
 function openTopicProposal(suggestions, sourceAnalysis, request) {
   const dialog = $('topicProposalDialog'), root = $('topicProposalContent'); root.replaceChildren();
-  root.append(modalHeader('راجع اقتراح المواضيع', `${suggestions.length} مواضيع مبنية على استخدام الجداول في الكود.`, () => dialog.close(), 'topicProposalTitle'));
+  root.append(headerIcon(modalHeader('راجع اقتراح المواضيع', `${suggestions.length} مواضيع مبنية على استخدام الجداول في الكود.`, () => dialog.close(), 'topicProposalTitle'), 'sparkle', 'accent'));
   const body = el('div', 'modal-body');
   for (const group of suggestions) {
     const section = el('section', 'table-code-evidence'); section.append(el('h3', '', group.label), el('p', 'field-hint', group.reason || ''));
@@ -2087,7 +2126,7 @@ function renderLint() {
   const dialog = $('lintDialog'), root = $('lintContent'); root.replaceChildren();
   const findings = updateLintCount(), filter = state.lintFilter && findings.some(item => item.severity === state.lintFilter) ? state.lintFilter : 'all';
   const counts = Object.fromEntries(Object.keys(SEVERITY_LABELS).map(severity => [severity, findings.filter(item => item.severity === severity).length]));
-  root.append(modalHeader('فحص المخطط', findings.length ? `${findings.length} ملاحظة على ${state.schema.tables.length} جدول. الفحص محلي ولا يرسل شيئًا.` : 'فحص محلي للمفاتيح والعلاقات والأنواع، دون AI ودون اتصال.', () => dialog.close(), 'lintTitle'));
+  root.append(headerIcon(modalHeader('فحص المخطط', findings.length ? `${findings.length} ملاحظة على ${state.schema.tables.length} جدول. الفحص محلي ولا يرسل شيئًا.` : 'فحص محلي للمفاتيح والعلاقات والأنواع، دون AI ودون اتصال.', () => dialog.close(), 'lintTitle'), 'check'));
   const body = el('div', 'modal-body');
   if (!findings.length) body.append(notice(state.schema.tables.length ? 'لا توجد ملاحظات' : 'لا توجد جداول بعد', state.schema.tables.length ? 'المفاتيح والعلاقات والأنواع متسقة في المخطط الحالي ومسودته.' : 'أضف جداول أو اربط قاعدة بيانات ثم أعد الفحص.', 'success'));
   else {
@@ -2121,7 +2160,7 @@ function renderExport() {
   const ids = new Set(visibleTables().map(table => table.id));
   const schema = scoped ? { ...state.schema, tables: state.schema.tables.filter(table => ids.has(table.id)), relations: state.schema.relations.filter(relation => ids.has(relation.source) && ids.has(relation.target)) } : state.schema;
   const operations = state.operations.slice(0, state.cursor);
-  root.append(modalHeader('تصدير المخطط', 'انسخ المخطط إلى أدوات التوثيق، أو حوّل المسودة إلى migration جاهز للمراجعة.', () => dialog.close(), 'exportTitle'));
+  root.append(headerIcon(modalHeader('تصدير المخطط', 'انسخ المخطط إلى أدوات التوثيق، أو حوّل المسودة إلى migration جاهز للمراجعة.', () => dialog.close(), 'exportTitle'), 'download'));
   const body = el('div', 'modal-body');
   body.append(uiTabs(EXPORT_FORMATS.map(item => [item.id, item.label]), format.id, value => { state.exportFormat = value; renderExport(); }));
   let text = '', fileName = `${slug(activeWorkspace()?.name || state.schema.database)}.${format.fileExtension}`;
@@ -2666,8 +2705,8 @@ function openCodeDialog() {
 }
 function openQuickActions() {
   closeHeaderMenus();
-  const hints = { 'جدول جديد': 'T', 'إضافة علاقة': 'R', 'ترتيب الجداول': 'A', 'إظهار كامل المخطط': 'F', 'فحص المخطط': 'L', 'تصدير المخطط (Mermaid · DBML · SQL)': 'E', 'مراجعة المسودة': 'D' };
-  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['فحص المخطط', openLint], ['تصدير المخطط (Mermaid · DBML · SQL)', () => openExport()], ['تحويل المسودة إلى Laravel migration', () => openExport('laravel')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحديث المخطط من القاعدة', () => $('refreshButton').click()], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
+  const hints = { 'جدول جديد': 'T', 'إضافة علاقة': 'R', 'ترتيب الجداول': 'A', 'إظهار كامل المخطط': 'F', 'فحص المخطط': 'L', 'تصدير المخطط (Mermaid · DBML · SQL)': 'E', 'مراجعة المسودة': 'D', 'اختصارات لوحة المفاتيح': '?' };
+  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['فحص المخطط', openLint], ['تصدير المخطط (Mermaid · DBML · SQL)', () => openExport()], ['تحويل المسودة إلى Laravel migration', () => openExport('laravel')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحديث المخطط من القاعدة', () => $('refreshButton').click()], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))], ['اختصارات لوحة المفاتيح', openShortcuts]];
   const root = $('quickActionList'); root.replaceChildren();
   for (const [label, action] of commands) {
     const command = uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'); command.dataset.label = label.toLowerCase();
@@ -2693,12 +2732,13 @@ function filterQuickActions(raw) {
 
 function installEvents() {
   initOverlays();
+  for (const [id, name] of Object.entries(DIALOG_ICONS)) { const header = $(id)?.querySelector('.modal-header'); if (header) headerIcon(header, name); }
   document.fonts?.ready.then(scheduleFitChrome);
   const viewport = $('viewport');
   $('relationshipDialog').addEventListener('close', () => { state.selectedRelation = null; updateEmphasis(); });
   for (const [trigger, menu] of [['toolsButton', 'toolsMenu'], ['aiMenuButton', 'aiMenu'], ['topicSwitchButton', 'topics']]) {
     $(trigger).addEventListener('click', () => {
-      const open = $(menu).hidden; closeHeaderMenus(); closeViewMenu(); closeWorkspaceMenu();
+      const open = $(menu).hidden; closeHeaderMenus(); closeWorkspaceMenu();
       $(menu).hidden = !open; $(trigger).setAttribute('aria-expanded', String(open));
       if (open) $(menu).querySelector('button')?.focus();
     });
@@ -2749,12 +2789,6 @@ function installEvents() {
   $('discardDraftButton').addEventListener('click', () => confirmAction('تجاهل المسودة؟', `سيُزال ${state.cursor} تغييرات مقترحة من هذه المساحة.`, 'سيعود المخطط إلى التعريف الأصلي. لا تتغير قاعدة البيانات.', () => {
     state.operations = []; state.cursor = 0; saveDraft(); refreshDraft(); showToast('تم تجاهل المسودة');
   }, 'تجاهل المسودة'));
-  $('viewModeButton').addEventListener('click', () => {
-    const opening = $('viewModeMenu').hidden;
-    $('viewModeMenu').hidden = !opening;
-    $('viewModeButton').setAttribute('aria-expanded', String(opening));
-  });
-  document.addEventListener('pointerdown', event => { if (!event.target.closest('.view-switcher')) closeViewMenu(); });
   $('backTopicsButton').addEventListener('click', () => {
     state.topic = 'all'; activeWorkspace().topic = 'all'; saveWorkspaces();
     buildTopicPositions(); renderTopics(); renderView(); renderNodes(); fitView(false);
@@ -2804,8 +2838,7 @@ function installEvents() {
   $('emptyPrimaryButton').addEventListener('click', () => activeWorkspace()?.kind === 'ideas' ? openEditor('addTable') : openConnectionDialog());
   $('emptyAiButton').addEventListener('click', openAiConversation);
   $('addTableButton').addEventListener('click', () => openEditor('addTable'));
-  $('mapTabButton').addEventListener('click', () => setViewMode('map'));
-  $('tablesTabButton').addEventListener('click', () => setViewMode('tables'));
+  $('viewTabs').addEventListener('click', event => { const view = event.target.closest('.seg')?.dataset.view; if (view) setViewMode(view); });
   $('linkModeButton').addEventListener('click', () => {
     openEditor('addRelation');
   });
@@ -2814,7 +2847,7 @@ function installEvents() {
   $('undoButton').addEventListener('click', () => stepDraft(-1));
   $('undoQuick').addEventListener('click', () => stepDraft(-1));
   $('redoQuick').addEventListener('click', () => stepDraft(1));
-  $('helpButton').addEventListener('click', openQuickActions);
+  $('helpButton').addEventListener('click', openShortcuts);
   $('redoButton').addEventListener('click', () => stepDraft(1));
   $('closeEditDialog').addEventListener('click', () => $('editDialog').close());
   $('editForm').addEventListener('submit', event => {
@@ -3033,6 +3066,7 @@ function installEvents() {
       if (event.key === '0') { fitView(state.topic !== 'all'); return; }
       const tool = { v: 'selectionModeButton', t: 'addTableButton', r: 'linkModeButton', a: 'arrangeButton' }[event.key.toLowerCase()];
       if (tool && !$(tool).hidden && !$(tool).disabled) { event.preventDefault(); $(tool).click(); return; }
+      if (event.key === '?') { event.preventDefault(); openShortcuts(); return; }
       if (event.key.toLowerCase() === 'l') { event.preventDefault(); openLint(); return; }
       if (event.key.toLowerCase() === 'e') { event.preventDefault(); openExport(); return; }
       if (event.key.toLowerCase() === 'd') { event.preventDefault(); openDialog($('changesPanel')); return; }
@@ -3040,7 +3074,6 @@ function installEvents() {
     }
     if (event.key === 'Escape' && (!$('toolsMenu').hidden || !$('aiMenu').hidden || !$('topics').hidden)) { closeHeaderMenus(); return; }
     if (event.key === 'Escape' && !$('workspaceMenu').hidden) { closeWorkspaceMenu({ focus: true }); return; }
-    if (event.key === 'Escape' && !$('viewModeMenu').hidden) { closeViewMenu(); $('viewModeButton').focus(); return; }
     if (event.key === '/' && !editing) { event.preventDefault(); setNavbarSearch(true, { focus: true }); }
     if (event.key === 'Escape' && document.querySelector('.chrome.d1.search-open')) { event.preventDefault(); setNavbarSearch(false, { focus: true }); return; }
     if (event.key === 'Escape' && !$('connectDialog').open) { closeContextMenu(); state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis(); }
