@@ -1900,8 +1900,17 @@ textarea:focus-visible {
   direction: rtl;
 }
 .change-number {
-  font: 12px var(--mono);
+  font: 12px/24px var(--mono);
 }
+button.change-item {
+  width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: inherit;
+  font: inherit; text-align: start; cursor: pointer; border-radius: 8px; transition: background-color .15s;
+}
+button.change-item:hover { background: var(--context); }
+.change-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.change-state { flex: none; color: var(--muted); font-size: 12px; }
+.change-item.undone { text-decoration: none; }
+.change-item.undone .change-label { text-decoration: line-through; }
 .panel-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2814,6 +2823,10 @@ html[dir="rtl"] .chrome-center { transform: translateX(50%); }
 .search-wrap input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 14px/1 var(--ui); }
 .search-wrap input::placeholder { color: var(--faint); }
 .search-wrap kbd { font: 500 11px/1 var(--mono); color: var(--faint); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; background: var(--surface); }
+.search-count { flex: none; font: 500 12px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.search-count.none { font-family: var(--ui); color: var(--danger); }
+.search-wrap:has(.search-count:not([hidden])) kbd { display: none; }
+.search-wrap input::-webkit-search-cancel-button { display: none; }
 
 .context-row { display: flex; align-items: center; gap: 8px; }
 .context-row .pill { min-height: 36px; padding: 4px; border-radius: 12px; box-shadow: none; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(6px); }
@@ -2893,25 +2906,31 @@ dialog::backdrop { background: var(--scrim); }
   .pill-button:active, .tool:active, .seg:active { transform: none; }
 }
 
-/* ---- Compact: icons only, search collapses into a toggle ---- */
-@media (max-width: 1180px) {
-  .search-toggle { display: inline-grid; }
-  .search-wrap { display: none; }
-  .chrome.search-open .search-wrap { display: flex; position: absolute; top: calc(100% + 12px); inset-inline-end: 0; width: min(320px, 90vw); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 4px 14px rgb(var(--shadow-rgb) / .14); z-index: 5; }
-  .brand-word { display: none; }
-  .brand { padding: 4px 12px; }
-}
+/* ---- Density: fitChrome() in app.js measures the three top zones and steps up one
+   class at a time until nothing overlaps, so a long workspace name or a narrow
+   window never lets the tool strip cover the menu. d1: search collapses into a
+   toggle and the wordmark hides. d2: pill labels hide. d3: the tool strip drops
+   to its own row. d4: the logo pill hides so the side zones clear on phones. ---- */
+.chrome.d1 .search-toggle { display: inline-grid; }
+.chrome.d1 .search-wrap { display: none; }
+.chrome.d1.search-open .search-wrap { display: flex; position: absolute; top: calc(100% + 12px); inset-inline-end: 0; width: min(320px, 90vw); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 4px 14px rgb(var(--shadow-rgb) / .14); z-index: 5; }
+.chrome.d1 .brand-word { display: none; }
+.chrome.d1 .brand { padding: 4px 12px; }
+.chrome.d2 .pill-button .label { display: none; }
+.chrome.d2 #changesButton { padding: 4px 8px; }
+.chrome.d2 .pill-button strong { max-width: 112px; }
+.chrome.d3 .chrome-center { top: 68px; max-width: calc(100% - 24px); }
+.chrome.d3 .toolbar { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.chrome.d3 .toolbar::-webkit-scrollbar { display: none; }
+.chrome.d3 .context-row { flex-wrap: wrap; justify-content: center; }
+.app-shell:has(.chrome.d3) .map-area .view-overlay { padding-top: 212px; }
+.app-shell:has(.chrome.d3) .details-panel { top: 172px; }
+.chrome.d3 .toolbar { box-sizing: border-box; }
+.chrome.d4 .brand { display: none; }
+.chrome.d4 .pill-button strong { max-width: 84px; }
 @media (max-width: 900px) {
-  .pill-button .label { display: none; }
-  #changesButton { padding: 4px 8px; }
-  .chrome-center { top: 68px; max-width: calc(100% - 24px); }
-  .toolbar { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .toolbar::-webkit-scrollbar { display: none; }
   .tool kbd { display: none; }
-  .context-row { flex-wrap: wrap; justify-content: center; }
-  .map-area .view-overlay { padding-top: 168px; }
-  .details-panel { top: auto; bottom: 68px; inset-inline: 12px; width: auto; max-height: 56%; }
-  .pill-button strong { max-width: 112px; }
+  .details-panel, .app-shell:has(.chrome.d3) .details-panel { top: auto; bottom: 68px; inset-inline: 12px; width: auto; max-height: 56%; }
 }
 @media (max-width: 520px) {
   .chrome-start, .chrome-end { top: 12px; }
@@ -2937,7 +2956,6 @@ dialog::backdrop { background: var(--scrim); }
 .zoom, .history { direction: ltr; }
 .counts { background: var(--surface); backdrop-filter: none; }
 .context-row .pill { background: color-mix(in srgb, var(--surface) 94%, transparent); }
-@media (max-width: 900px) { .map-area .view-overlay { padding-top: 212px; } }
 @media (max-width: 600px) {
   .catalog-row { grid-template-columns: minmax(0, 1fr) auto 20px; }
   .catalog-row > .catalog-count:nth-child(3), .catalog-topics { display: none; }
@@ -3099,6 +3117,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .quick-command { height: 40px; padding: 0 12px; border-radius: 8px; font: 500 14px/20px var(--ui); transition: background-color .12s; }
 .quick-command:hover, .quick-command:focus-visible { background: var(--selected); outline: none; }
 .quick-command kbd { font: 500 11px/1 var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; background: var(--surface); }
+.quick-tables { display: flex; flex-direction: column; gap: 4px; }
+.quick-tables:empty { display: none; }
+.quick-group { margin: 8px 12px 0; font: 600 12px/20px var(--ui); color: var(--muted); }
+.table-command { display: flex; align-items: center; gap: 12px; justify-content: flex-start; }
+.table-command .figma-icon { opacity: .55; filter: grayscale(1); }
+.quick-table-name { font: 500 14px/20px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-command small { margin-inline-start: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
 
 /* ---- AI: a side sheet that keeps the map in view ---- */
 .drawer-dialog { width: min(440px, calc(100vw - 24px)); height: calc(100dvh - 24px); max-height: none; margin: 0; inset-block: 12px; inset-inline-start: auto; inset-inline-end: 12px; border-radius: 16px; }
@@ -3587,3 +3612,6 @@ body dialog.chat-dialog[open] { display: flex; flex-direction: column; padding: 
 .viewport.overview .node-meta { display: flex; justify-content: center; margin-top: 12px; overflow: visible; }
 .viewport.overview .node-meta-count { display: inline-block; padding: 8px 20px; border-radius: 999px; background: color-mix(in srgb, var(--node-color, var(--teal)) 18%, var(--surface)); color: var(--ink); font: 600 30px/1.1 var(--ui); white-space: nowrap; }
 .viewport.overview .table-node.dimmed .node-meta-count { background: var(--context); color: var(--faint); }
+
+/* Identifier titles (inspector, full table) break only at the <wbr> after a dot or underscore. */
+.modal-header h2.identifier-title { word-break: normal; overflow-wrap: normal; hyphens: none; text-align: right; }

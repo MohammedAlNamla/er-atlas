@@ -93,6 +93,12 @@ export function applyOperation(schema, operation) {
       next.relations = next.relations.filter(item => item.id !== operation.relationId);
       break;
     }
+    case 'dropTable': {
+      tableById(next, operation.tableId);
+      next.tables = next.tables.filter(table => table.id !== operation.tableId);
+      next.relations = next.relations.filter(relation => relation.source !== operation.tableId && relation.target !== operation.tableId);
+      break;
+    }
     default: throw new Error('نوع تغيير غير معروف');
   }
   refreshForeignFlags(next);
@@ -112,7 +118,11 @@ export function describeOperation(operation, schema) {
     case 'updateColumn': return `تعديل ${name(operation.tableId)}.${operation.columnName}`;
     case 'dropColumn': return `حذف ${name(operation.tableId)}.${operation.columnName}`;
     case 'addRelation': return `ربط ${name(operation.relation.source)} مع ${name(operation.relation.target)}`;
-    case 'dropRelation': return 'حذف علاقة';
+    case 'dropRelation': {
+      const relation = schema.relations.find(item => item.id === operation.relationId);
+      return relation ? `حذف علاقة ${name(relation.source)}.${relation.pairs.map(pair => pair.source).join(', ')} → ${name(relation.target)}` : 'حذف علاقة';
+    }
+    case 'dropTable': return `حذف جدول ${name(operation.tableId)}`;
     default: return 'تغيير';
   }
 }

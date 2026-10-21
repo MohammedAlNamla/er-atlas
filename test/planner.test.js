@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyOperation, replay } from '../public/model.js';
+import { applyOperation, replay, describeOperation } from '../public/model.js';
 import { planChanges } from '../planner.js';
 
 const base = {
@@ -78,4 +78,20 @@ test('type changes carry a USING cast and Laravel-style types are accepted', () 
   for (const type of ['timestamp(0) without time zone', 'timestamptz(3)', 'bigserial', 'text[]', 'varchar(255)']) {
     assert.doesNotThrow(() => planChanges(orders, [{ type: 'addColumn', tableId: 'o', column: { name: 'extra', type, nullable: true } }]), type);
   }
+});
+
+test('dropping a table drops inbound keys first and the table with its relations', () => {
+  const linked = applyOperation(orders, { type: 'addRelation', relation: relation('a') });
+  const plan = planChanges({ ...linked, relations: linked.relations.map(item => ({ ...item, kind: 'actual' })) }, [{ type: 'dropTable', tableId: 'u' }]);
+  assert.deepEqual(plan.statements, ['ALTER TABLE "public"."orders" DROP CONSTRAINT "orders_user_id_foreign";', 'DROP TABLE "public"."users";']);
+  const after = applyOperation(linked, { type: 'dropTable', tableId: 'u' });
+  assert.deepEqual(after.tables.map(table => table.name), ['orders']);
+  assert.equal(after.relations.length, 0);
+  assert.equal(after.tables[0].columns.find(column => column.name === 'user_id').foreign, false);
+});
+
+test('change descriptions name the dropped relation and table', () => {
+  const linked = applyOperation(orders, { type: 'addRelation', relation: relation('a') });
+  assert.equal(describeOperation({ type: 'dropRelation', relationId: 'r' }, linked), 'حذف علاقة orders.user_id → users');
+  assert.equal(describeOperation({ type: 'dropTable', tableId: 'u' }, linked), 'حذف جدول users');
 });

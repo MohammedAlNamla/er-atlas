@@ -100,6 +100,15 @@ export function planChanges(base, operations) {
         statements.push(`ALTER TABLE ${tableSql(source)} DROP CONSTRAINT ${q(relation.name)};`);
         break;
       }
+      case 'dropTable': {
+        const table = getTable(schema, operation.tableId);
+        // Inbound keys from other tables would block DROP TABLE; drop them explicitly instead of CASCADE.
+        for (const relation of schema.relations.filter(r => r.target === table.id && r.source !== table.id)) {
+          statements.push(`ALTER TABLE ${tableSql(getTable(schema, relation.source))} DROP CONSTRAINT ${q(relation.name)};`);
+        }
+        statements.push(`DROP TABLE ${tableSql(table)};`);
+        break;
+      }
       default: throw new Error('تغيير غير مدعوم');
     }
     schema = next;

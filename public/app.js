@@ -86,6 +86,7 @@ function renderWorkspaces() {
     button.addEventListener('click', async () => { closeWorkspaceMenu({ focus: true }); await activateWorkspace(workspace.id); });
     tabs.append(button);
   }
+  scheduleFitChrome();
 }
 function renderEmptyWorkspace() {
   const empty = $('emptyWorkspace'), workspace = activeWorkspace();
@@ -283,7 +284,7 @@ async function activateWorkspace(id, { initial = false, live = false } = {}) {
   state.linkMode = false; state.linkSource = null; state.plan = null; state.handoffPrompt = '';
   $('linkModeButton').setAttribute('aria-pressed', 'false');
   state.scale = 1; state.x = 0; state.y = 0;
-  $('changesPanel').close(); $('searchInput').value = '';
+  $('changesPanel').close(); $('searchInput').value = ''; $('searchCount').hidden = true; state.searchIndex = -1;
   state.aiController?.abort(); state.layoutController?.abort(); state.arrangement = null;
   for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
   setSchema(next.schema || blankSchema(next.name), next.kind !== 'database');
@@ -801,7 +802,7 @@ function renderView() {
   $('arrangeButton').hidden = !overlay.hidden;
   $('aiArrangeButton').disabled = !visibleTables().length;
   $('arrangeWithAiButton').disabled = !visibleTables().length;
-  updateViewCounts();
+  updateViewCounts(); scheduleFitChrome();
 }
 function renderTableCatalog(overlay) {
   const heading = el('div', 'catalog-heading');
@@ -932,7 +933,9 @@ function makeNode(table) {
   }, 'node-expand');
   footer.setAttribute('aria-label', `عرض كل أعمدة ${table.name}`);
   footer.setAttribute('aria-haspopup', 'dialog');
-  footer.append(icon('chevron'), el('span', '', `عرض كل الأعمدة (${table.columns.length})`));
+  // Say what the footer adds: the hidden columns, or the full view when every column already shows.
+  const hidden = table.columns.length - previewColumns(table, nodeExpanded(table)).length;
+  footer.append(icon('chevron'), el('span', '', hidden ? `عرض كل الأعمدة (+${hidden})` : 'عرض الجدول'));
   footer.addEventListener('pointerdown', event => event.stopPropagation());
   card.append(footer);
   card.tabIndex = 0; card.setAttribute('aria-label', `جدول ${table.name}`);
@@ -1236,6 +1239,19 @@ function searchMatches(search) {
   ).map(table => table.id));
 }
 
+function rankedSearch(term) {
+  if (!term) return [];
+  const ids = searchMatches(term), rank = table => { const name = table.name.toLowerCase(); return name === term ? 0 : name.startsWith(term) ? 1 : name.includes(term) ? 2 : 3; };
+  return state.schema.tables.filter(table => ids.has(table.id)).sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+}
+function updateSearchCount() {
+  const output = $('searchCount'), term = $('searchInput').value.trim().toLowerCase();
+  output.hidden = !term; if (!term) return;
+  const total = rankedSearch(term).length;
+  output.textContent = !total ? 'لا نتائج' : state.searchIndex >= 0 ? `${Math.min(state.searchIndex + 1, total)}/${total}` : String(total);
+  output.classList.toggle('none', !total);
+  output.title = total ? 'Enter للتالي · Shift+Enter للسابق' : '';
+}
 function updateEmphasis() {
   const scopeKey = `${state.selectedTable}|${state.selectedRelation}|${state.viewMode}|${state.topic}|${state.focusTable}`;
   if (scopeKey !== state.aiScopeKey) { state.aiScopeKey = scopeKey; state.aiWide = false; updateAiSettings(); if ($('aiDialog').open && !state.aiMessages.length && !state.aiController) renderAiMessages(); }
@@ -1448,6 +1464,13 @@ function sourceEvidence(tableId) {
   const analysis = activeWorkspace()?.codeAnalysis;
   return analysis?.tables?.find(table => table.tableId === tableId)?.evidence || [];
 }
+// Long identifiers wrap after a dot or underscore, never in the middle of a word.
+function breakableTitle(header) {
+  const heading = header.querySelector('h2'), text = heading.textContent;
+  heading.replaceChildren(...text.split(/(?<=[._])/).flatMap(part => [document.createTextNode(part), document.createElement('wbr')]));
+  heading.classList.add('identifier-title'); heading.dir = 'ltr';
+  return header;
+}
 function closeInspector() {
   state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis();
 }
@@ -1621,7 +1644,7 @@ function renderDetails() {
   $('details').hidden = !table;
   if (!table) return;
   const relevant = state.schema.relations.filter(relation => relation.source === table.id || relation.target === table.id);
-  root.append(modalHeader(`${table.schema}.${table.name}`, 'بنية الجدول وعلاقاته في مكان واحد، والخريطة تبقى ظاهرة.', closeInspector));
+  root.append(breakableTitle(modalHeader(`${table.schema}.${table.name}`, 'بنية الجدول وعلاقاته في مكان واحد، والخريطة تبقى ظاهرة.', closeInspector)));
   const body = el('div', 'modal-body'), chips = el('div', 'chip-row');
   const membership = state.groups.find(group => group.id !== 'all' && group.ids.has(table.id));
   chips.append(el('span', 'chip', `${table.columns.length} أعمدة`), el('span', 'chip', `${relevant.length} علاقات`), ...(table.approxRows > 0 ? [el('span', 'chip', `≈ ${table.approxRows.toLocaleString('en-US')} صف`)] : []), el('span', 'chip', table.kind === 'proposed' ? 'مسودة' : membership?.label || table.schema));
@@ -1638,7 +1661,7 @@ function renderDetails() {
   } else {
     const fields = el('div', 'read-only-fields');
     for (const [label, value] of [['Schema', table.schema], ['اسم الجدول', table.name]]) { const field = el('label', '', label), input = el('input'); input.value = value; input.disabled = true; input.dir = 'ltr'; field.append(input); fields.append(field); }
-    body.append(fields, tableCodeDetails(table));
+    body.append(fields, tableCodeDetails(table), uiButton('حذف الجدول في المسودة', () => confirmDropTable(table.id), 'text-button danger'));
   }
   const actions = state.inspectorTab === 'columns' ? [uiButton('إضافة عمود', () => openEditor('addColumn', { tableId: table.id }), 'primary-button'), uiButton('عرض موسّع', () => openExpandedTable(table.id))]
     : state.inspectorTab === 'relations' ? [uiButton('إضافة علاقة', () => openEditor('addRelation', { source: table.id }), 'primary-button'), uiButton('إغلاق', closeInspector)]
@@ -1649,7 +1672,7 @@ function openExpandedTable(id) {
   const table = state.schema.tables.find(item => item.id === id); if (!table) return;
   const dialog = $('tableDialog'), root = $('expandedTableContent'); root.replaceChildren();
   dialog.dataset.tableId = id;
-  root.append(modalHeader(`${table.schema}.${table.name}`, 'عرض موسّع لبنية الجدول. هذه أعمدة المخطط وليست صفوف بيانات.', () => dialog.close(), 'expandedTableTitle'));
+  root.append(breakableTitle(modalHeader(`${table.schema}.${table.name}`, 'عرض موسّع لبنية الجدول. هذه أعمدة المخطط وليست صفوف بيانات.', () => dialog.close(), 'expandedTableTitle')));
   const body = el('div', 'modal-body'), content = el('div', 'expanded-table-tab'); let selected = 'columns';
   const entries = [['details', 'مصادر الكود'], ['sql', 'SQL'], ['relations', 'العلاقات'], ['columns', 'الأعمدة']];
   const show = tab => {
@@ -1717,6 +1740,7 @@ function showContextMenu(event) {
     item('تغيير اسم الجدول', 'edit', () => openEditor('renameTable', { tableId }));
     item('إضافة عمود', 'plus', () => openEditor('addColumn', { tableId }));
     item('إنشاء علاقة', 'link', () => beginLink(tableId));
+    item('حذف الجدول في المسودة', 'trash', () => confirmDropTable(tableId), true);
   } else {
     item('إنشاء جدول هنا', 'table', () => openEditor('addTable', { position: point }));
     item('إنشاء علاقة', 'link', () => openEditor('addRelation'));
@@ -1729,6 +1753,14 @@ function showContextMenu(event) {
     menu.style.top = `${Math.max(12, Math.min(y, mapRect.height - menu.offsetHeight - 12))}px`;
     menu.querySelector('button')?.focus();
   });
+}
+function confirmDropTable(tableId) {
+  const table = state.schema.tables.find(item => item.id === tableId); if (!table) return;
+  const linked = state.schema.relations.filter(relation => relation.source === tableId || relation.target === tableId).length;
+  const rows = table.approxRows > 0 ? ` يحتوي الجدول ≈ ${table.approxRows.toLocaleString('en-US')} صف ستُفقد عند التنفيذ.` : '';
+  confirmAction('حذف الجدول في المسودة؟', `${table.schema}.${table.name}`,
+    `سيُسجل حذف الجدول${linked === 1 ? ' مع علاقته' : linked ? ` مع علاقاته (${linked})` : ''} ضمن المسودة.${rows}`,
+    () => { closeInspector(); stage({ type: 'dropTable', tableId }); }, 'حذف الجدول');
 }
 function arrangeTables() {
   state.hoveredTable = null;
@@ -1764,11 +1796,31 @@ function updateDraftView() {
   $('draftSummary').textContent = `${state.cursor} تغييرات محلية جاهزة للمراجعة والتسليم إلى المساعد.`;
   const list = $('changeList'); list.replaceChildren();
   if (!state.operations.length) list.append(el('p', 'empty-changes', 'لا توجد تغييرات بعد. اختر جدولًا لتعديله.'));
+  // Each change is described against the schema just before it, so drops still name what they removed.
+  let before = state.base;
   state.operations.forEach((operation, index) => {
-    const row = el('div', `change-item${index >= state.cursor ? ' undone' : ''}`);
-    row.append(el('span', 'change-number', String(index + 1)), el('span', '', describeOperation(operation, operation.type === 'renameTable' ? state.base : state.schema)));
+    const tableId = operationTableId(operation, before), label = describeOperation(operation, before);
+    try { before = applyOperation(before, operation); } catch { /* a stale step stays listed */ }
+    const live = index < state.cursor && state.schema.tables.some(table => table.id === tableId);
+    const row = live ? uiButton('', () => { $('changesPanel').close(); locateTable(tableId); }, `change-item`) : el('div', `change-item${index >= state.cursor ? ' undone' : ''}`);
+    if (live) row.title = 'إظهار على الخريطة';
+    row.append(el('span', 'change-number', String(index + 1)), el('span', 'change-label', label));
+    if (index >= state.cursor) row.append(el('small', 'change-state', 'متراجع عنه'));
     list.append(row);
   });
+}
+function operationTableId(operation, schema) {
+  if (operation.type === 'addTable') return operation.id;
+  if (operation.type === 'addRelation') return operation.relation.source;
+  if (operation.type === 'dropRelation') return schema.relations.find(item => item.id === operation.relationId)?.source;
+  return operation.tableId;
+}
+// Bring a table into view from anywhere: leave full-page views, select it and center it.
+function locateTable(id) {
+  if (!state.schema.tables.some(table => table.id === id)) return;
+  if (state.viewMode === 'tables' || (state.viewMode === 'topics' && !visibleTables().some(table => table.id === id))) setViewMode('map');
+  if (state.viewMode === 'focus') chooseFocusTable(id);
+  selectTable(id); centerTable(id);
 }
 function refreshDraft({ fit = false } = {}) {
   state.schema = replay(state.base, state.operations.slice(0, state.cursor));
@@ -2476,6 +2528,27 @@ function closeHeaderMenus() {
     $(menu).hidden = true; $(trigger).setAttribute('aria-expanded', 'false');
   }
 }
+// The three top zones float independently, so a long workspace name used to slide the
+// tool strip over the menu. Step the density up one class at a time until they clear;
+// d4 (phones) drops the logo pill so the workspace and drafts pills never collide.
+function fitChrome() {
+  const chrome = document.querySelector('.chrome'); if (!chrome) return;
+  const [start, center, end] = ['.chrome-start', '.chrome-center', '.chrome-end'].map(selector => chrome.querySelector(selector));
+  chrome.classList.remove('d1', 'd2', 'd3', 'd4'); center.style.removeProperty('translate');
+  for (let level = 1; level <= 4; level++) {
+    const box = center.getBoundingClientRect(), grow = level === 1 ? 36 : 0; // the inline search widens 72px on focus
+    const [a, b] = [start, end].map(zone => zone.getBoundingClientRect()).sort((x, y) => x.left - y.left);
+    if (level === 4 && a.right + 12 <= b.left) return; // the strip has its own row; only the sides must clear
+    if (level < 4 && box.width + grow * 2 + 24 <= b.left - a.right) {
+      // Centered on the screen when it fits; otherwise centered in the free gap between the side zones.
+      if (box.left - grow - 12 < a.right || box.right + grow + 12 > b.left) center.style.translate = `${Math.round((a.right + b.left - box.left - box.right) / 2)}px 0`;
+      return;
+    }
+    chrome.classList.add(`d${level}`);
+  }
+}
+let chromeFrame = null;
+const scheduleFitChrome = () => { if (!chromeFrame) chromeFrame = requestAnimationFrame(() => { chromeFrame = null; fitChrome(); }); };
 function setNavbarSearch(open, { focus = false } = {}) {
   document.querySelector('.chrome').classList.toggle('search-open', open);
   $('searchToggleButton').setAttribute('aria-expanded', String(open));
@@ -2497,15 +2570,30 @@ function openQuickActions() {
   const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
   const root = $('quickActionList'); root.replaceChildren();
   for (const [label, action] of commands) {
-    const command = uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'); command.dataset.label = label;
+    const command = uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'); command.dataset.label = label.toLowerCase();
     if (hints[label]) command.append(el('kbd', '', hints[label]));
     root.append(command);
   }
+  root.append(Object.assign(el('div', 'quick-tables'), { id: 'quickTables' }));
   $('quickSearch').value = ''; openDialog($('quickActionsDialog')); $('quickSearch').focus();
+}
+// The palette doubles as "go to table": typing a name lists matching tables under the commands.
+function filterQuickActions(raw) {
+  const term = raw.trim().toLowerCase();
+  for (const item of $('quickActionList').querySelectorAll('.quick-command:not(.table-command)')) item.hidden = !item.dataset.label.includes(term);
+  const host = $('quickTables'); if (!host) return;
+  const tables = term && state.schema ? rankedSearch(term).slice(0, 8) : [];
+  host.replaceChildren(...(tables.length ? [el('p', 'quick-group', 'الجداول')] : []), ...tables.map(table => {
+    const command = uiButton('', () => { $('quickActionsDialog').close(); locateTable(table.id); }, 'quick-command table-command');
+    const name = el('span', 'quick-table-name', table.name); name.dir = 'ltr';
+    command.append(icon('table'), name, el('small', '', `${table.schema} · ${columnsLabel(table.columns.length)}`));
+    return command;
+  }));
 }
 
 function installEvents() {
   initOverlays();
+  document.fonts?.ready.then(scheduleFitChrome);
   const viewport = $('viewport');
   $('relationshipDialog').addEventListener('close', () => { state.selectedRelation = null; updateEmphasis(); });
   for (const [trigger, menu] of [['toolsButton', 'toolsMenu'], ['aiMenuButton', 'aiMenu'], ['topicSwitchButton', 'topics']]) {
@@ -2536,8 +2624,8 @@ function installEvents() {
   $('quickActionsButton').addEventListener('click', openQuickActions);
   $('themeButton').addEventListener('click', cycleTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (currentTheme() === 'auto') applyTheme('auto'); });
-  $('quickSearch').addEventListener('input', event => { for (const item of $('quickActionList').children) item.hidden = !item.dataset.label.includes(event.target.value.trim()); });
-  const visibleCommands = () => [...$('quickActionList').children].filter(item => !item.hidden);
+  $('quickSearch').addEventListener('input', event => filterQuickActions(event.target.value));
+  const visibleCommands = () => [...$('quickActionList').querySelectorAll('.quick-command')].filter(item => !item.hidden);
   $('quickSearch').addEventListener('keydown', event => {
     if (event.key === 'Enter') { event.preventDefault(); visibleCommands()[0]?.click(); }
     if (event.key === 'ArrowDown') { event.preventDefault(); visibleCommands()[0]?.focus(); }
@@ -2817,18 +2905,15 @@ function installEvents() {
   $('readableViewButton').addEventListener('click', () => fitView(state.topic !== 'all'));
   $('arrangeButton').addEventListener('click', () => openArrangement());
   $('closeDetails').addEventListener('click', () => { state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis(); });
-  $('searchInput').addEventListener('input', updateEmphasis);
+  $('searchInput').addEventListener('input', () => { state.searchIndex = -1; updateEmphasis(); updateSearchCount(); });
   $('searchToggleButton').addEventListener('click', () => setNavbarSearch($('searchToggleButton').getAttribute('aria-expanded') !== 'true', { focus: true }));
   $('searchInput').addEventListener('keydown', event => {
-    if (event.key === 'Enter') {
-      const first = searchMatches(event.currentTarget.value.toLowerCase()).values().next().value;
-      if (first) {
-        if (state.viewMode === 'topics') { setViewMode('focus'); chooseFocusTable(first); selectTable(first); return; }
-        selectTable(first);
-        if (state.viewMode === 'tables') setViewMode('map');
-        selectTable(first); centerTable(first);
-      }
-    }
+    if (event.key === 'Escape' && event.currentTarget.value) { event.preventDefault(); event.stopPropagation(); event.currentTarget.value = ''; state.searchIndex = -1; updateEmphasis(); updateSearchCount(); return; }
+    if (event.key !== 'Enter') return;
+    // Enter walks the matches, Shift+Enter walks back; best name matches come first.
+    const matches = rankedSearch(event.currentTarget.value.trim().toLowerCase()); if (!matches.length) return;
+    state.searchIndex = ((state.searchIndex ?? -1) + (event.shiftKey ? -1 : 1) + matches.length) % matches.length;
+    locateTable(matches[state.searchIndex].id); updateSearchCount(); event.currentTarget.focus();
   });
   window.addEventListener('keydown', event => {
     const editing = event.target.closest?.('input,textarea,select,[contenteditable="true"]');
@@ -2852,11 +2937,12 @@ function installEvents() {
     if (event.key === 'Escape' && !$('workspaceMenu').hidden) { closeWorkspaceMenu({ focus: true }); return; }
     if (event.key === 'Escape' && !$('viewModeMenu').hidden) { closeViewMenu(); $('viewModeButton').focus(); return; }
     if (event.key === '/' && !editing) { event.preventDefault(); setNavbarSearch(true, { focus: true }); }
-    if (event.key === 'Escape' && document.querySelector('.chrome.search-open') && matchMedia('(max-width: 880px)').matches) { event.preventDefault(); setNavbarSearch(false, { focus: true }); return; }
+    if (event.key === 'Escape' && document.querySelector('.chrome.d1.search-open')) { event.preventDefault(); setNavbarSearch(false, { focus: true }); return; }
     if (event.key === 'Escape' && !$('connectDialog').open) { closeContextMenu(); state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis(); }
   });
   let previousViewport = { width: viewport.clientWidth, height: viewport.clientHeight };
   window.addEventListener('resize', () => {
+    scheduleFitChrome();
     if (!state.schema) { previousViewport = { width: viewport.clientWidth, height: viewport.clientHeight }; return; }
     state.x += (viewport.clientWidth - previousViewport.width) / 2;
     state.y += (viewport.clientHeight - previousViewport.height) / 2;
