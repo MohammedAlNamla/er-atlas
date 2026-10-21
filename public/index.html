@@ -96,7 +96,7 @@
             ><button id="emptyAiButton" class="workspace-button" type="button">ناقش الفكرة مع AI</button>
           </div>
         </section>
-        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="toast" class="toast" role="status" aria-live="polite" popover="manual"></div>
       </main>
 
       <div class="chrome">
@@ -251,47 +251,25 @@
             <span data-icon="close"></span>
           </button>
           <h2 id="connectTitle">اتصال PostgreSQL</h2>
-          <p>نقرأ بنية الجداول والعلاقات. التعديلات تُحفظ في مسودة.</p>
+          <p>اتصال للقراءة فقط. اختر القاعدة من الخادم، والتعديلات تبقى في مسودة.</p>
         </div>
         <div class="modal-body">
           <div class="form-grid">
-            <label
-              >الخادم<input
-                name="host"
-                value="localhost"
-                required
-                spellcheck="false"
-                dir="ltr" /></label
-            ><label
-              >المنفذ<input
-                name="port"
-                type="number"
-                value="5432"
-                min="1"
-                max="65535"
-                required
-                dir="ltr" /></label
-            ><label
-              >اسم قاعدة البيانات<input
-                name="database"
-                placeholder="my_database"
-                required
-                spellcheck="false"
-                dir="ltr" /></label
-            ><label
-              >المستخدم<input
-                name="user"
-                placeholder="postgres"
-                required
-                spellcheck="false"
-                dir="ltr" /></label
-            ><label class="full"
-              >كلمة المرور<input
-                name="password"
-                type="password"
-                placeholder="••••••••"
-                dir="ltr"
-            /></label>
+            <label>الخادم<input name="host" value="localhost" required spellcheck="false" dir="ltr" /></label
+            ><label>المنفذ<input name="port" type="number" value="5432" min="1" max="65535" required dir="ltr" /></label
+            ><label>المستخدم<input name="user" placeholder="postgres" required spellcheck="false" dir="ltr" autocomplete="username" /></label
+            ><label>كلمة المرور<input name="password" type="password" placeholder="••••••••" dir="ltr" autocomplete="current-password" /></label>
+            <div class="database-field full">
+              <label for="connectDatabase">قاعدة البيانات</label>
+              <div class="database-picker">
+                <input id="connectDatabase" name="database" placeholder="اختر من الخادم أو اكتب الاسم" spellcheck="false" dir="ltr" autocomplete="off" aria-describedby="databaseHint" />
+                <button id="browseDatabasesButton" class="secondary-button" type="button" aria-controls="databaseList">
+                  <svg class="i i-small" aria-hidden="true"><use href="#i-database" /></svg><span>استعرض</span>
+                </button>
+              </div>
+              <div id="databaseList" class="database-list" role="listbox" aria-label="قواعد البيانات على الخادم" hidden></div>
+              <p id="databaseHint" class="field-hint">أدخل المستخدم وكلمة المرور، ثم «استعرض» لاختيار قاعدة من الخادم.</p>
+            </div>
           </div>
           <label class="choice ssl-choice"
             ><input name="ssl" type="checkbox" /><span

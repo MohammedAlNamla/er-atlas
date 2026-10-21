@@ -1471,7 +1471,7 @@ const SHORTCUTS = [
 function openShortcuts() {
   closeHeaderMenus();
   const dialog = $('shortcutsDialog'), root = $('shortcutsContent'); root.replaceChildren();
-  root.append(headerIcon(modalHeader('اختصارات لوحة المفاتيح', 'كل ما في الخريطة يُنجز من لوحة المفاتيح أيضًا.', () => dialog.close(), 'shortcutsTitle'), 'keyboard'));
+  root.append(headerIcon(modalHeader('الاختصارات ورموز الخريطة', 'كل ما في الخريطة يُنجز من لوحة المفاتيح، وهذه معاني الرموز على الجداول والخطوط.', () => dialog.close(), 'shortcutsTitle'), 'keyboard'));
   const body = el('div', 'modal-body'), groups = el('div', 'shortcut-groups');
   for (const [title, rows] of SHORTCUTS) {
     const group = el('section', 'shortcut-group'), list = el('dl');
@@ -1482,7 +1482,12 @@ function openShortcuts() {
     }
     group.append(el('h3', '', title), list); groups.append(group);
   }
-  body.append(groups);
+  const legend = el('section', 'map-legend'), items = el('dl');
+  for (const [mark, label, className] of [['PK', 'مفتاح أساسي', 'col-key pk'], ['FK', 'مفتاح أجنبي يشير إلى جدول آخر', 'col-key fk'], ['?', 'العمود يقبل قيمة فارغة (NULL)', 'legend-null'], ['مسودة', 'جدول أو عمود أضفته في المسودة ولم يُنفّذ بعد', 'node-draft'], ['- - -', 'علاقة مضافة في المسودة', 'legend-dash'], ['>|', 'طرف «كثير» من العلاقة (crow’s foot)', 'legend-glyph'], ['||', 'طرف «واحد بالضبط»؛ ودائرة مع خط = «صفر أو واحد»', 'legend-glyph']]) {
+    const row = el('div', 'legend-row'), term = el('dt'); term.append(el('span', className, mark)); row.append(term, el('dd', '', label)); items.append(row);
+  }
+  legend.append(el('h3', '', 'رموز الخريطة'), items);
+  body.append(groups, legend);
   root.append(body, modalFooter([uiButton('كل الأوامر', () => { dialog.close(); openQuickActions(); }, 'secondary-button')], 'Ctrl K يفتح لوحة الأوامر من أي مكان.'));
   openDialog(dialog);
 }
@@ -1624,7 +1629,7 @@ async function explainColumns(tableId) {
     for (const [name, note] of Object.entries(data.notes.columns)) if (entry.columns[name]?.basis !== 'user') entry.columns[name] = note;
     writeColumnNotes(); applyColumnTitles(tableId);
     const skipped = data.notes.missing.filter(name => !current.columns.find(column => column.name === name)?.description);
-    if (skipped.length) state.columnError = `لم يشرح AI ${skipped.length} عمودًا: ${skipped.slice(0, 3).map(name => `⁦${name}⁩`).join('، ')}${skipped.length > 3 ? '…' : ''}. أعد الشرح أو اكتبه بنفسك.`;
+    if (skipped.length) state.columnError = `لم يشرح AI ${skipped.length} عمودًا: ${skipped.slice(0, 3).map(name => `⁦${name}\u2069`).join('، ')}${skipped.length > 3 ? '…' : ''}. أعد الشرح أو اكتبه بنفسك.`;
   } catch (error) { if (workspaceId === state.workspaceId && error.name !== 'AbortError') state.columnError = error.message; }
   finally {
     if (state.columnController === controller) { state.columnController = null; state.columnBusy = null; }
@@ -1712,9 +1717,17 @@ function openExpandedTable(id) {
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); showToast('تم النسخ'); } catch { showToast('تعذّر النسخ. حدد النص وانسخه يدويًا.'); }
 }
+// The toast is a manual popover, so it lives in the top layer; showing it again lifts it above
+// any dialog opened since, instead of hiding behind the modal that triggered it.
 function showToast(message) {
-  const toast = $('toast'); toast.textContent = message; toast.classList.add('show');
-  clearTimeout(state.toastTimer); state.toastTimer = setTimeout(() => toast.classList.remove('show'), 2700);
+  const toast = $('toast'); toast.textContent = message;
+  try { if (toast.matches(':popover-open')) toast.hidePopover(); toast.showPopover(); } catch { /* no popover support: it stays in the page */ }
+  toast.classList.remove('show'); void toast.offsetWidth; toast.classList.add('show');
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    state.toastTimer = setTimeout(() => { try { toast.hidePopover(); } catch { /* already hidden */ } }, 240);
+  }, 2700);
 }
 
 function svgIcon(name) { return icon(name); }
@@ -2650,7 +2663,57 @@ function deleteWorkspace() {
     activateWorkspace(state.workspaces[0].id).then(() => showToast('حُذفت مساحة العمل'));
   }, 'حذف المساحة', true, 'لا يمكن التراجع عن حذف مساحة العمل. صدّرها أولًا إن كنت تريد نسخة.');
 }
+// ---- Database browser: list what this login can open on the server, pick one, connect.
+function connectPayload() {
+  const form = new FormData($('connectForm')), payload = Object.fromEntries(form.entries());
+  payload.ssl = form.has('ssl'); return payload;
+}
+const formatBytes = bytes => bytes < 1024 ** 2 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : bytes < 1024 ** 3 ? `${(bytes / 1024 ** 2).toFixed(bytes < 1024 ** 2 * 10 ? 1 : 0)} MB` : `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+function resetDatabaseList(hint = 'أدخل المستخدم وكلمة المرور، ثم «استعرض» لاختيار قاعدة من الخادم.') {
+  state.databases = null; state.databaseFilter = '';
+  $('databaseList').hidden = true; $('databaseList').replaceChildren(); $('databaseHint').textContent = hint;
+}
+function renderDatabaseList() {
+  const list = $('databaseList'), current = $('connectDatabase').value.trim(), filter = (state.databaseFilter || '').toLowerCase();
+  list.replaceChildren(); list.hidden = !state.databases?.length; if (list.hidden) return;
+  const shown = state.databases.filter(item => !filter || item.name.toLowerCase().includes(filter));
+  for (const item of shown) {
+    const option = el('button', 'database-option'); option.type = 'button'; option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', String(item.name === current)); option.disabled = !item.canConnect;
+    const name = el('span', 'database-name', item.name); name.dir = 'ltr';
+    const meta = [item.size != null ? `\u2068${formatBytes(item.size)}\u2069` : '', item.owner && `المالك ${item.owner}`, !item.canConnect && 'لا صلاحية اتصال'].filter(Boolean).join(' · ');
+    option.append(sprite('database', 'i i-small'), name, el('span', 'database-meta', meta));
+    if (item.description) option.title = item.description;
+    option.addEventListener('click', () => {
+      // A second click on the chosen database connects straight away.
+      if ($('connectDatabase').value.trim() === item.name) { $('connectForm').requestSubmit(); return; }
+      $('connectDatabase').value = item.name; state.databaseFilter = ''; renderDatabaseList();
+      $('databaseHint').textContent = `اخترت ${item.name}. اضغط «اتصال وعرض الخريطة» أو انقرها مرة أخرى.`;
+      list.querySelector('[aria-selected="true"]')?.focus();
+    });
+    list.append(option);
+  }
+  if (!shown.length) list.append(el('p', 'database-empty', 'لا توجد قاعدة بهذا الاسم على الخادم. يمكنك الاتصال بالاسم المكتوب مباشرة.'));
+}
+async function browseDatabases() {
+  const payload = connectPayload(), button = $('browseDatabasesButton'), label = button.querySelector('span');
+  $('connectError').hidden = true;
+  if (!payload.user.trim()) { $('connectForm').elements.namedItem('user').focus(); $('connectError').textContent = 'أدخل اسم المستخدم أولًا لعرض قواعد البيانات.'; $('connectError').hidden = false; return; }
+  button.disabled = true; label.textContent = 'جارٍ القراءة…';
+  try {
+    const response = await fetch('/api/databases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'تعذّر عرض قواعد البيانات');
+    state.databases = data.databases; state.databaseFilter = ''; renderDatabaseList();
+    const open = data.databases.filter(item => item.canConnect).length;
+    $('databaseHint').textContent = data.databases.length ? `${data.databases.length} قاعدة على ${payload.host}:${payload.port}${open < data.databases.length ? `، ${open} منها متاحة لهذا المستخدم` : ''}. اختر واحدة.` : 'لا توجد قواعد يمكن فتحها بهذا المستخدم.';
+    ($('databaseList').querySelector('[aria-selected="true"]') || $('databaseList').querySelector('.database-option:not(:disabled)'))?.focus();
+  } catch (error) { $('connectError').textContent = error.message; $('connectError').hidden = false; }
+  finally { button.disabled = false; label.textContent = state.databases ? 'تحديث القائمة' : 'استعرض'; }
+}
 function openConnectionDialog() {
+  resetDatabaseList();
+  $('browseDatabasesButton').querySelector('span').textContent = 'استعرض';
   const settings = activeWorkspace()?.connection;
   if (settings) {
     const form = $('connectForm');
@@ -2672,6 +2735,12 @@ function closeHeaderMenus() {
 // d4 (phones) drops the logo pill so the workspace and drafts pills never collide.
 function fitChrome() {
   const chrome = document.querySelector('.chrome'); if (!chrome) return;
+  chrome.classList.remove('vc'); fitChromeDensity(chrome);
+  // On a phone the strip can still overflow its own row: the view tabs then take a line of their own.
+  const toolbar = chrome.querySelector('.toolbar');
+  if (chrome.classList.contains('d3') && toolbar.scrollWidth > toolbar.clientWidth + 1) chrome.classList.add('vc');
+}
+function fitChromeDensity(chrome) {
   const [start, center, end] = ['.chrome-start', '.chrome-center', '.chrome-end'].map(selector => chrome.querySelector(selector));
   chrome.classList.remove('d1', 'd2', 'd3', 'd4'); center.style.removeProperty('translate');
   for (let level = 1; level <= 4; level++) {
@@ -3087,6 +3156,18 @@ function installEvents() {
     previousViewport = { width: viewport.clientWidth, height: viewport.clientHeight }; transform();
   });
   $('connectionButton').addEventListener('click', openConnectionDialog);
+  $('browseDatabasesButton').addEventListener('click', browseDatabases);
+  $('connectDatabase').addEventListener('input', event => { if (state.databases) { state.databaseFilter = event.target.value.trim(); renderDatabaseList(); } });
+  $('connectDatabase').addEventListener('keydown', event => { if (event.key === 'ArrowDown' && state.databases) { event.preventDefault(); $('databaseList').querySelector('.database-option:not(:disabled)')?.focus(); } });
+  // Changing where or who we connect as makes the listed databases stale.
+  for (const name of ['host', 'port', 'user', 'password', 'ssl']) $('connectForm').elements.namedItem(name).addEventListener('change', () => { if (state.databases) resetDatabaseList('تغيّرت بيانات الدخول. اضغط «استعرض» لتحديث القائمة.'); });
+  $('databaseList').addEventListener('keydown', event => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    const items = [...$('databaseList').querySelectorAll('.database-option:not(:disabled)')], index = items.indexOf(document.activeElement);
+    if (event.key === 'ArrowUp' && index <= 0) { $('connectDatabase').focus(); return; }
+    items[Math.min(items.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1))]?.focus();
+  });
   $('closeDialog').addEventListener('click', () => $('connectDialog').close());
   $('demoButton').addEventListener('click', async () => {
     if (state.connectionLive) await fetch('/api/disconnect', { method: 'POST' }).catch(() => {});
@@ -3105,6 +3186,7 @@ function installEvents() {
   });
   $('connectForm').addEventListener('submit', async event => {
     event.preventDefault(); $('connectError').hidden = true;
+    if (!$('connectDatabase').value.trim()) { browseDatabases(); return; }
     const button = $('submitConnection'); button.disabled = true; button.firstChild.textContent = 'جارٍ الاتصال... ';
     const form = new FormData(event.currentTarget);
     const payload = Object.fromEntries(form.entries()); payload.ssl = form.has('ssl');

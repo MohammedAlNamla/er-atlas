@@ -3836,3 +3836,58 @@ dialog, dialog *, .details-panel, .details-panel * { box-sizing: border-box; }
 /* Chat sheet: head and composer keep their height, the thread takes the rest and scrolls. */
 dialog.chat-dialog > .chat-head, dialog.chat-dialog > .chat-composer { flex: none; }
 dialog.chat-dialog > .chat-thread { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* Database picker: the name field with a browse action, and the server's databases beneath it. */
+.database-field { display: grid; gap: 6px; }
+.database-field > label { font: 600 13px/20px var(--ui); color: var(--ink); }
+.database-picker { display: flex; gap: 8px; }
+.database-picker input { flex: 1; min-width: 0; }
+.database-picker .secondary-button { flex: none; height: 42px; padding: 0 14px; }
+.database-picker .secondary-button .i { opacity: .8; }
+.database-list {
+  display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow: auto; padding: 4px;
+  border: 1px solid var(--field-border); border-radius: 12px; background: var(--surface); overscroll-behavior: contain;
+}
+.database-option {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px;
+  border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--ink); text-align: start; cursor: pointer;
+  transition: background-color .12s, border-color .12s;
+}
+.database-option:hover { background: var(--context); }
+.database-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.database-option[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-color: var(--accent); }
+.database-option[aria-selected="true"] .i { color: var(--teal-deep); opacity: 1; }
+.database-option:disabled { opacity: .5; cursor: not-allowed; }
+.database-option .i { color: var(--muted); }
+.database-name { font: 500 13.5px/20px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.database-meta { font: 400 12px/18px var(--ui); color: var(--muted); white-space: nowrap; }
+.database-empty { margin: 0; padding: 12px; font: 400 13px/20px var(--ui); color: var(--muted); text-align: center; }
+@media (max-width: 640px) { .database-meta { display: none; } }
+
+/* Toast: a manual popover in the top layer, so it is never hidden behind an open dialog. */
+.toast[popover] {
+  position: fixed; inset: auto auto 24px 50%; margin: 0; padding: 10px 16px; max-width: min(560px, calc(100vw - 32px));
+  border: 0; border-radius: 12px; background: var(--ink); color: var(--paper); font: 500 13.5px/20px var(--ui); text-align: center;
+  box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / .28); pointer-events: none; overflow: visible;
+  transform: none; translate: -50% 12px; opacity: 0; transition: opacity .18s var(--ease-out), translate .22s var(--ease-out);
+}
+.toast[popover].show { opacity: 1; translate: -50% 0; }
+@media (max-width: 640px) { .toast[popover] { bottom: 84px; } }
+
+/* Phones: when the strip still overflows its row, the view tabs take the first line, full width. */
+.chrome.vc .toolbar { flex-wrap: wrap; justify-content: center; overflow: visible; row-gap: 4px; }
+.chrome.vc .segmented { flex: 1 1 100%; }
+.chrome.vc .segmented .seg { flex: 1; padding: 0 8px; }
+.chrome.vc .toolbar > .divider:first-of-type { display: none; }
+.app-shell:has(.chrome.vc) .map-area .view-overlay { padding-top: 256px; }
+
+/* Map legend inside the shortcuts dialog. */
+.map-legend { border-top: 1px solid var(--line); padding-top: 16px; }
+.map-legend h3 { margin: 0 0 8px; font: 600 12px/20px var(--ui); color: var(--muted); }
+.map-legend dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 4px 28px; margin: 0; }
+.legend-row { display: flex; align-items: center; gap: 12px; min-height: 32px; }
+.legend-row dt { flex: none; width: 52px; display: flex; justify-content: center; }
+.legend-row dd { margin: 0; font: 400 13px/20px var(--ui); color: var(--ink); }
+.legend-null, .legend-glyph, .legend-dash { font: 600 13px/20px var(--mono); color: var(--muted); direction: ltr; }
+.legend-dash { color: var(--wire-proposed); letter-spacing: 1px; }
+.map-legend .node-draft { position: static; }

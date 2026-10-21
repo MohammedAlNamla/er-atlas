@@ -113,3 +113,11 @@ test('/api/ai/login refuses anything but a known local assistant', async () => {
   assert.match(bad.json.error, /غير مدعوم/);
   assert.equal((await request('POST', '/api/ai/login', { host: 'evil.example:80', body: { provider: 'claude-cli' } })).status, 403);
 });
+
+test('listing databases validates input and reports connection errors without leaking the password', async () => {
+  assert.equal((await request('POST', '/api/databases', { body: { host: '127.0.0.1', port: 5432 } })).status, 400);
+  const refused = await request('POST', '/api/databases', { body: { host: '127.0.0.1', port: 1, user: 'app', password: 'secret-value' } });
+  assert.equal(refused.status, 400);
+  assert.match(refused.json.error, /تعذّر عرض قواعد البيانات/);
+  assert.doesNotMatch(refused.text, /secret-value/);
+});

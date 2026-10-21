@@ -209,3 +209,19 @@ test('every exporter handles the bundled samples', () => {
     assert.match(code, /Schema::dropIfExists/);
   }
 });
+
+// Mermaid's erDiagram grammar (v10+): entity blocks of "type name [PK|FK|UK, ...] ["comment"]"
+// and relationship lines "A <left>--<right> B : label". Every line we emit must fit one of them.
+test('Mermaid output fits the erDiagram grammar for both samples', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const word = String.raw`[A-Za-z_][A-Za-z0-9_()\[\]-]*`;
+  const attribute = new RegExp(String.raw`^ {4}${word} ${word}( (PK|FK|UK)(, ?(PK|FK|UK))*)?( "[^"]*")?$`);
+  const relationship = new RegExp(String.raw`^ {2}${word} (\|o|\|\||\}o|\}\|)(--|\.\.)(o\||\|\||o\{|\|\{) ${word} : "[^"]*"$`);
+  const entity = new RegExp(String.raw`^ {2}${word}( \{)?$`);
+  for (const file of ['sufra-products', 'sufra-supply']) {
+    const { schema } = JSON.parse(await readFile(new URL(`../public/samples/${file}.eratlas.json`, import.meta.url), 'utf8'));
+    const lines = toMermaid(schema).split('\n').filter(Boolean);
+    assert.equal(lines[0], 'erDiagram');
+    for (const line of lines.slice(1)) assert.ok(attribute.test(line) || relationship.test(line) || entity.test(line) || line === '  }', `${file}: ${line}`);
+  }
+});
