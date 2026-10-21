@@ -65,7 +65,9 @@ const paths = {
   '/ui.js': 'ui.js',
   '/favicon.svg': 'favicon.svg',
   '/storage.js': 'storage.js',
-  '/workspace-io.js': 'workspace-io.js'
+  '/workspace-io.js': 'workspace-io.js',
+  '/lint.js': 'lint.js',
+  '/exporters.js': 'exporters.js'
 };
 
 function send(res, status, body) {
@@ -117,12 +119,21 @@ async function getSchema(db) {
     WHERE con.contype IN ('p','f','u') AND c.relkind IN ('r','p') AND NOT c.relispartition
       AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'
     ORDER BY con.oid`;
+  const indexesSql = `
+    SELECT i.indrelid::text AS table_id, i.indkey::int2[] AS key_columns, i.indnkeyatts AS key_count
+    FROM pg_catalog.pg_index i
+    JOIN pg_catalog.pg_class c ON c.oid = i.indrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE i.indexprs IS NULL AND i.indpred IS NULL AND c.relkind IN ('r','p') AND NOT c.relispartition
+      AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'
+    ORDER BY i.indexrelid`;
   const tableResult = await db.query(tablesSql);
   const columnResult = await db.query(columnsSql);
   const constraintResult = await db.query(constraintsSql);
+  const indexResult = await db.query(indexesSql);
   const tables = tableResult.rows.map(t => ({
     id: t.id, schema: t.schema_name, name: t.table_name,
-    description: t.description || '', approxRows: Number(t.approx_rows), columns: []
+    description: t.description || '', approxRows: Number(t.approx_rows), columns: [], indexes: []
   }));
   const byId = new Map(tables.map(t => [t.id, t]));
   for (const c of columnResult.rows) {
@@ -143,6 +154,12 @@ async function getSchema(db) {
       if (col && con.type === 'p') col.primary = true;
       if (col && con.type === 'u' && names.length === 1) col.unique = true;
     }
+  }
+  for (const index of indexResult.rows) {
+    const table = byId.get(index.table_id);
+    const keys = (index.key_columns || []).slice(0, Number(index.key_count) || undefined);
+    const names = keys.map(number => table?.columns.find(c => c.number === Number(number))?.name);
+    if (table && names.length && names.every(Boolean)) table.indexes.push(names);
   }
   const relations = [];
   for (const con of constraintResult.rows) {
