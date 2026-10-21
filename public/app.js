@@ -342,12 +342,12 @@ function buildFocusPositions() {
   const sides = [[], []];
   neighbors.sort((a, b) => a.name.localeCompare(b.name));
   neighbors.forEach((table, index) => sides[index % 2].push(table));
-  const height = tables => tables.reduce((total, table) => total + nodeHeight(table) + 82, 0);
+  const height = tables => tables.reduce((total, table) => total + nodeHeight(table) + 80, 0);
   const totalHeight = Math.max(nodeHeight(center) + 200, height(sides[0]), height(sides[1]));
   const positions = new Map([[center.id, { x: 520, y: Math.round((totalHeight - nodeHeight(center)) / 2) }]]);
   sides.forEach((tables, side) => {
-    let y = Math.round((totalHeight - height(tables)) / 2) + 45;
-    for (const table of tables) { positions.set(table.id, { x: side === 0 ? 60 : 980, y }); y += nodeHeight(table) + 82; }
+    let y = Math.round((totalHeight - height(tables)) / 2) + 44;
+    for (const table of tables) { positions.set(table.id, { x: side === 0 ? 60 : 980, y }); y += nodeHeight(table) + 80; }
   });
   state.focusPositions = positions;
   try {
@@ -379,7 +379,7 @@ function buildTopicPositions() {
   });
   const assignments = tables.map((table, index) => ({ table, ...cells[index] }));
   const rowHeights = Array.from({ length: rows }, (_, row) => Math.max(...assignments.filter(item => item.row === row).map(item => nodeHeight(item.table))));
-  const rowTops = []; let y = 70;
+  const rowTops = []; let y = 72;
   for (const height of rowHeights) { rowTops.push(y); y += height + 120; }
   state.topicPositions = new Map(assignments.map(item => [item.table.id,
     { x: 80 + item.col * 440, y: rowTops[item.row] + Math.round((rowHeights[item.row] - nodeHeight(item.table)) / 2) }]));
@@ -470,6 +470,7 @@ function groupForTable(table) {
 
 function nodeExpanded() { return state.linkMode; }
 function nodeHeight(table) { return measureNode(table, nodeExpanded(table)); }
+const snap4 = value => Math.round(value / 4) * 4;
 function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
   const tables = [...schema.tables];
   if (!tables.length) return new Map();
@@ -562,8 +563,8 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
         const fx = dx / distance * force, fy = dy / distance * force;
         ap.vx -= fx; ap.vy -= fy; bp.vx += fx; bp.vy += fy;
 
-        const overlapX = (NODE_WIDTH + 94) - Math.abs(dx);
-        const overlapY = ((h(a) + h(b)) / 2 + 70) - Math.abs(dy);
+        const overlapX = (NODE_WIDTH + 96) - Math.abs(dx);
+        const overlapY = ((h(a) + h(b)) / 2 + 72) - Math.abs(dy);
         if (overlapX > 0 && overlapY > 0) {
           if (overlapX < overlapY) {
             const push = overlapX * .12 * (dx >= 0 ? 1 : -1);
@@ -606,8 +607,8 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
       for (let bIndex = aIndex + 1; bIndex < ordered.length; bIndex++) {
         const b = ordered[bIndex], bp = points.get(b.id);
         const dx = bp.x - ap.x || .01, dy = bp.y - ap.y || .01;
-        const overlapX = NODE_WIDTH + 86 - Math.abs(dx);
-        const overlapY = (h(a) + h(b)) / 2 + 62 - Math.abs(dy);
+        const overlapX = NODE_WIDTH + 88 - Math.abs(dx);
+        const overlapY = (h(a) + h(b)) / 2 + 64 - Math.abs(dy);
         if (overlapX <= 0 || overlapY <= 0) continue;
         moved = true;
         if (overlapX < overlapY) {
@@ -650,6 +651,7 @@ function layoutTables(schema = state.schema, aiLayout = state.aiLayout) {
       }
     }
   }
+  for (const point of result.values()) { point.x = snap4(point.x); point.y = snap4(point.y); }
   return result;
 }
 
@@ -1018,7 +1020,7 @@ function edgePath(sourceTable, targetTable, pair, lane = 0, key = '') {
   if (sourceTable.id === targetTable.id) {
     const a = anchor(sourceTable, pair.source, 'right', s);
     const b = anchor(targetTable, pair.target, 'right', t);
-    const loop = 82 + Math.abs(a.y - b.y) * .25 + Math.abs(lane);
+    const loop = 80 + Math.abs(a.y - b.y) * .25 + Math.abs(lane);
     return { d: `M ${a.x} ${a.y} C ${a.x + loop} ${a.y - 25}, ${b.x + loop} ${b.y + 25}, ${b.x} ${b.y}`, a, b };
   }
   if (Math.abs(sourcePos.x - targetPos.x) < NODE_WIDTH * .6) {
@@ -1034,7 +1036,7 @@ function edgePath(sourceTable, targetTable, pair, lane = 0, key = '') {
   const a = anchor(sourceTable, pair.source, sourceSide, s);
   const b = anchor(targetTable, pair.target, targetSide, t);
   const direction = sourceSide === 'right' ? 1 : -1;
-  const sourceStub = a.x + 34 * direction, targetStub = b.x - 34 * direction;
+  const sourceStub = a.x + 32 * direction, targetStub = b.x - 32 * direction;
   const center = (sourceStub + targetStub) / 2 + lane;
   return { d: `M ${a.x} ${a.y} L ${sourceStub} ${a.y} C ${center} ${a.y}, ${center} ${b.y}, ${targetStub} ${b.y} L ${b.x} ${b.y}`, a, b };
 }
@@ -1107,8 +1109,8 @@ function renderEdges() {
   const byId = new Map(visibleTables().map(table => [table.id, table]));
   state.overviewSlots = overview ? overviewSlots(visibleRelations(), byId) : null;
   const laneKeyFor = (source, target) => {
-    const sourceColumn = Math.round(graphPosition(source.id).x / (NODE_WIDTH + 170));
-    const targetColumn = Math.round(graphPosition(target.id).x / (NODE_WIDTH + 170));
+    const sourceColumn = Math.round(graphPosition(source.id).x / (NODE_WIDTH + 172));
+    const targetColumn = Math.round(graphPosition(target.id).x / (NODE_WIDTH + 172));
     return `${Math.min(sourceColumn, targetColumn)}:${Math.max(sourceColumn, targetColumn)}`;
   };
   const laneTotals = new Map();
@@ -2761,7 +2763,7 @@ function installEvents() {
     if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
     if (drag.type === 'node') {
       if (drag.moved && !drag.routeInvalidated) { state.routeGeneration++; drag.routeInvalidated = true; }
-      const point = { x: drag.originX + dx / state.scale, y: drag.originY + dy / state.scale };
+      const point = { x: snap4(drag.originX + dx / state.scale), y: snap4(drag.originY + dy / state.scale) };
       (state.viewMode === 'focus' ? state.focusPositions : state.viewMode === 'topics' ? state.topicPositions : state.positions).set(drag.id, point);
       drag.card.style.left = `${point.x}px`; drag.card.style.top = `${point.y}px`;
       if (!state.edgeFrame) state.edgeFrame = requestAnimationFrame(() => {

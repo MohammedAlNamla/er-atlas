@@ -1,6 +1,6 @@
 const CLEARANCE = 12;
-const STUB = 25;
-const CORNER = 9;
+const STUB = 24;
+const CORNER = 8;
 
 const round = value => Math.round(value * 10) / 10;
 const range = (a, b) => [Math.min(a, b), Math.max(a, b)];
