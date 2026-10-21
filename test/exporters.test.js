@@ -232,3 +232,12 @@ test('Laravel migration adds and drops draft indexes', () => {
   assert.match(code, /\$table->index\(\['status', 'created_at'\], 'orders_status_created_at_index'\);/);
   assert.match(code, /\$table->dropIndex\('orders_status_created_at_index'\);/);
 });
+
+test('a concurrent index leaves the migration transaction and uses a raw statement', () => {
+  const base = { tables: [{ id: 'o', schema: 'public', name: 'orders', columns: [{ name: 'id', type: 'bigint', primary: true }, { name: 'user_id', type: 'bigint' }] }], relations: [] };
+  const { code } = toLaravelMigration(base, [{ type: 'addIndex', tableId: 'o', index: { name: 'orders_user_id_index', columns: ['user_id'], unique: false, concurrently: true } }]);
+  assert.match(code, /public \$withinTransaction = false;/);
+  assert.ok(code.includes('use Illuminate\\Support\\Facades\\DB;'));
+  assert.match(code, /DB::statement\('CREATE INDEX CONCURRENTLY IF NOT EXISTS orders_user_id_index ON orders \(user_id\)'\);/);
+  assert.match(code, /DB::statement\('DROP INDEX CONCURRENTLY IF EXISTS orders_user_id_index'\);/);
+});

@@ -415,6 +415,14 @@ export function toLaravelMigration(base, operations = [], { date = '2026_01_01_0
       }
       case 'addIndex': {
         const index = op.index;
+        if (index.concurrently) {
+          // CONCURRENTLY cannot run inside a transaction, and Laravel wraps PostgreSQL migrations in one.
+          ctx.usesDb = true; ctx.outsideTransaction = true;
+          const target = `${table.schema && table.schema !== 'public' ? `${table.schema}.` : ''}${table.name}`;
+          raw(`DB::statement(${php(`CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX CONCURRENTLY IF NOT EXISTS ${index.name} ON ${target} (${index.columns.join(', ')})`)});`);
+          if (!created.has(table.id)) undoRaw(`DB::statement(${php(`DROP INDEX CONCURRENTLY IF EXISTS ${table.schema && table.schema !== 'public' ? `${table.schema}.` : ''}${index.name}`)});`);
+          break;
+        }
         block(table, { fold: true }).lines.push(`$table->${index.unique ? 'unique' : 'index'}(${phpList(index.columns)}, ${php(index.name)});`);
         if (!created.has(table.id)) undo(table, [`$table->drop${index.unique ? 'Unique' : 'Index'}(${php(index.name)});`]);
         break;
@@ -439,7 +447,7 @@ export function toLaravelMigration(base, operations = [], { date = '2026_01_01_0
   const upLines = renderBlocks(up, '        '), downLines = renderBlocks(downBlocks, '        ');
   const code = ['<?php', '', 'use Illuminate\\Database\\Migrations\\Migration;', 'use Illuminate\\Database\\Schema\\Blueprint;',
     ...(ctx.usesDb ? ['use Illuminate\\Support\\Facades\\DB;'] : []), 'use Illuminate\\Support\\Facades\\Schema;', '',
-    'return new class extends Migration', '{', '    public function up(): void', '    {', ...upLines, '    }', '',
+    'return new class extends Migration', '{', ...(ctx.outsideTransaction ? ['    public $withinTransaction = false; // CREATE INDEX CONCURRENTLY لا يعمل داخل معاملة', ''] : []), '    public function up(): void', '    {', ...upLines, '    }', '',
     '    public function down(): void', '    {', ...downLines, '    }', '};', ''].join('\n');
   return { fileName: `${date}_${snake(name) || migrationName(base || { tables: [], relations: [] }, operations)}.php`, code };
 }
