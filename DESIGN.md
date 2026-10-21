@@ -336,6 +336,8 @@ Every modal, sheet and the inspector share one shell, defined in the unlayered "
 - **Empty states:** a 52px icon tile, a 15px title and one sentence, centered.
 - **Sizes:** confirmations 440px, forms 520–560px, previews 780px, keyboard shortcuts 780px; sheets 440px, 480px for the schema check, 680px when `.wide`.
 - **Small screens:** under 900px sheets become 86dvh bottom sheets; under 640px every dialog except the command palette becomes a bottom sheet with a grabber, safe-area padding, and full-width buttons where a third action pushes the primary onto its own bottom row.
+- **Database picker:** in the connect dialog the database field carries a "browse" secondary button; the server's databases list beneath it as 44px rows (database icon, mono name at the reading start, size and owner muted at the end). The chosen row takes the accent border and a 8% accent fill; rows without CONNECT are disabled; a second click on the chosen row connects. Submitting with an empty database opens the list instead of failing.
+- **Toast:** a manual popover in the top layer (re-shown on every message), ink pill centered 24px above the bottom (84px on phones), so it is never hidden behind an open dialog.
 - **Command palette:** top-anchored (12vh), 600px, a 52px borderless search line, commands then matching tables.
 
 **Do:** build new overlays from `modalHeader()` + `headerIcon()` + `.modal-body` + `modalFooter()`. **Don't:** add a new radius, a second close button, a saturated notice for plain information, or keyframe animations on dialogs.

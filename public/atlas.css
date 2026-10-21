@@ -2845,87 +2845,6 @@ html[dir="rtl"] .tool kbd { transform: translateX(50%); }
 @media (max-width: 900px) { .tool kbd { display: none; } .tool:has(kbd) .i { margin-top: 0; } .tool { height: 40px; } }
 .details-panel .modal-body { padding-bottom: 60px; -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent); mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent); }
 
-/* =====================================================================
-   Overlays — dialogs, sheets, menus, fields, notices, code, tables.
-   One grammar: 16px dialogs, 12px menus, 10px fields and cards, 9px buttons.
-   Modals scale from the center; menus grow from their trigger; nothing
-   appears from scale(0). Press feedback is scale(.97). Easing is ease-out.
-   ===================================================================== */
-@keyframes dialog-in { from { opacity: 0; transform: scale(.97) translateY(6px); } }
-@keyframes sheet-in { from { opacity: 0; transform: translateX(-16px); } }
-@keyframes sheet-up { from { opacity: 0; transform: translateY(24px); } }
-@keyframes fade-in { from { opacity: 0; } }
-
-/* ---- Dialog shell ---- */
-dialog { width: min(var(--modal-width, 560px), calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 28px rgb(var(--shadow-rgb) / .22); }
-dialog[open] { animation: dialog-in .18s var(--ease-out); }
-dialog::backdrop { background: var(--scrim); animation: fade-in .18s ease-out; }
-.modal-header { padding: 20px 24px 16px; gap: 4px; }
-.modal-header h2 { font-size: 19px; line-height: 28px; font-weight: 700; padding-left: 44px; }
-.modal-header p { font-size: 13px; line-height: 20px; color: var(--muted); }
-.dialog-close, .details-close { left: 16px; top: 16px; width: 32px; height: 32px; padding: 0; border-radius: 8px; background: transparent; color: var(--muted); transition: background-color .15s, color .15s, transform .12s var(--ease-out); }
-.dialog-close:hover { background: var(--context); color: var(--ink); }
-.dialog-close:active { transform: scale(.94); }
-.modal-body { padding: 4px 24px 24px; gap: 16px; }
-.modal-body h3 { font-size: 15px; line-height: 24px; font-weight: 650; }
-.modal-footer { padding: 16px 24px 20px; gap: 12px; background: var(--surface); }
-.modal-footer > p { font-size: 12px; line-height: 20px; }
-.footer-actions { gap: 8px; }
-
-/* ---- Buttons ---- */
-.primary-button, .secondary-button, .ghost-button, .inline-action { height: 40px; min-height: 40px; padding: 0 16px; border-radius: 8px; font-size: 14px; line-height: 20px; font-weight: 600; transition: background-color .15s, border-color .15s, color .15s, transform .12s var(--ease-out); }
-.primary-button { min-width: 0; }
-.secondary-button, .inline-action { min-width: 0; border-color: var(--line); }
-.secondary-button:hover, .inline-action:hover { background: var(--context); border-color: var(--outline-mid); }
-.ghost-button:hover { background: var(--context); }
-.primary-button:active, .secondary-button:active, .ghost-button:active { transform: scale(.97); }
-.primary-button:disabled, .secondary-button:disabled { opacity: .45; pointer-events: none; }
-.text-button { font-weight: 600; }
-.primary-button.danger { background: var(--danger); border-color: var(--danger); color: var(--surface); }
-.ghost-button.danger, .text-button.danger { color: var(--danger); }
-.ghost-button.danger:hover { background: var(--danger-bg); }
-
-/* ---- Fields ---- */
-input:not([type="checkbox"]):not([type="radio"]), select, textarea,
-.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input {
-  height: 40px; padding: 0 12px; background: var(--context); border: 1px solid transparent; border-radius: 12px; box-shadow: none;
-  transition: border-color .15s, background-color .15s, box-shadow .15s;
-}
-textarea { height: auto; padding: 12px 12px; line-height: 24px; }
-input:not([type="checkbox"]):not([type="radio"]):hover, select:hover, textarea:hover { border-color: var(--line); }
-input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus,
-.form-grid input:focus, .edit-field input:focus, .workspace-field input:focus {
-  background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
-}
-input:disabled, select:disabled { opacity: .6; cursor: not-allowed; }
-select, .ai-settings select, .edit-field select {
-  appearance: none; padding-inline-end: 36px; cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b8f9c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: left 12px center; background-size: 16px;
-}
-.form-grid label, .edit-field, .ai-settings label, .workspace-field { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--ink); }
-.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input { margin-top: 8px; }
-.field-hint, .status-message { font-weight: 400; }
-input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
-.edit-field:has(input[type="checkbox"]), .choice { border-radius: 12px; padding: 12px 16px; transition: background-color .15s, border-color .15s; }
-.edit-field:has(input[type="checkbox"]):hover, .choice:hover { background: var(--context); }
-.choice:has(input:checked) { background: var(--selected); border-color: var(--accent); }
-.choice strong { font-weight: 650; }
-.advanced-options summary { font-weight: 600; color: var(--muted); padding: 4px 0; }
-
-/* ---- Notices, code, tabs, tables, cards ---- */
-.notice { padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--context); color: var(--ink); font-size: 13px; line-height: 20px; }
-.notice strong { font-weight: 650; }
-.notice > .figma-icon, .notice-copy + .figma-icon { color: var(--muted); }
-.notice.success { background: var(--ok-bg); color: var(--success); border-color: color-mix(in srgb, var(--success) 28%, transparent); }
-.notice.error { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 28%, transparent); }
-.notice.warning { background: var(--warn-bg); color: var(--warn-ink); border-color: color-mix(in srgb, var(--warn-ink) 28%, transparent); }
-.code-block { border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px; font: 12.5px/20px var(--mono); }
-.code-label { font: 500 11.5px/20px var(--mono); color: var(--code-label); margin-bottom: 8px; letter-spacing: 0; }
-.ui-tabs { height: auto; gap: 4px; padding: 4px; background: var(--context); border-radius: 12px; }
-.ui-tab { height: 36px; border-radius: 8px; padding: 0 12px; font: 600 13px/20px var(--ui); transition: background-color .15s, color .15s; }
-.ui-tab:hover { color: var(--ink); }
-.ui-tab.active { background: var(--surface); color: var(--teal-deep); box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / .12); }
 .data-table-wrap { border-radius: 12px; }
 .data-table th { background: transparent; border-bottom: 1px solid var(--line); color: var(--faint); font: 500 11.5px/20px var(--mono); padding: 12px 12px; letter-spacing: .02em; }
 .data-table td { padding: 12px 12px; border-top: 1px solid var(--divider-soft); }
@@ -2989,107 +2908,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .quick-table-name { font: 500 14px/20px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .table-command small { margin-inline-start: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
 
-/* ---- AI: a side sheet that keeps the map in view ---- */
-.drawer-dialog { width: min(440px, calc(100vw - 24px)); height: calc(100dvh - 24px); max-height: none; margin: 0; inset-block: 12px; inset-inline-start: auto; inset-inline-end: 12px; border-radius: 16px; }
-.drawer-dialog[open] { animation: sheet-in .22s var(--ease-out); }
-.drawer-dialog::backdrop { background: rgb(var(--shadow-rgb) / .14); }
-
 /* ---- Topic manager: rail and members read as one list ---- */
 .topic-rail { max-height: 380px; padding: 0; gap: 8px; }
 .topic-rail .choice { padding: 12px 12px; }
 .topic-editor-split { gap: 20px; }
 
-/* ---- Inspector sidebar ---- */
-.details-panel .modal-header { padding: 20px 20px 12px; }
-.details-panel .modal-header h2 { font: 600 16px/24px var(--mono); direction: ltr; text-align: right; padding-left: 40px; }
-.details-panel .modal-header p { font-size: 12.5px; }
-.details-panel .ui-tabs { margin-top: 4px; }
-.details-panel .modal-footer { padding: 12px 20px; flex-direction: row; }
-.details-panel .footer-actions { gap: 8px; }
-.details-panel .primary-button, .details-panel .secondary-button { height: 36px; min-height: 36px; padding: 0 16px; font-size: 13px; }
-
-/* ---- Small screens: dialogs become bottom sheets ---- */
-@media (max-width: 600px) {
-  dialog:not(.quick-actions-dialog):not(.drawer-dialog) { width: 100vw; max-width: none; margin: auto 0 0; border-radius: 16px 16px 0 0; border-bottom: 0; max-height: 92dvh; }
-  dialog[open]:not(.quick-actions-dialog) { animation-name: sheet-up; }
-  .drawer-dialog { inset: auto 0 0 0; width: 100vw; height: 88dvh; border-radius: 16px 16px 0 0; border-bottom: 0; margin: 0; }
-  .quick-actions-dialog { margin: 8vh 12px auto; width: calc(100vw - 24px); }
-  .footer-actions { flex-wrap: wrap; }
-  .form-grid, .edit-fields, .arrange-scope, .layout-comparison { grid-template-columns: 1fr; }
-  .topic-editor-split { grid-template-columns: 1fr; }
-}
-@media (prefers-reduced-motion: reduce) {
-  dialog[open], .drawer-dialog[open], dialog::backdrop { animation: none; }
-  .primary-button:active, .secondary-button:active, .ghost-button:active, .dialog-close:active { transform: none; }
-}
 /* Identifier fields stay LTR but sit at the reading start, under their Arabic labels. */
 .form-grid input, .edit-field input:not([type="checkbox"]), .ai-settings input, .code-dialog input, .workspace-field input { text-align: right; }
 .form-grid input::placeholder, .edit-field input::placeholder { text-align: right; }
-/* Chat: the conversation scrolls, the composer stays pinned under it. */
-
-/* =====================================================================
-   Template v2 — one dialog template, one sidebar template.
-   Rule of thumb: a short task is a MODAL (centered, 420 / 520 / 760);
-   anything with a lot of content is a SIDEBAR (.sheet, docked at the start
-   edge under the chrome, same slot as the inspector, 420 or 640).
-   Both share header (title + one-line description), body (one column,
-   space instead of boxes) and footer (hint at the start, actions at the end).
-   ===================================================================== */
-.connect-dialog, .workspace-dialog, .editor-dialog { --modal-width: 520px; }
-.confirmation-dialog { --modal-width: 420px; }
-.relationship-dialog { --modal-width: 520px; }
-.ai-settings-dialog, .topic-settings-dialog { --modal-width: 560px; }
-.topic-proposal-dialog { --modal-width: 640px; }
-.arrange-dialog { --modal-width: 760px; }
-
-/* ---- Header / body / footer ---- */
-.modal-header { padding: 24px 24px 8px; gap: 4px; }
-.modal-header h2 { font-size: 20px; line-height: 32px; padding-left: 44px; }
-.modal-header p { font-size: 14px; line-height: 24px; }
-.dialog-close, .details-close { top: 20px; left: 20px; width: 36px; height: 36px; }
-.modal-body { padding: 16px 24px 8px; gap: 20px; }
-.modal-body h3 { font-size: 16px; line-height: 24px; }
-.modal-footer { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px 24px; }
-.modal-footer > p { font-size: 13px; line-height: 20px; max-width: 280px; }
-.footer-actions { margin-inline-start: auto; gap: 12px; }
-
-/* ---- Buttons ---- */
-.primary-button, .secondary-button, .ghost-button, .inline-action { height: 44px; min-height: 44px; padding: 0 20px; font-size: 15px; border-radius: 12px; }
-.secondary-button, .inline-action { border-width: 1.5px; }
-.data-table .inline-action { height: 32px; min-height: 32px; padding: 0 8px; font-size: 13px; }
-
-/* ---- Fields: visible edge, generous height, readable size ---- */
-input:not([type="checkbox"]):not([type="radio"]), select, textarea,
-.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input {
-  height: 44px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; font-size: 15px;
-}
-textarea { height: auto; }
-input:not([type="checkbox"]):not([type="radio"]):hover, select:hover, textarea:hover { border-color: var(--outline-strong); }
-.form-grid label, .edit-field, .ai-settings label, .workspace-field { font-size: 14px; line-height: 24px; }
-.form-grid input, .edit-field input, .ai-settings input, .ai-settings select, .workspace-field input { margin-top: 8px; }
-.form-grid input, .edit-field input:not([type="checkbox"]), .ai-settings input { font-size: 14px; }
-.field-hint, .status-message { font-size: 13px; line-height: 20px; }
-.edit-fields { gap: 20px 16px; }
-
-/* ---- Choices read as one list, not a stack of cards ---- */
-.workspace-kinds, .topic-rail { display: flex; flex-direction: column; gap: 0; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; padding: 0; max-height: none; }
-.workspace-kinds .choice, .topic-rail .choice { border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 12px 16px; }
-.workspace-kinds .choice:first-child, .topic-rail .choice:first-child { border-top: 0; }
-.workspace-kinds .choice:has(input:checked), .topic-rail .choice:has(input:checked) { background: var(--selected); }
-.choice strong { font-size: 15px; }
-.choice small { font-size: 13px; line-height: 20px; }
-.topic-rail > .secondary-button, .topic-rail > .ghost-button { margin: 8px; width: auto; }
-
-/* ---- No stacked boxes: info is a line of text; only problems get a box ---- */
-.notice { padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 14px; line-height: 24px; }
-.notice strong { color: var(--ink); font-size: 14px; }
-.notice > .figma-icon, .notice-copy + .figma-icon { color: var(--muted); }
-.notice.success { padding: 12px 16px; border: 1.5px solid color-mix(in srgb, var(--success) 35%, transparent); background: var(--ok-bg); color: var(--success); }
-.notice.warning { padding: 12px 16px; border: 1.5px solid color-mix(in srgb, var(--warn-ink) 35%, transparent); background: var(--warn-bg); color: var(--warn-ink); }
-.notice.error { padding: 12px 16px; border: 1.5px solid color-mix(in srgb, var(--danger) 35%, transparent); background: var(--danger-bg); color: var(--danger); }
-.notice-copy p { font-size: 13px; line-height: 20px; }
-#relationshipCompatibility.success { padding: 0; border: 0; background: transparent; color: var(--ink); }
-
 /* ---- SQL stays one click away ---- */
 .sql-preview { border-top: 1px solid var(--line); padding-top: 16px; }
 .sql-preview > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; cursor: pointer; font-size: 14px; font-weight: 600; padding: 4px 0; }
@@ -3097,27 +2923,7 @@ input:not([type="checkbox"]):not([type="radio"]):hover, select:hover, textarea:h
 .sql-preview > summary::after { content: ""; width: 16px; height: 16px; flex: none; background: currentColor; opacity: .6; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; transition: transform .15s var(--ease-out); }
 .sql-preview[open] > summary::after { transform: rotate(180deg); }
 .sql-preview .code-block { margin-top: 12px; }
-.code-block { font-size: 13px; line-height: 20px; }
-.code-label { font-size: 12px; }
-
-/* ---- Backdrop: strong enough to calm the map ---- */
-dialog::backdrop { background: var(--scrim); backdrop-filter: blur(2px); }
-
-/* ---- Sidebars: one slot, one template (shared with the inspector) ---- */
-.sheet, .drawer-dialog {
-  width: min(var(--sheet-width, 420px), calc(100vw - 32px)); height: auto; max-height: none; margin: 0;
-  inset-block: 76px 76px; inset-inline-start: 16px; inset-inline-end: auto; border-radius: 16px;
-}
-.sheet.wide { --sheet-width: 640px; }
-.sheet[open], .drawer-dialog[open] { display: flex; flex-direction: column; animation: sheet-in-start .22s var(--ease-out); }
-.sheet::backdrop, .drawer-dialog::backdrop { background: transparent; backdrop-filter: none; }
-.sheet > .modal-body, .drawer-dialog > .modal-body { flex: 1; min-height: 0; }
-@keyframes sheet-in-start { from { opacity: 0; transform: translateX(14px); } }
 .details-panel { width: 420px; border-radius: 16px; box-shadow: 0 8px 28px rgb(var(--shadow-rgb) / .2); }
-.details-panel .modal-header, .sheet .modal-header { padding: 20px 20px 8px; }
-.details-panel .modal-body, .sheet .modal-body { padding: 12px 20px 16px; }
-.sheet .modal-footer, .details-panel .modal-footer { padding: 16px 20px 20px; }
-.details-panel .primary-button, .details-panel .secondary-button { height: 40px; min-height: 40px; font-size: 14px; padding: 0 16px; }
 .topic-editor-split { grid-template-columns: 1fr; gap: 20px; direction: rtl; }
 .sheet:not(.wide) .topic-editor-split { grid-template-columns: 1fr; }
 .sheet.wide .topic-editor-split { grid-template-columns: 220px minmax(0, 1fr); }
@@ -3125,30 +2931,12 @@ dialog::backdrop { background: var(--scrim); backdrop-filter: blur(2px); }
 .sheet.wide .topic-editor-split > .topic-rail { order: 1; align-self: start; }
 
 @media (max-width: 900px) {
-  .sheet, .drawer-dialog { inset-block: auto 0; inset-inline: 0; width: 100vw; height: 86dvh; border-radius: 16px 16px 0 0; border-bottom: 0; }
-  .sheet[open], .drawer-dialog[open] { animation-name: sheet-up; }
-  .sheet::backdrop, .drawer-dialog::backdrop { background: var(--scrim); }
   .sheet.wide .topic-editor-split { grid-template-columns: 1fr; }
 }
-@media (max-width: 600px) {
-  .modal-footer > p { max-width: none; flex-basis: 100%; }
-  .footer-actions { width: 100%; }
-  .footer-actions > button { flex: 1; }
-}
-@media (prefers-reduced-motion: reduce) { .sheet[open], .drawer-dialog[open] { animation: none; } .sql-preview > summary::after { transition: none; } }
-
-/* Specificity guard: older "body dialog" rules must not override the template. */
-body dialog:not(.drawer-dialog) { border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 28px rgb(var(--shadow-rgb) / .22); }
-body dialog.sheet, body dialog.drawer-dialog { width: min(var(--sheet-width, 420px), calc(100vw - 32px)); max-height: none; border-radius: 16px; }
-body .modal-header h2 { font-size: 20px; line-height: 32px; min-height: 0; }
-@media (max-width: 900px) { body dialog.sheet, body dialog.drawer-dialog { width: 100vw; border-radius: 16px 16px 0 0; } }
-@media (max-width: 600px) { body dialog:not(.quick-actions-dialog):not(.drawer-dialog):not(.sheet) { border-radius: 16px 16px 0 0; } }
 
 /* Bottom controls live on the end edge; the start edge is free for sidebars. */
 .chrome-bottom-end { gap: 8px; }
-.sheet, .drawer-dialog { inset-block: 76px 16px; }
 .details-panel { bottom: 16px; }
-.toast { bottom: 24px; }
 @media (max-width: 520px) { .chrome-bottom-end .history { display: none; } }
 @media (max-width: 900px) { .sheet, .drawer-dialog { inset-block: auto 0; } .details-panel { bottom: 68px; } }
 
@@ -3597,7 +3385,7 @@ dialog[open]::backdrop { background: var(--scrim); backdrop-filter: blur(3px); }
 
 /* ---- Footer: tinted, hint at the start, actions at the end ---- */
 .modal-footer {
-  flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;
+  flex: none; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;
   margin: 0; padding: 14px 24px; border-top: 1px solid var(--line); background: var(--footer-bg);
 }
 .modal-footer > p { flex: 1 1 220px; max-width: none; margin: 0; font: 400 12.5px/20px var(--ui); color: var(--muted); }
