@@ -35,6 +35,7 @@ export const CHECKS = [
   { id: 'DI04', skill: 'data-integrity', severity: 'warning', needs: ['schema'], title: 'حذف متسلسل (CASCADE) إلى جدول كبير' },
   { id: 'DI05', skill: 'data-integrity', severity: 'info', needs: ['schema'], title: 'عمود منطقي يقبل NULL بلا قيمة افتراضية' },
   { id: 'DI06', skill: 'data-integrity', severity: 'info', needs: ['schema'], title: 'وقت حدث مخزّن بلا منطقة زمنية' },
+  { id: 'DI07', skill: 'data-integrity', severity: 'error', needs: ['schema'], title: 'SET DEFAULT على عمود إلزامي بلا قيمة افتراضية' },
   // Laravel security
   { id: 'SEC01', skill: 'laravel-security', severity: 'error', needs: ['code'], title: 'استعلام SQL خام يدمج متغيرات في النص' },
   { id: 'SEC02', skill: 'laravel-security', severity: 'warning', needs: ['code'], title: 'إسناد جماعي مفتوح أو يشمل أعمدة صلاحيات' },
@@ -51,8 +52,10 @@ export const CHECKS = [
   { id: 'MS01', skill: 'migration-safety', severity: 'error', needs: ['schema', 'draft'], title: 'إضافة عمود NOT NULL بلا قيمة افتراضية إلى جدول فيه بيانات' },
   { id: 'MS02', skill: 'migration-safety', severity: 'warning', needs: ['schema', 'draft'], title: 'جعل عمود NOT NULL في جدول فيه بيانات' },
   { id: 'MS03', skill: 'migration-safety', severity: 'warning', needs: ['schema', 'draft'], title: 'تغيير نوع عمود في جدول كبير يعيد كتابته' },
-  { id: 'MS04', skill: 'migration-safety', severity: 'error', needs: ['draft', 'code'], title: 'حذف أو إعادة تسمية شيء يستخدمه الكود' },
-  { id: 'MS05', skill: 'migration-safety', severity: 'warning', needs: ['schema', 'draft'], title: 'إنشاء فهرس على جدول كبير دون CONCURRENTLY' }
+  { id: 'MS04', skill: 'migration-safety', severity: 'error', needs: ['schema', 'draft', 'code'], title: 'حذف أو إعادة تسمية شيء يستخدمه الكود' },
+  { id: 'MS05', skill: 'migration-safety', severity: 'warning', needs: ['schema', 'draft'], title: 'إنشاء فهرس على جدول كبير دون CONCURRENTLY' },
+  { id: 'MS06', skill: 'migration-safety', severity: 'warning', needs: ['schema', 'draft'], title: 'مفتاح أجنبي جديد على جدول كبير يُتحقق منه دفعة واحدة' },
+  { id: 'MS07', skill: 'migration-safety', severity: 'warning', needs: ['schema', 'draft'], title: 'عمود جديد بقيمة افتراضية متغيرة يعيد كتابة جدول كبير' }
 ];
 
 export const SEVERITIES = ['error', 'warning', 'info'];
