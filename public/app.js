@@ -2,6 +2,8 @@ import { applyOperation, replay, describeOperation, clone } from './model.js';
 import { routeConnections } from './router.js';
 import { store, initStore } from './storage.js';
 import { buildExport, parseExport, recoverOperations } from './workspace-io.js';
+import { lintSchema } from './lint.js';
+import { EXPORT_FORMATS, exportSchema, toLaravelMigration } from './exporters.js';
 import { normalizeTopics, parseTopicSuggestions as readTopicSuggestions, topicColors } from './topics.js';
 import { icon, button as uiButton, notice, codeBlock, tabs as uiTabs, dataTable, modalHeader, modalFooter, openDialog, initOverlays, renderMiniMap } from './ui.js';
 import { NODE_WIDTH, HEADER_HEIGHT, ROW_HEIGHT, previewColumns, nodeHeight as measureNode, columnOffset, fitCamera, relationCardinality } from './ui.js';
@@ -1832,6 +1834,7 @@ function refreshDraft({ fit = false } = {}) {
   renderTopics(); renderView(); renderNodes(); renderDetails(); updateDraftView();
   if ($('tableDialog').open) openExpandedTable($('tableDialog').dataset.tableId);
   renderEmptyWorkspace();
+  if ($('lintDialog').open) renderLint(); else updateLintCount();
   if (fit) requestAnimationFrame(() => fitView(state.topic !== 'all'));
 }
 function stage(operation) {
@@ -1843,8 +1846,12 @@ function stage(operation) {
   } catch (error) { showToast(error.message); throw error; }
 }
 function stepDraft(delta) {
-  state.cursor = Math.max(0, Math.min(state.operations.length, state.cursor + delta));
-  saveDraft(); refreshDraft();
+  const cursor = Math.max(0, Math.min(state.operations.length, state.cursor + delta));
+  if (cursor === state.cursor) return;
+  // Say which change moved, described against the schema just before it.
+  const index = delta < 0 ? cursor : state.cursor, label = describeOperation(state.operations[index], replay(state.base, state.operations.slice(0, index)));
+  state.cursor = cursor; saveDraft(); refreshDraft();
+  showToast(`${delta < 0 ? 'تراجع' : 'إعادة'}: ${label}`);
 }
 function field(name, label, value = '', type = 'text', options = {}) {
   const wrapper = el('label', 'edit-field', label), input = el('input');
@@ -2057,6 +2064,99 @@ function refreshTopics() {
     member.title = shared ? 'يظهر هذا الجدول في أكثر من موضوع' : '';
   }
 }
+// ---- Schema check: local rules over the current draft, each finding one click from the map.
+const SEVERITY_LABELS = { error: 'أخطاء', warning: 'تحذيرات', info: 'ملاحظات' };
+function updateLintCount() {
+  const findings = lintSchema(state.schema), serious = findings.filter(item => item.severity !== 'info').length;
+  $('lintCount').hidden = !serious; $('lintCount').textContent = String(serious);
+  const errors = findings.some(item => item.severity === 'error');
+  $('lintCount').classList.toggle('error', errors);
+  // Only real errors earn a dot on the closed menu; warnings wait inside it.
+  $('toolsButton').classList.toggle('has-alert', errors);
+  $('toolsButton').title = errors ? 'القائمة الرئيسية · فحص المخطط وجد أخطاء' : 'القائمة الرئيسية';
+  return findings;
+}
+function stageLintFixes(findings) {
+  let added = 0;
+  for (const finding of findings) {
+    try { stage({ ...finding.fix, relation: { ...finding.fix.relation, id: `draft:${crypto.randomUUID()}` } }); added++; } catch { /* already linked or stale */ }
+  }
+  if (added) showToast(added === 1 ? 'أضيفت العلاقة إلى المسودة' : `أضيفت ${added} علاقات إلى المسودة`);
+}
+function renderLint() {
+  const dialog = $('lintDialog'), root = $('lintContent'); root.replaceChildren();
+  const findings = updateLintCount(), filter = state.lintFilter && findings.some(item => item.severity === state.lintFilter) ? state.lintFilter : 'all';
+  const counts = Object.fromEntries(Object.keys(SEVERITY_LABELS).map(severity => [severity, findings.filter(item => item.severity === severity).length]));
+  root.append(modalHeader('فحص المخطط', findings.length ? `${findings.length} ملاحظة على ${state.schema.tables.length} جدول. الفحص محلي ولا يرسل شيئًا.` : 'فحص محلي للمفاتيح والعلاقات والأنواع، دون AI ودون اتصال.', () => dialog.close(), 'lintTitle'));
+  const body = el('div', 'modal-body');
+  if (!findings.length) body.append(notice(state.schema.tables.length ? 'لا توجد ملاحظات' : 'لا توجد جداول بعد', state.schema.tables.length ? 'المفاتيح والعلاقات والأنواع متسقة في المخطط الحالي ومسودته.' : 'أضف جداول أو اربط قاعدة بيانات ثم أعد الفحص.', 'success'));
+  else {
+    body.append(uiTabs([['all', `الكل ${findings.length}`], ...Object.entries(SEVERITY_LABELS).filter(([severity]) => counts[severity]).map(([severity, label]) => [severity, `${label} ${counts[severity]}`])],
+      filter, value => { state.lintFilter = value; renderLint(); }));
+    const list = el('ul', 'lint-list'), byId = new Map(state.schema.tables.map(table => [table.id, table]));
+    for (const finding of findings.filter(item => filter === 'all' || item.severity === filter)) {
+      const item = el('li', `lint-item ${finding.severity}`), head = el('div', 'lint-head');
+      const where = el('code', 'lint-where', `${byId.get(finding.tableId)?.name || ''}${finding.columnName ? `.${finding.columnName}` : ''}`); where.dir = 'ltr';
+      head.append(el('span', 'lint-dot'), el('strong', '', finding.title));
+      if (!finding.title.includes(where.textContent)) head.append(where);
+      const actions = el('div', 'lint-actions');
+      if (byId.has(finding.tableId)) actions.append(uiButton('إظهار على الخريطة', () => { if (innerWidth < 900) dialog.close(); locateTable(finding.tableId); }, 'text-button'));
+      if (finding.fix) actions.append(uiButton('أضف العلاقة إلى المسودة', () => stageLintFixes([finding]), 'text-button strong'));
+      item.append(head, el('p', '', finding.detail), actions); list.append(item);
+    }
+    body.append(list);
+  }
+  const fixable = findings.filter(item => item.fix);
+  root.append(body, modalFooter([
+    ...(fixable.length > 1 ? [uiButton(`أضف كل العلاقات المقترحة (${fixable.length})`, () => stageLintFixes(fixable), 'primary-button')] : []),
+    uiButton('إغلاق', () => dialog.close())
+  ], 'الإصلاحات تُضاف إلى المسودة فقط، ويمكن التراجع عنها.'));
+}
+function openLint() { closeHeaderMenus(); renderLint(); openDialog($('lintDialog')); }
+// ---- Export: the schema (with its draft) as text other tools read, or the draft as a Laravel migration.
+function renderExport() {
+  const dialog = $('exportDialog'), root = $('exportContent'); root.replaceChildren();
+  const format = EXPORT_FORMATS.find(item => item.id === state.exportFormat) || EXPORT_FORMATS[0];
+  const partial = visibleTables().length > 0 && visibleTables().length < state.schema.tables.length, scoped = partial && state.exportScope === 'visible';
+  const ids = new Set(visibleTables().map(table => table.id));
+  const schema = scoped ? { ...state.schema, tables: state.schema.tables.filter(table => ids.has(table.id)), relations: state.schema.relations.filter(relation => ids.has(relation.source) && ids.has(relation.target)) } : state.schema;
+  const operations = state.operations.slice(0, state.cursor);
+  root.append(modalHeader('تصدير المخطط', 'انسخ المخطط إلى أدوات التوثيق، أو حوّل المسودة إلى migration جاهز للمراجعة.', () => dialog.close(), 'exportTitle'));
+  const body = el('div', 'modal-body');
+  body.append(uiTabs(EXPORT_FORMATS.map(item => [item.id, item.label]), format.id, value => { state.exportFormat = value; renderExport(); }));
+  let text = '', fileName = `${slug(activeWorkspace()?.name || state.schema.database)}.${format.fileExtension}`;
+  if (format.draft) {
+    if (!operations.length) body.append(notice('المسودة فارغة', 'أضف تعديلات إلى المسودة أولًا؛ يتحول كل تعديل إلى خطوة في migration بصيغة Laravel.'));
+    else {
+      const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14), migration = toLaravelMigration(state.base, operations, { date: `${stamp.slice(0, 4)}_${stamp.slice(4, 6)}_${stamp.slice(6, 8)}_${stamp.slice(8)}` });
+      text = migration.code; fileName = migration.fileName;
+      body.append(el('p', 'field-hint', `${operations.length} تغييرات من المسودة. راجع الملف قبل تشغيله؛ لا يكتب ER Atlas في قاعدة البيانات.`));
+    }
+  } else {
+    if (partial) {
+      const scope = el('div', 'export-scope');
+      for (const [value, label] of [['all', `كل المخطط · ${state.schema.tables.length} جدول`], ['visible', `الظاهر الآن · ${ids.size} جدول`]]) {
+        const option = el('label', 'choice'), radio = el('input'); radio.type = 'radio'; radio.name = 'exportScope'; radio.value = value; radio.checked = (scoped ? 'visible' : 'all') === value;
+        radio.addEventListener('change', () => { state.exportScope = value; renderExport(); });
+        option.append(radio, el('span', '', label)); scope.append(option);
+      }
+      body.append(scope);
+    }
+    text = exportSchema(format.id, schema, operations);
+    if (operations.length) body.append(el('p', 'field-hint', 'يشمل تغييرات المسودة الحالية.'));
+  }
+  if (text) body.append(codeBlock(text, fileName));
+  root.append(body, modalFooter([
+    uiButton('تنزيل الملف', () => downloadText(text, fileName, format.mime), 'primary-button'),
+    uiButton('نسخ', () => copyText(text))
+  ].map(button => { button.disabled = !text; return button; })));
+}
+function downloadText(text, fileName, type = 'text/plain') {
+  const link = document.createElement('a'), url = URL.createObjectURL(new Blob([text], { type: `${type};charset=utf-8` }));
+  link.href = url; link.download = fileName; document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+function openExport(format) { closeHeaderMenus(); if (format) state.exportFormat = format; renderExport(); openDialog($('exportDialog')); }
 // ---- Connecting an assistant: pick a card, see its state, done.
 const LOCAL_PROVIDERS = [
   { id: 'claude-cli', name: 'Claude Code', login: 'claude auth login' },
@@ -2566,8 +2666,8 @@ function openCodeDialog() {
 }
 function openQuickActions() {
   closeHeaderMenus();
-  const hints = { 'جدول جديد': 'T', 'إضافة علاقة': 'R', 'ترتيب الجداول': 'A', 'إظهار كامل المخطط': 'F' };
-  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
+  const hints = { 'جدول جديد': 'T', 'إضافة علاقة': 'R', 'ترتيب الجداول': 'A', 'إظهار كامل المخطط': 'F', 'فحص المخطط': 'L', 'تصدير المخطط (Mermaid · DBML · SQL)': 'E', 'مراجعة المسودة': 'D' };
+  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['فحص المخطط', openLint], ['تصدير المخطط (Mermaid · DBML · SQL)', () => openExport()], ['تحويل المسودة إلى Laravel migration', () => openExport('laravel')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحديث المخطط من القاعدة', () => $('refreshButton').click()], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))]];
   const root = $('quickActionList'); root.replaceChildren();
   for (const [label, action] of commands) {
     const command = uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'); command.dataset.label = label.toLowerCase();
@@ -2622,6 +2722,8 @@ function installEvents() {
     $('selectionModeButton').setAttribute('aria-pressed', 'true'); renderNodes(); showToast('اختر جدولًا أو علاقة لعرض التفاصيل');
   });
   $('quickActionsButton').addEventListener('click', openQuickActions);
+  $('lintButton').addEventListener('click', openLint);
+  $('exportButton').addEventListener('click', () => openExport());
   $('themeButton').addEventListener('click', cycleTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (currentTheme() === 'auto') applyTheme('auto'); });
   $('quickSearch').addEventListener('input', event => filterQuickActions(event.target.value));
@@ -2931,6 +3033,9 @@ function installEvents() {
       if (event.key === '0') { fitView(state.topic !== 'all'); return; }
       const tool = { v: 'selectionModeButton', t: 'addTableButton', r: 'linkModeButton', a: 'arrangeButton' }[event.key.toLowerCase()];
       if (tool && !$(tool).hidden && !$(tool).disabled) { event.preventDefault(); $(tool).click(); return; }
+      if (event.key.toLowerCase() === 'l') { event.preventDefault(); openLint(); return; }
+      if (event.key.toLowerCase() === 'e') { event.preventDefault(); openExport(); return; }
+      if (event.key.toLowerCase() === 'd') { event.preventDefault(); openDialog($('changesPanel')); return; }
       if (event.key.toLowerCase() === 'f') { fitView(state.topic !== 'all', { overview: true }); return; }
     }
     if (event.key === 'Escape' && (!$('toolsMenu').hidden || !$('aiMenu').hidden || !$('topics').hidden)) { closeHeaderMenus(); return; }

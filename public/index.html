@@ -127,6 +127,8 @@
                 <span data-icon="source"></span><span>كود المشروع <small id="sourceName" dir="ltr">مصدر المخطط</small></span>
               </button>
               <button id="topicManageButton" type="button">تنظيم المواضيع</button
+              ><button id="lintButton" type="button">فحص المخطط <span id="lintCount" class="menu-count" hidden></span><kbd>L</kbd></button
+              ><button id="exportButton" type="button">تصدير المخطط <kbd>E</kbd></button
               ><button id="connectionButton" type="button"><span id="connectionLabel">اتصال PostgreSQL</span></button
               ><button id="refreshButton" type="button">تحديث المخطط</button
               ><button id="themeButton" type="button" title="تبديل المظهر بين تلقائي وفاتح وليلي">المظهر: <span id="themeLabel">تلقائي</span></button
@@ -804,6 +806,12 @@
       aria-labelledby="topicProposalTitle"
     >
       <div id="topicProposalContent"></div>
+    </dialog>
+    <dialog id="lintDialog" class="lint-dialog sheet" aria-labelledby="lintTitle">
+      <div id="lintContent"></div>
+    </dialog>
+    <dialog id="exportDialog" class="export-dialog sheet wide" aria-labelledby="exportTitle">
+      <div id="exportContent"></div>
     </dialog>
     <dialog
       id="confirmationDialog"
