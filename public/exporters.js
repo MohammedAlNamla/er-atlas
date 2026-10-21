@@ -270,6 +270,7 @@ function track(work, op) {
     }
     case 'addRelation': work.relations.push({ ...structuredClone(op.relation), kind: 'proposed' }); break;
     case 'dropRelation': work.relations = work.relations.filter(r => r.id !== op.relationId); break;
+    case 'addIndex': (table(op.tableId).draftIndexes ||= []).push({ ...op.index }); break;
     case 'dropTable':
       work.tables = work.tables.filter(t => t.id !== op.tableId);
       work.relations = work.relations.filter(r => !touches(r, op.tableId));
@@ -291,6 +292,7 @@ function opProblem(work, op) {
     case 'addRelation': return !t || !table(op.relation.target) ? 'جدول العلاقة غير موجود' : null;
     case 'dropRelation': return !t ? 'العلاقة غير موجودة' : null;
     case 'renameTable': case 'dropTable': case 'addColumn': return !t ? 'الجدول غير موجود' : null;
+    case 'addIndex': return !t ? 'الجدول غير موجود' : !(op.index?.columns || []).every(name => t.columns.some(c => c.name === name)) ? 'عمود الفهرس غير موجود' : null;
     case 'updateColumn': case 'dropColumn': return !t ? 'الجدول غير موجود' : !t.columns.some(c => c.name === op.columnName) ? 'العمود غير موجود' : null;
     default: return 'نوع تغيير غير معروف';
   }
@@ -409,6 +411,12 @@ export function toLaravelMigration(base, operations = [], { date = '2026_01_01_0
         const relation = work.relations.find(r => r.id === op.relationId);
         block(table).lines.push(dropForeignLine(relation));
         if (!created.has(table.id)) undo(table, [foreignLine(relation, find(relation.target))]);
+        break;
+      }
+      case 'addIndex': {
+        const index = op.index;
+        block(table, { fold: true }).lines.push(`$table->${index.unique ? 'unique' : 'index'}(${phpList(index.columns)}, ${php(index.name)});`);
+        if (!created.has(table.id)) undo(table, [`$table->drop${index.unique ? 'Unique' : 'Index'}(${php(index.name)});`]);
         break;
       }
       case 'dropTable': {

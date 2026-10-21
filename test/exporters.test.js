@@ -225,3 +225,10 @@ test('Mermaid output fits the erDiagram grammar for both samples', async () => {
     for (const line of lines.slice(1)) assert.ok(attribute.test(line) || relationship.test(line) || entity.test(line) || line === '  }', `${file}: ${line}`);
   }
 });
+
+test('Laravel migration adds and drops draft indexes', () => {
+  const base = { tables: [{ id: 'o', schema: 'public', name: 'orders', columns: [{ name: 'id', type: 'bigint', primary: true }, { name: 'status', type: 'varchar(20)' }, { name: 'created_at', type: 'timestamptz' }] }], relations: [] };
+  const { code } = toLaravelMigration(base, [{ type: 'addIndex', tableId: 'o', index: { name: 'orders_status_created_at_index', columns: ['status', 'created_at'], unique: false } }]);
+  assert.match(code, /\$table->index\(\['status', 'created_at'\], 'orders_status_created_at_index'\);/);
+  assert.match(code, /\$table->dropIndex\('orders_status_created_at_index'\);/);
+});

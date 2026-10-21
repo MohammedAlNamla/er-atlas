@@ -49,12 +49,14 @@ export function showContextMenu(event) {
   } else if (table && column) {
     item(`تعديل ${column.name}`, 'edit', () => openEditor('editColumn', { tableId, columnName: column.name }));
     item('إنشاء علاقة من هذا العمود', 'link', () => beginLink(tableId, column.name));
+    item('فهرس على هذا العمود', 'search', () => openEditor('addIndex', { tableId, columns: [column.name] }));
     item('إضافة طلب حذف للمسودة', 'trash', () => stage({ type: 'dropColumn', tableId, columnName: column.name }), true);
   } else if (table) {
     item('عرض التفاصيل', 'inspect', () => selectTable(tableId));
     item('تغيير اسم الجدول', 'edit', () => openEditor('renameTable', { tableId }));
     item('إضافة عمود', 'plus', () => openEditor('addColumn', { tableId }));
     item('إنشاء علاقة', 'link', () => beginLink(tableId));
+    item('إضافة فهرس', 'search', () => openEditor('addIndex', { tableId }));
     item('حذف الجدول في المسودة', 'trash', () => confirmDropTable(tableId), true);
   } else {
     item('إنشاء جدول هنا', 'table', () => openEditor('addTable', { position: point }));
@@ -173,10 +175,10 @@ export function openEditor(kind, context = {}) {
   const fields = $('editFields'); fields.replaceChildren(); $('editError').hidden = true;
   const table = state.schema.tables.find(t => t.id === context.tableId);
   const column = table?.columns.find(c => c.name === context.columnName);
-  const titles = { addTable: 'جدول جديد', renameTable: 'تغيير اسم الجدول', addColumn: 'إضافة عمود', editColumn: 'تعديل العمود', addRelation: 'إضافة علاقة' };
+  const titles = { addTable: 'جدول جديد', renameTable: 'تغيير اسم الجدول', addColumn: 'إضافة عمود', editColumn: 'تعديل العمود', addRelation: 'إضافة علاقة', addIndex: 'إضافة فهرس' };
   $('editTitle').textContent = titles[kind];
-  headerIcon($('editTitle').parentElement, { addTable: 'table', renameTable: 'edit', addColumn: 'plus', editColumn: 'edit', addRelation: 'relation' }[kind]);
-  $('editDescription').textContent = kind === 'addTable' ? 'أضف تعريف الجدول إلى المسودة ثم جهّز أعمدته.' : kind === 'renameTable' ? 'سيبقى الجدول مرتبطًا بمواضيعه وعلاقاته.' : kind === 'addRelation' ? 'عمود المفتاح الأجنبي يشير إلى عمود المفتاح الأساسي في الجدول الهدف.' : `تعديل أعمدة ${table.name} ضمن المسودة.`;
+  headerIcon($('editTitle').parentElement, { addTable: 'table', renameTable: 'edit', addColumn: 'plus', editColumn: 'edit', addRelation: 'relation', addIndex: 'search' }[kind]);
+  $('editDescription').textContent = kind === 'addTable' ? 'أضف تعريف الجدول إلى المسودة ثم جهّز أعمدته.' : kind === 'renameTable' ? 'سيبقى الجدول مرتبطًا بمواضيعه وعلاقاته.' : kind === 'addRelation' ? 'عمود المفتاح الأجنبي يشير إلى عمود المفتاح الأساسي في الجدول الهدف.' : kind === 'addIndex' ? `فهرس يسرّع البحث والترتيب في ${table.name}. ترتيب الأعمدة مهم: يخدم الفهرس أول عمود فيه وحده أيضًا.` : `تعديل أعمدة ${table.name} ضمن المسودة.`;
   $('editDialog').style.setProperty('--modal-width', `${kind === 'addRelation' ? 560 : kind === 'renameTable' ? 440 : 520}px`);
   if (kind === 'addTable') fields.append(field('name', 'اسم الجدول', '', 'text', { required: true }), field('schema', 'Schema', 'public', 'text', { required: true }));
   if (kind === 'renameTable') {
@@ -204,8 +206,32 @@ export function openEditor(kind, context = {}) {
     fields.querySelector('[name="target"]').addEventListener('change', () => update('target'));
     update('source'); update('target');
   }
+  if (kind === 'addIndex') {
+    // Columns are taken in the order you tick them: the first one leads the index.
+    const chosen = [...(context.columns || [])], list = el('div', 'index-columns full'), order = el('p', 'field-hint full'), big = (table.approxRows || 0) >= 100000;
+    const nameField = field('name', 'اسم الفهرس', '', 'text', { required: true }); nameField.classList.add('full');
+    const nameInput = nameField.querySelector('input'); let nameEdited = false;
+    nameInput.addEventListener('input', () => { nameEdited = true; });
+    const sync = () => {
+      if (!nameEdited) nameInput.value = chosen.length ? `${table.name}_${chosen.join('_')}_${fields.querySelector('[name="unique"]')?.checked ? 'unique' : 'index'}` : '';
+      order.textContent = chosen.length ? `الترتيب: ${chosen.join('، ')}` : 'اختر عمودًا واحدًا على الأقل؛ ترتيب اختيارك هو ترتيب الفهرس.';
+      for (const box of list.querySelectorAll('input')) box.closest('.index-column').dataset.order = chosen.includes(box.value) ? String(chosen.indexOf(box.value) + 1) : '';
+    };
+    for (const item of table.columns) {
+      const label = el('label', 'choice index-column'), box = el('input'), copy = el('span'), name = el('strong', '', item.name); name.dir = 'ltr';
+      box.type = 'checkbox'; box.value = item.name; box.checked = chosen.includes(item.name);
+      box.addEventListener('change', () => { if (box.checked) chosen.push(item.name); else chosen.splice(chosen.indexOf(item.name), 1); sync(); });
+      copy.append(name, el('small', '', `${item.type}${item.primary ? ' · PK' : item.foreign ? ' · FK' : ''}`)); label.append(box, copy); list.append(label);
+    }
+    const columnsField = el('input'); columnsField.type = 'hidden'; columnsField.name = 'columns';
+    fields.append(el('h3', 'full', 'الأعمدة'), list, order, nameField, columnsField, field('unique', 'فهرس فريد (UNIQUE)', false, 'checkbox'), field('concurrently', 'إنشاء دون إيقاف الكتابة (CONCURRENTLY)', big, 'checkbox'));
+    fields.querySelector('[name="unique"]').closest('label').querySelector('small').textContent = 'يمنع تكرار القيمة نفسها في هذه الأعمدة.';
+    fields.querySelector('[name="concurrently"]').closest('label').querySelector('small').textContent = big ? `مستحسن: في الجدول ≈ ${table.approxRows.toLocaleString('en-US')} صف، والإنشاء العادي يوقف الكتابة حتى ينتهي.` : 'يُنفّذ خارج transaction؛ مفيد للجداول الكبيرة.';
+    fields.querySelector('[name="unique"]').addEventListener('change', sync);
+    state.indexColumns = chosen; sync();
+  }
   if (kind === 'renameTable') fields.firstElementChild.classList.add('full');
-  $('editSubmit').textContent = kind === 'addTable' ? 'إنشاء في المسودة' : kind === 'renameTable' ? 'حفظ الاسم' : kind === 'addRelation' ? 'إضافة إلى المسودة' : 'حفظ في المسودة';
+  $('editSubmit').textContent = kind === 'addTable' ? 'إنشاء في المسودة' : kind === 'renameTable' ? 'حفظ الاسم' : kind === 'addRelation' || kind === 'addIndex' ? 'إضافة إلى المسودة' : 'حفظ في المسودة';
   if (kind === 'addTable') {
     const hint = el('p', 'field-hint', 'استخدم اسمًا واضحًا بصيغة snake_case.'); fields.querySelector('[name="name"]').parentElement.append(hint);
     const note = notice('أضف الأعمدة بعد إنشاء الجدول', 'يمكن تحديد المفتاح الأساسي للجداول الجديدة من نافذة إضافة العمود.'); note.classList.add('full'); fields.append(note);
@@ -243,9 +269,14 @@ export function openEditor(kind, context = {}) {
       $('editSubmit').disabled = !sourceColumn || !targetColumn || selfSame;
       sql = `ALTER TABLE ${source?.schema}.${source?.name}\nADD FOREIGN KEY (${read('sourceColumn')})\nREFERENCES ${target?.schema}.${target?.name} (${read('targetColumn')})\nON DELETE ${({ a: 'NO ACTION', r: 'RESTRICT', c: 'CASCADE', n: 'SET NULL' })[read('onDelete')] || 'NO ACTION'};`;
     }
+    if (kind === 'addIndex') {
+      const columns = state.indexColumns || [];
+      $('editSubmit').disabled = !columns.length;
+      sql = `CREATE ${values.has('unique') ? 'UNIQUE ' : ''}INDEX ${values.has('concurrently') ? 'CONCURRENTLY ' : ''}${read('name')}\nON ${table.schema}.${table.name} (${columns.join(', ') || '…'});`;
+    }
     $('editPreview').replaceChildren(el('div', 'code-label', 'معاينة التعريف · يُراجع SQL النهائي من المسودة'), el('pre', '', sql));
   };
-  if (kind !== 'addRelation') $('editSubmit').disabled = false;
+  if (kind !== 'addRelation' && kind !== 'addIndex') $('editSubmit').disabled = false;
   fields.oninput = preview; fields.onchange = preview; preview();
   openDialog($('editDialog')); fields.querySelector('[name="name"]:not(:disabled),input:not(:disabled),select:not(:disabled)')?.focus();
 }
@@ -263,7 +294,7 @@ function buildHandoffPrompt(plan) {
 
 قواعد التنفيذ:
 - افحص المخطط الحالي أولًا وتأكد أن بصمته أو بنيته تطابق المخطط المرجعي.
-- نفّذ التغييرات بالترتيب داخل transaction واحدة.
+- نفّذ التغييرات بالترتيب داخل transaction واحدة، عدا CREATE INDEX CONCURRENTLY فيُنفّذ بعدها منفصلًا لأنه لا يعمل داخل transaction.
 - لا تغيّر أي عنصر غير مذكور في متغيرات المسودة.
 - عند فشل أي خطوة نفّذ rollback واشرح السبب.
 - افحص أثر DROP وNOT NULL وتغيير النوع قبل التنفيذ.
@@ -294,6 +325,7 @@ export function submitEdit(event) {
     case 'renameTable': operation = { type: 'renameTable', tableId: context.tableId, name: value('name') }; break;
     case 'addColumn': operation = { type: 'addColumn', tableId: context.tableId, column: { ...column, primary: data.has('primary') } }; break;
     case 'editColumn': operation = { type: 'updateColumn', tableId: context.tableId, columnName: context.columnName, patch: column }; break;
+    case 'addIndex': operation = { type: 'addIndex', tableId: context.tableId, index: { name: value('name'), columns: [...(state.indexColumns || [])], unique: data.has('unique'), concurrently: data.has('concurrently') } }; break;
     case 'addRelation': operation = { type: 'addRelation', relation: { id: `draft:${crypto.randomUUID()}`, name: `${(state.schema.tables.find(item => item.id === value('source'))?.name || 'table')}_${value('sourceColumn')}_foreign`, source: value('source'), target: value('target'), pairs: [{ source: value('sourceColumn'), target: value('targetColumn') }], onDelete: value('onDelete') || 'a' } }; break;
   }
   try {

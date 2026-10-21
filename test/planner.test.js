@@ -95,3 +95,15 @@ test('change descriptions name the dropped relation and table', () => {
   assert.equal(describeOperation({ type: 'dropRelation', relationId: 'r' }, linked), 'حذف علاقة orders.user_id → users');
   assert.equal(describeOperation({ type: 'dropTable', tableId: 'u' }, linked), 'حذف جدول users');
 });
+
+test('indexes are added to the draft, planned as SQL and validated', () => {
+  const op = { type: 'addIndex', tableId: 'o', index: { name: 'orders_user_id_index', columns: ['user_id'], unique: false } };
+  const known = { ...orders, tables: orders.tables.map(table => ({ ...table, indexes: [] })) };
+  const after = applyOperation(known, op);
+  assert.deepEqual(after.tables.find(table => table.id === 'o').indexes, [['user_id']]);
+  assert.equal(planChanges(orders, [op]).sql, 'CREATE INDEX "orders_user_id_index" ON "public"."orders" ("user_id");');
+  assert.equal(planChanges(orders, [{ ...op, index: { ...op.index, unique: true, concurrently: true } }]).sql, 'CREATE UNIQUE INDEX CONCURRENTLY "orders_user_id_index" ON "public"."orders" ("user_id");');
+  assert.throws(() => applyOperation(orders, { ...op, index: { ...op.index, columns: ['missing'] } }), /العمود/);
+  assert.throws(() => applyOperation(after, op), /اسم الفهرس مستخدم/);
+  assert.equal(describeOperation(op, orders), 'فهرس على orders (user_id)');
+});

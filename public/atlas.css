@@ -3682,3 +3682,19 @@ dialog.chat-dialog > .chat-thread { flex: 1 1 auto; min-height: 0; overflow: aut
 .legend-wire { width: 48px; height: 24px; fill: none; stroke: var(--wire); stroke-width: 1.6; stroke-linecap: round; direction: ltr; }
 .legend-wire circle { fill: var(--surface); }
 .legend-wire.dash { stroke: var(--wire-proposed); stroke-dasharray: 5 4; }
+
+/* Index editor: columns as a compact checklist; the tick order becomes the index order. */
+.index-columns { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; padding: 2px; }
+dialog .index-columns .index-column { position: relative; padding: 8px 12px; align-items: center; }
+dialog .index-columns .index-column strong { font: 500 13px/20px var(--mono); }
+.index-column[data-order]:not([data-order=""])::after {
+  content: attr(data-order); position: absolute; inset-inline-end: 10px; top: 50%; translate: 0 -50%;
+  min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent); color: var(--on-accent); font: 600 11px/20px var(--mono); text-align: center;
+}
+.edit-fields .index-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+dialog .index-columns .index-column { min-height: 40px; padding: 6px 10px; gap: 10px; }
+dialog .index-columns .index-column > span { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+dialog .index-columns .index-column strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+dialog .index-columns .index-column small { margin-inline-start: auto; white-space: nowrap; direction: ltr; }
+.index-column[data-order]:not([data-order=""])::after { position: static; translate: none; flex: none; }
+@media (max-width: 640px) { .edit-fields .index-columns { grid-template-columns: minmax(0, 1fr); } }

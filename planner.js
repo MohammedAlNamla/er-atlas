@@ -100,6 +100,12 @@ export function planChanges(base, operations) {
         statements.push(`ALTER TABLE ${tableSql(source)} DROP CONSTRAINT ${q(relation.name)};`);
         break;
       }
+      case 'addIndex': {
+        const table = getTable(schema, operation.tableId), index = operation.index;
+        // CONCURRENTLY avoids blocking writes on big tables but cannot run inside a transaction block.
+        statements.push(`CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX ${index.concurrently ? 'CONCURRENTLY ' : ''}${q(index.name)} ON ${tableSql(table)} (${index.columns.map(q).join(', ')});`);
+        break;
+      }
       case 'dropTable': {
         const table = getTable(schema, operation.tableId);
         // Inbound keys from other tables would block DROP TABLE; drop them explicitly instead of CASCADE.
