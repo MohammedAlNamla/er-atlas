@@ -2,7 +2,7 @@ import { store, initStore } from './storage.js';
 import { openDialog, initOverlays } from './ui.js';
 import { $, state, WORKSPACES_KEY, activeWorkspace, saveWorkspaces, storageKey, DIALOG_ICONS, headerIcon, confirmAction, copyText, showToast } from './core.js';
 import { applyTheme, currentTheme, cycleTheme, closeHeaderMenus, scheduleFitChrome, setNavbarSearch } from './chrome.js';
-import { closeWorkspaceMenu, toggleWorkspaceMenu, activateWorkspace, openWorkspaceDialog, sampleSchema, exportWorkspace, importWorkspace, deleteWorkspace, migrateLegacySufra, sameConnection, submitWorkspace } from './workspaces.js';
+import { closeWorkspaceMenu, toggleWorkspaceMenu, bindWorkspaceMenu, activateWorkspace, openWorkspaceDialog, sampleSchema, exportWorkspace, importWorkspace, deleteWorkspace, migrateLegacySufra, sameConnection, submitWorkspace } from './workspaces.js';
 import { renderTopics, renderView, setViewMode, locateTable } from './views.js';
 import { buildTopicPositions, snap4, savePositions, openArrangement, applyArrangement, arrangeWithAi } from './layout.js';
 import { renderNodes, rankedSearch, updateSearchCount, updateEmphasis, transform, fitView, zoom, selectTable, selectRelation } from './canvas.js';
@@ -82,7 +82,7 @@ function installEvents() {
     renderView(); renderNodes(); fitView(false);
     $('viewOverlay').querySelector('input')?.focus();
   });
-  $('workspaceSwitchButton').addEventListener('click', toggleWorkspaceMenu);
+  $('workspaceSwitchButton').addEventListener('click', toggleWorkspaceMenu); bindWorkspaceMenu();
   document.addEventListener('pointerdown', event => { if (!event.target.closest('.workspace-switcher')) closeWorkspaceMenu(); });
   $('newWorkspaceButton').addEventListener('click', () => openWorkspaceDialog());
   $('renameWorkspaceButton').addEventListener('click', () => openWorkspaceDialog(true));

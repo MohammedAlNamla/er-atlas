@@ -9,7 +9,7 @@ const icons = {
   pointer: "pointer", fit: "fit", minus: "minus", plus: "plus", add: "plus", arrange: "arrange",
   link: "relation", table: "table", tableWhite: "table", inspect: "table", key: "key", more: "more",
   chevron: "chevron", source: "code", search: "search", tools: "edit", edit: "edit", ai: "sparkle",
-  close: "close", trash: "trash", info: "info", check: "check",
+  close: "close", trash: "trash", info: "info", check: "check", database: "database",
 };
 export function icon(name) {
   const slot = element("span", `figma-icon icon-${name}`);

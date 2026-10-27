@@ -64,6 +64,7 @@
         <symbol id="i-code" viewBox="0 0 24 24"><path d="m8.5 7.5-4.5 4.5 4.5 4.5M15.5 7.5l4.5 4.5-4.5 4.5M13.25 5l-2.5 14" /></symbol>
         <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="2.75" /><path d="M4.5 6v12c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75V6" /><path d="M4.5 12c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75" /></symbol>
         <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.5h.01M17 13.5h.01M9.5 14h5" /></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" /><path d="M5 19.5h14" /></symbol>
         <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M5 19.5h14" /></symbol>
       </g>
     </svg>
@@ -115,15 +116,23 @@
             <div id="workspaceMenu" class="workspace-menu" hidden>
               <div class="workspace-menu-head">
                 <h2>مساحات العمل</h2>
-                <span id="workspaceMenuCount">0</span>
+                <span id="workspaceMenuCount" class="workspace-menu-count">0</span>
               </div>
+              <label id="workspaceFilterWrap" class="workspace-filter" hidden>
+                <svg class="i i-small" aria-hidden="true"><use href="#i-search" /></svg
+                ><input id="workspaceFilter" type="search" placeholder="ابحث في المساحات…" aria-label="ابحث في المساحات" autocomplete="off" />
+              </label>
               <nav id="workspaceTabs" class="workspace-list" aria-label="اختر مساحة العمل"></nav>
+              <p id="workspaceFilterEmpty" class="workspace-filter-empty" hidden>لا توجد مساحة بهذا الاسم</p>
               <div class="workspace-menu-actions">
-                <button id="newWorkspaceButton" type="button">مساحة جديدة</button
-                ><button id="renameWorkspaceButton" type="button">إعادة تسمية الحالية</button
-                ><button id="exportWorkspaceButton" type="button">تصدير الحالية كملف</button
-                ><button id="importWorkspaceButton" type="button">استيراد مساحة</button
-                ><button id="deleteWorkspaceButton" type="button">حذف الحالية</button>
+                <button id="newWorkspaceButton" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus" /></svg>مساحة جديدة</button
+                ><button id="importWorkspaceButton" type="button"><svg class="i" aria-hidden="true"><use href="#i-upload" /></svg>استيراد من ملف</button>
+              </div>
+              <div class="workspace-current-actions" role="group" aria-labelledby="workspaceCurrentLabel">
+                <span id="workspaceCurrentLabel" class="workspace-current-label">المساحة الحالية</span>
+                <button id="renameWorkspaceButton" type="button" title="إعادة تسمية المساحة الحالية"><svg class="i" aria-hidden="true"><use href="#i-edit" /></svg>تسمية</button
+                ><button id="exportWorkspaceButton" type="button" title="تصدير المساحة الحالية كملف"><svg class="i" aria-hidden="true"><use href="#i-download" /></svg>تصدير</button
+                ><button id="deleteWorkspaceButton" class="danger" type="button" title="حذف المساحة الحالية"><svg class="i" aria-hidden="true"><use href="#i-trash" /></svg>حذف</button>
               </div>
             </div>
           </div>

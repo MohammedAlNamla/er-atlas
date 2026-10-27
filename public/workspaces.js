@@ -24,7 +24,42 @@ export function toggleWorkspaceMenu() {
   const opening = $('workspaceMenu').hidden;
   $('workspaceMenu').hidden = !opening;
   $('workspaceSwitchButton').setAttribute('aria-expanded', String(opening));
-  if (opening) $('workspaceTabs').querySelector('.workspace-option.active')?.focus();
+  if (!opening) return;
+  filterWorkspaces('');
+  const active = $('workspaceTabs').querySelector('.workspace-option.active');
+  active?.scrollIntoView({ block: 'nearest' });
+  ($('workspaceFilterWrap').hidden ? active : $('workspaceFilter'))?.focus();
+}
+// Long lists get a filter; it matches names and the kind line under them.
+const FILTER_FROM = 7;
+function filterWorkspaces(query) {
+  $('workspaceFilter').value = query;
+  const needle = query.trim().toLowerCase();
+  let shown = 0;
+  for (const option of $('workspaceTabs').children) {
+    option.hidden = Boolean(needle) && !option.textContent.toLowerCase().includes(needle);
+    if (!option.hidden) shown++;
+  }
+  $('workspaceFilterEmpty').hidden = shown > 0;
+}
+export function bindWorkspaceMenu() {
+  $('workspaceFilter').addEventListener('input', event => filterWorkspaces(event.target.value));
+  $('workspaceFilter').addEventListener('keydown', event => {
+    const first = [...$('workspaceTabs').children].find(option => !option.hidden);
+    if (event.key === 'ArrowDown') { event.preventDefault(); first?.focus(); }
+    if (event.key === 'Enter' && first) { event.preventDefault(); first.click(); }
+  });
+  // Arrow keys walk the visible options; from the top one, ArrowUp returns to the filter.
+  $('workspaceTabs').addEventListener('keydown', event => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const options = [...$('workspaceTabs').children].filter(option => !option.hidden);
+    const index = options.indexOf(document.activeElement);
+    event.preventDefault();
+    if (event.key === 'ArrowUp' && index <= 0 && !$('workspaceFilterWrap').hidden) { $('workspaceFilter').focus(); return; }
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1
+      : Math.max(0, Math.min(options.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+    options[next]?.focus();
+  });
 }
 export function renderWorkspaces() {
   const tabs = $('workspaceTabs'); tabs.replaceChildren();
@@ -32,12 +67,14 @@ export function renderWorkspaces() {
   $('workspaceStatus').style.filter = state.connectionLive ? '' : 'grayscale(1)';
   $('workspaceSwitchButton').title = state.connectionLive ? 'اتصال PostgreSQL نشط' : 'مخطط محفوظ على الجهاز';
   $('workspaceMenuCount').textContent = String(state.workspaces.length);
+  $('workspaceFilterWrap').hidden = state.workspaces.length < FILTER_FROM;
   for (const workspace of state.workspaces) {
     const button = el('button', `workspace-option${workspace.id === state.workspaceId ? ' active' : ''}`);
     button.type = 'button';
-    button.title = workspace.kind === 'ideas' ? 'مساحة أفكار' : 'خريطة قاعدة بيانات';
+    button.title = workspace.name;
+    button.dataset.kind = workspace.kind || 'database';
     if (workspace.id === state.workspaceId) button.setAttribute('aria-current', 'page');
-    const mark = icon(workspace.kind === 'ideas' ? 'ai' : 'table'); mark.classList.add('workspace-option-icon');
+    const mark = icon(workspace.kind === 'ideas' ? 'ai' : workspace.kind === 'demo' ? 'table' : 'database'); mark.classList.add('workspace-option-icon');
     const copy = el('span', 'workspace-option-copy');
     const tableTotal = workspace.schema?.tables?.length || 0;
     const description = workspace.kind === 'ideas'
@@ -47,10 +84,11 @@ export function renderWorkspaces() {
         : `${tableTotal} جدول · PostgreSQL`;
     copy.append(el('strong', '', workspace.name), el('small', '', description));
     button.append(mark, copy);
-    if (workspace.id === state.workspaceId) button.append(icon('check'));
+    if (workspace.id === state.workspaceId) { const check = icon('check'); check.classList.add('workspace-option-check'); button.append(check); }
     button.addEventListener('click', async () => { closeWorkspaceMenu({ focus: true }); await activateWorkspace(workspace.id); });
     tabs.append(button);
   }
+  if (!$('workspaceMenu').hidden) filterWorkspaces($('workspaceFilter').value);
   scheduleFitChrome();
 }
 export function renderEmptyWorkspace() {
