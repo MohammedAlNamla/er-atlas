@@ -6,9 +6,28 @@ import { updateEmphasis, selectRelation } from './canvas.js';
 import { columnList, columnNotesBar } from './notes.js';
 import { isDraftTable, isDraftRelation, stage, openEditor } from './editor.js';
 import { openCodeDialog } from './groups.js';
+import { allRelations } from './layout.js';
+function openMorphDetails(relation, from, to) {
+  const dialog = $('relationshipDialog'), root = $('relationshipContent'); root.replaceChildren();
+  root.append(headerIcon(modalHeader('علاقة متعددة الأشكال', 'ربط polymorphic بلا مفتاح أجنبي: العمودان معًا يحددان الصف المرتبط.', () => dialog.close(), 'relationshipTitle'), 'relation'));
+  const body = el('div', 'modal-body');
+  body.append(el('h3', '', 'أعمدة الربط'), el('div', 'relation-identifier', `${from.name}.${relation.morph}_type\n${from.name}.${relation.morph}_id`),
+    el('h3', '', 'الجدول المرتبط'), el('div', 'relation-identifier referenced', `${to.name}.${relation.pairs[0].target}`));
+  const tags = el('div', 'chip-row');
+  if (relation.via.includes('code')) tags.append(el('span', 'chip', 'من الكود'));
+  if (relation.via.includes('data')) tags.append(el('span', 'chip', 'من البيانات الحية'));
+  for (const topic of state.groups.filter(topic => topic.id !== 'all' && topic.ids.has(from.id) && topic.ids.has(to.id))) tags.append(el('span', 'chip', topic.label));
+  body.append(tags);
+  const sources = (activeWorkspace()?.codeAnalysis?.morphs || []).find(entry => entry.tableId === from.id && entry.name === relation.morph)?.evidence || [];
+  for (const source of sources.slice(0, 4)) body.append(codeBlock(source.syntax || '', `${source.file}:${source.line}`));
+  body.append(el('p', 'field-hint', 'لا تُضاف هذه العلاقة إلى المسودة أو SQL: قاعدة البيانات لا تفرضها، والخريطة تعرضها لتوضيح من يملك الجدول.'));
+  root.append(body, modalFooter([uiButton('إظهار على الخريطة', () => { dialog.close(); setViewMode('focus'); chooseFocusTable(from.id); }), uiButton('إغلاق', () => dialog.close())]));
+  openDialog(dialog);
+}
 export function openRelationDetails(id) {
-  const relation = state.schema.relations.find(item => item.id === id); if (!relation) return;
+  const relation = allRelations().find(item => item.id === id); if (!relation) return;
   const from = state.schema.tables.find(table => table.id === relation.source), to = state.schema.tables.find(table => table.id === relation.target);
+  if (relation.kind === 'morph') { openMorphDetails(relation, from, to); return; }
   const dialog = $('relationshipDialog'), root = $('relationshipContent'); root.replaceChildren();
   root.append(headerIcon(modalHeader('تفاصيل العلاقة', isDraftRelation(relation) ? 'علاقة مقترحة ضمن المسودة.' : 'علاقة مفتاح أجنبي في المخطط.', () => dialog.close(), 'relationshipTitle'), 'relation'));
   const body = el('div', 'modal-body');
@@ -41,12 +60,14 @@ function closeInspector() {
 }
 function relationCards(table) {
   const section = el('div', 'table-relations');
-  const relevant = state.schema.relations.filter(relation => relation.source === table.id || relation.target === table.id);
+  const relevant = allRelations().filter(relation => relation.source === table.id || relation.target === table.id);
   if (!relevant.length) section.append(notice('لا توجد علاقات لهذا الجدول', 'يمكنك إضافة علاقة إلى المسودة.'));
   for (const relation of relevant) {
     const from = state.schema.tables.find(item => item.id === relation.source), to = state.schema.tables.find(item => item.id === relation.target);
     const card = uiButton('', () => { $('tableDialog').close(); selectRelation(relation.id); }, 'relation-card');
-    card.append(el('strong', '', `${from?.name} → ${to?.name}`), el('small', '', relation.pairs.map(pair => `${pair.source} → ${pair.target}`).join(' · ')), el('small', '', relation.source === table.id ? 'مفتاح أجنبي من هذا الجدول' : 'علاقة واردة إلى هذا الجدول'));
+    const morph = relation.kind === 'morph';
+    card.append(el('strong', '', `${from?.name} → ${to?.name}`), el('small', '', morph ? `${relation.morph}_type · ${relation.morph}_id` : relation.pairs.map(pair => `${pair.source} → ${pair.target}`).join(' · ')),
+      el('small', '', morph ? 'متعددة الأشكال · بلا مفتاح أجنبي' : relation.source === table.id ? 'مفتاح أجنبي من هذا الجدول' : 'علاقة واردة إلى هذا الجدول'));
     section.append(card);
   }
   return section;

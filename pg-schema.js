@@ -109,3 +109,41 @@ export async function listDatabases(db) {
   return rows.map(row => ({ name: row.name, owner: row.owner || '', canConnect: row.can_connect !== false,
     size: row.size == null ? null : Number(row.size), description: row.description || '' }));
 }
+
+// What polymorphic *_type columns actually hold. Each column is checked against the catalog
+// first (the client only names a table id and a column), read inside a read-only transaction
+// with a short timeout, and falls back to a bounded sample on very large tables.
+export const MORPH_COLUMN_SQL = `
+    SELECT n.nspname AS schema_name, c.relname AS table_name
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attname = $2 AND a.attnum > 0 AND NOT a.attisdropped
+    WHERE c.oid::text = $1 AND c.relkind IN ('r', 'p', 'v', 'm')`;
+const ident = value => `"${String(value).replaceAll('"', '""')}"`;
+export async function readMorphTypes(pool, candidates) {
+  const result = [];
+  const client = await pool.connect();
+  try {
+    for (const { tableId, column } of candidates.slice(0, 40)) {
+      if (typeof tableId !== 'string' || typeof column !== 'string' || !/_type$/.test(column)) continue;
+      const found = (await client.query(MORPH_COLUMN_SQL, [tableId, column])).rows[0];
+      if (!found) continue;
+      const from = `${ident(found.schema_name)}.${ident(found.table_name)}`, col = ident(column);
+      let values, partial = false;
+      try {
+        await client.query('BEGIN READ ONLY'); await client.query("SET LOCAL statement_timeout = '3s'");
+        values = (await client.query(`SELECT DISTINCT ${col}::text AS value FROM ${from} WHERE ${col} IS NOT NULL LIMIT 50`)).rows;
+        await client.query('COMMIT');
+      } catch {
+        await client.query('ROLLBACK').catch(() => {});
+        partial = true;
+        await client.query('BEGIN READ ONLY'); await client.query("SET LOCAL statement_timeout = '3s'");
+        try { values = (await client.query(`SELECT DISTINCT value FROM (SELECT ${col}::text AS value FROM ${from} WHERE ${col} IS NOT NULL LIMIT 100000) sample LIMIT 50`)).rows; }
+        catch { values = []; }
+        finally { await client.query('COMMIT').catch(() => client.query('ROLLBACK').catch(() => {})); }
+      }
+      result.push({ tableId, column, values: values.map(row => row.value).filter(Boolean), partial });
+    }
+  } finally { client.release(); }
+  return result;
+}

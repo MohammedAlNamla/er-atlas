@@ -91,7 +91,9 @@ function syncEdgeAnnotations(ref, path) {
   for (const [side, point, outward] of [['source', a, sourceSide], ['target', b, targetSide]]) {
     const label = ref.labels?.[side];
     if (!label) continue;
-    const annotation = { x: point.x + outward * 18, y: point.y - 10, text: label.textContent };
+    // The label grows away from the table so the card never covers it.
+    const annotation = { x: point.x + outward * 10, y: point.y - 8, text: label.textContent, align: outward > 0 ? 'left' : 'right' };
+    label.setAttribute('text-anchor', outward > 0 ? 'start' : 'end');
     label.setAttribute('x', annotation.x);
     label.setAttribute('y', annotation.y);
     ref.annotations.push(annotation);
@@ -107,6 +109,8 @@ const ER_MARKERS = {
 // Ends follow schema evidence only: many/one at the FK side when uniqueness is known,
 // exactly-one or zero-or-one at the referenced key depending on FK nullability.
 function relationEnds(relation, source, target) {
+  // A morph table holds many rows per owner; the owner end has no column to read nullability from.
+  if (relation.kind === 'morph') return { start: 'many', end: 'one' };
   // Schema-sourced and imported relations carry real uniqueness; only draft additions stay cautious.
   const cardinality = relationCardinality(isDraftRelation(relation) ? relation : { ...relation, kind: 'actual' }, source, target);
   const optional = relation.pairs.some(pair => source.columns.find(column => column.name === pair.source)?.nullable);
@@ -204,7 +208,7 @@ export function renderEdges() {
       const path = state.edgeRoutes?.get(key) || edgePath(source, target, pair, lane, key);
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       line.setAttribute('d', path.d);
-      line.setAttribute('class', `edge${isDraftRelation(relation) ? ' proposed' : ''}`);
+      line.setAttribute('class', `edge${isDraftRelation(relation) ? ' proposed' : ''}${relation.kind === 'morph' ? ' morph' : ''}`);
       const ends = relationEnds(relation, source, target);
       if (ends.start) line.setAttribute('marker-start', `url(#er-${ends.start})`);
       if (ends.end) line.setAttribute('marker-end', `url(#er-${ends.end})`);
@@ -215,6 +219,10 @@ export function renderEdges() {
       hit.addEventListener('mouseenter', () => line.classList.add('hover'));
       hit.addEventListener('mouseleave', () => line.classList.remove('hover'));
       const labels = {};
+      if (relation.kind === 'morph' && !overview) {
+        labels.source = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        labels.source.setAttribute('class', 'edge-morph-label'); labels.source.textContent = relation.morph;
+      }
       if (!canvasMode) svg.append(line, ...Object.values(labels), hit);
       if (!edgeRefs.has(relation.id)) edgeRefs.set(relation.id, []);
       const ref = { line, hit, source, target, pair, lane, key, labels, markers: ends,
@@ -257,12 +265,12 @@ export function updateEdgeEmphasis() {
       ref.line.classList.toggle('trace', incident);
       ref.line.classList.toggle('selected', Boolean(selected));
       ref.line.classList.toggle('dimmed', Boolean(dimmed && !selected));
-      const proposed = ref.line.classList.contains('proposed');
+      const proposed = ref.line.classList.contains('proposed'), morph = ref.line.classList.contains('morph');
       ref.canvasStyle = {
-        stroke: selected ? edgeColors().selected : incident ? edgeColors().trace : focused ? edgeColors().focus : proposed ? edgeColors().proposed : edgeColors().wire,
+        stroke: selected ? edgeColors().selected : incident ? edgeColors().trace : focused ? edgeColors().focus : proposed ? edgeColors().proposed : morph ? edgeColors().morph : edgeColors().wire,
         opacity: dimmed && !selected ? .28 : selected || incident ? 1 : proposed ? .88 : focused ? .8 : .75,
         width: selected ? 2.5 : incident ? 2.25 : focused ? 1.7 : 1.6,
-        proposed
+        proposed, morph
       };
     }
   }
@@ -285,7 +293,7 @@ export function drawCanvasEdges() {
     context.strokeStyle = ref.canvasStyle.stroke;
     context.globalAlpha = ref.canvasStyle.opacity;
     context.lineWidth = Math.max(ref.canvasStyle.width, 1.2 / state.scale);
-    context.setLineDash(ref.canvasStyle.proposed ? [6, 6] : []);
+    context.setLineDash(ref.canvasStyle.morph ? [2, 5] : ref.canvasStyle.proposed ? [6, 6] : []);
     context.stroke(ref.canvasPath);
     context.setLineDash([]);
     if (ref.ends) for (const end of ['start', 'end']) if (ref.markers?.[end]) drawErEnd(context, ref.ends[end], ref.markers[end]);
@@ -295,6 +303,7 @@ export function drawCanvasEdges() {
     context.strokeStyle = edgeColors().halo; context.lineWidth = 4;
     context.globalAlpha = 1;
     for (const annotation of ref.annotations || []) {
+      context.textAlign = annotation.align || 'center';
       context.strokeText(annotation.text, annotation.x, annotation.y);
       context.fillText(annotation.text, annotation.x, annotation.y);
     }

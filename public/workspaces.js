@@ -11,7 +11,8 @@ import { buildTopicPositions, aiLayoutKey, loadPositions, normalizeAiLayout } fr
 import { renderNodes, fitView } from './canvas.js';
 import { readColumnNotesStore } from './notes.js';
 import { draftKey, saveDraft, refreshDraft } from './editor.js';
-import { buildGroups, topicKey, syncCodeSource } from './groups.js';
+import { buildGroups, topicKey, syncCodeSource, refreshTopicView } from './groups.js';
+import { loadMorphTypes } from './morphs.js';
 import { renderAiMessages } from './chat.js';
 import { openConnectionDialog } from './connect.js';
 const LEGACY_SUFRA_ID = 'sufra-products-2026-09-27';
@@ -233,6 +234,9 @@ export function setSchema(schema, demo = false) {
   buildGroups();
   loadPositions(); refreshDraft({ fit: true });
   offerStaleDraft();
+  // Live morph types arrive after the first paint; the map redraws once if they add links.
+  const workspaceId = state.workspaceId;
+  if (state.connectionLive) loadMorphTypes().then(changed => { if (changed && workspaceId === state.workspaceId) { buildGroups(); refreshTopicView(); } });
 }
 // A draft is keyed by the schema fingerprint, so a database change used to hide it silently.
 function offerStaleDraft() {

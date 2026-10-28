@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { Pool } from 'pg';
 import { planChanges } from './planner.js';
-import { readSchema, listDatabases } from './pg-schema.js';
+import { readSchema, listDatabases, readMorphTypes } from './pg-schema.js';
 import { askLocal, cliStatus, localProviders, openLoginTerminal } from './local-ai.js';
 import { analyzeSource, compactCodeContext, groundTopicSuggestions } from './code-context.js';
 import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, readColumnNotes, splitFollowups } from './ai-prompts.js';
@@ -72,6 +72,7 @@ const paths = {
   '/core.js': 'core.js',
   '/chrome.js': 'chrome.js',
   '/workspaces.js': 'workspaces.js',
+  '/morphs.js': 'morphs.js',
   '/views.js': 'views.js',
   '/layout.js': 'layout.js',
   '/canvas.js': 'canvas.js',
@@ -173,7 +174,7 @@ function sourceSummary(context) {
   return { sourceRoot: context.sourceRoot, project: context.project, scannedFiles: context.scannedFiles, parsedFiles: context.parsedFiles,
     matchedTables: context.matchedTableIds.length, unmatchedTableIds: context.unmatchedTableIds, moduleCount: context.modules.length,
     failedFiles: context.failedFiles, skippedFiles: context.skippedFiles, signature: context.signature,
-    tables: context.tables, modules: context.modules };
+    tables: context.tables, modules: context.modules, morphs: context.morphs, morphMap: context.morphMap, modelTables: context.modelTables };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -218,6 +219,11 @@ const server = http.createServer(async (req, res) => {
         finally { await probe.end().catch(() => {}); }
       }
       return send(res, 400, { error: `تعذّر عرض قواعد البيانات: ${lastError?.message || 'خطأ غير معروف'}` });
+    }
+    if (req.method === 'POST' && req.url === '/api/morph-types') {
+      const body = await readJson(req);
+      if (!pool || body.source !== connectionId) return send(res, 409, { error: 'قراءة الأنواع تحتاج اتصالًا مباشرًا بالقاعدة نفسها.' });
+      return send(res, 200, { columns: await readMorphTypes(pool, Array.isArray(body.candidates) ? body.candidates : []) });
     }
     if (req.method === 'GET' && req.url === '/api/schema') {
       if (!pool) return send(res, 200, { connected: false });

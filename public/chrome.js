@@ -7,11 +7,11 @@ const THEME_LABELS = { auto: 'تلقائي', light: 'فاتح', dark: 'ليلي'
 // Canvas edges are painted in JS, so they read the same CSS tokens as the DOM does.
 let themeColors = null;
 function readThemeColors() {
-  const fallback = { wire: '#9288af', focus: '#6d58c6', trace: '#5d45c3', selected: '#6551c7', proposed: '#8164d2', label: '#5f5674', halo: '#fcfbfd' };
+  const fallback = { wire: '#9288af', focus: '#6d58c6', trace: '#5d45c3', selected: '#6551c7', proposed: '#8164d2', morph: '#2b8a80', label: '#5f5674', halo: '#fcfbfd' };
   if (typeof getComputedStyle !== 'function' || typeof document.documentElement?.nodeType !== 'number') return fallback;
   const style = getComputedStyle(document.documentElement), read = (name, value) => style.getPropertyValue(name).trim() || value;
   return { wire: read('--wire', fallback.wire), focus: read('--wire-focus', fallback.focus), trace: read('--wire-trace', fallback.trace),
-    selected: read('--wire-selected', fallback.selected), proposed: read('--wire-proposed', fallback.proposed), label: read('--wire-label', fallback.label), halo: read('--paper', fallback.halo) };
+    selected: read('--wire-selected', fallback.selected), proposed: read('--wire-proposed', fallback.proposed), morph: read('--wire-morph', fallback.morph), label: read('--wire-label', fallback.label), halo: read('--paper', fallback.halo) };
 }
 export const edgeColors = () => themeColors ||= readThemeColors();
 export function applyTheme(mode) {

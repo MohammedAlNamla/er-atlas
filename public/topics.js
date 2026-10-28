@@ -23,6 +23,23 @@ export function normalizeTopics(rows, tableIds, { suggested = false } = {}) {
   return groups;
 }
 
+// The catch-all topics a table lands in when nothing placed it.
+export const isLeftoverTopic = group => group.id === 'other' || ['جداول أخرى', 'جداول تحتاج مراجعة'].includes(group.label);
+
+// Polymorphic tables (events, comments, media) join each topic that holds one of their owners and
+// then leave the catch-all topic. With onlyOrphans, a table some real topic already holds is left
+// where the user put it, so curated topics are never rewritten.
+export function attachLinkedTables(groups, links, { onlyOrphans = false } = {}) {
+  const real = groups.filter(group => group.id !== 'all' && !isLeftoverTopic(group));
+  const placed = new Set(), held = new Set(real.flatMap(group => [...group.ids]));
+  for (const link of links) {
+    if (onlyOrphans && held.has(link.source)) continue;
+    for (const group of real) if (group.ids.has(link.target) && !group.ids.has(link.source)) { group.ids.add(link.source); placed.add(link.source); }
+  }
+  for (const group of groups) if (isLeftoverTopic(group)) for (const id of placed) group.ids.delete(id);
+  return groups.filter(group => !isLeftoverTopic(group) || group.ids.size);
+}
+
 export function parseTopicSuggestions(answer, tableIds) {
   const cleaned = answer.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const parsed = JSON.parse(cleaned);

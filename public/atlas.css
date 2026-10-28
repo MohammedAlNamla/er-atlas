@@ -40,6 +40,7 @@
   --wire-trace: #5b2fd4;
   --wire-selected: #6a3ee6;
   --wire-proposed: #8b63f5;
+  --wire-morph: #2b8a80;
   --wire-label: #4a4d5c;
   --code-bg: #f1f1f5;
   --code-ink: #1b1e2b;
@@ -87,6 +88,7 @@
     --wire-trace: #c0acff;
     --wire-selected: #b9a0ff;
     --wire-proposed: #a68dff;
+    --wire-morph: #5cc4b8;
     --wire-label: #d0d1e0;
     --code-bg: #0b0b0f;
     --code-ink: #e7e7f4;
@@ -133,6 +135,7 @@
   --wire-trace: #c0acff;
   --wire-selected: #b9a0ff;
   --wire-proposed: #a68dff;
+  --wire-morph: #5cc4b8;
   --wire-label: #d0d1e0;
   --code-bg: #0b0b0f;
   --code-ink: #e7e7f4;
@@ -306,6 +309,27 @@ button {
   stroke: var(--wire-proposed);
   stroke-dasharray: 6 6;
   opacity: 0.88;
+}
+/* Polymorphic link (no foreign key): dotted, in its own colour, named at the morph table's end. */
+.edge.morph {
+  stroke: var(--wire-morph);
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.edge.morph.selected,
+.edge.morph.trace {
+  stroke: var(--wire-morph);
+  opacity: 1;
+}
+.edge-morph-label {
+  direction: ltr;
+  font: 500 11px/1 var(--mono);
+  fill: var(--wire-morph);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 4px;
+  pointer-events: none;
 }
 .edge-dot {
   fill: var(--surface);

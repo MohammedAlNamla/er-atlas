@@ -4,17 +4,20 @@ import { tabs as uiTabs, openDialog, renderMiniMap, NODE_WIDTH, nodeHeight as me
 import { $, state, storageKey, el, showToast } from './core.js';
 import { renderNodes, fitView } from './canvas.js';
 import { askAi, providerLabel } from './ai.js';
+import { morphRelations } from './morphs.js';
 // Arranging reaches rendering, toasts and AI through these, so tests can run it without a page.
 export const hooks = {
   renderNodes: () => renderNodes(), fitView: (...args) => fitView(...args), showToast: message => showToast(message),
   askAi: (...args) => askAi(...args), renderArrangement: () => renderArrangement()
 };
+// Foreign keys plus the polymorphic links read from code or data; only the map and topics see the latter.
+export const allRelations = () => [...state.schema.relations, ...morphRelations()];
 export const graphPosition = id => state.focusPositions?.get(id) || state.topicPositions?.get(id) || state.positions.get(id);
 export function visibleTables() {
   if (state.viewMode === 'focus') {
     if (!state.focusTable) return [];
     const ids = new Set([state.focusTable]);
-    for (const relation of state.schema.relations) {
+    for (const relation of allRelations()) {
       if (relation.source === state.focusTable) ids.add(relation.target);
       if (relation.target === state.focusTable) ids.add(relation.source);
     }
@@ -28,14 +31,14 @@ export function visibleTables() {
   return state.schema.tables;
 }
 export function visibleRelations() {
-  if (state.viewMode === 'focus') return state.schema.relations.filter(relation =>
+  if (state.viewMode === 'focus') return allRelations().filter(relation =>
     relation.source === state.focusTable || relation.target === state.focusTable);
   if (state.viewMode === 'topics' && state.topic === 'all') return [];
   if (state.viewMode === 'topics' && state.topic !== 'all') {
     const ids = state.groups.find(group => group.id === state.topic)?.ids;
-    return state.schema.relations.filter(relation => ids?.has(relation.source) && ids.has(relation.target));
+    return allRelations().filter(relation => ids?.has(relation.source) && ids.has(relation.target));
   }
-  return state.schema.relations;
+  return allRelations();
 }
 export function buildFocusPositions() {
   if (state.viewMode !== 'focus' || !state.focusTable) { state.focusPositions = null; return; }
@@ -68,7 +71,7 @@ export function buildTopicPositions() {
   const tables = state.schema.tables.filter(table => group.ids.has(table.id));
   if (!tables.length) { state.topicPositions = new Map(); return; }
   const degree = new Map(tables.map(table => [table.id, 0]));
-  for (const relation of state.schema.relations) if (degree.has(relation.source) && degree.has(relation.target)) {
+  for (const relation of allRelations()) if (degree.has(relation.source) && degree.has(relation.target)) {
     degree.set(relation.source, degree.get(relation.source) + 1);
     degree.set(relation.target, degree.get(relation.target) + 1);
   }

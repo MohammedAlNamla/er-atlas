@@ -1,6 +1,7 @@
 // Topics: automatic grouping, the topic editor, AI suggestions and the code source behind them.
 import { store } from './storage.js';
-import { parseTopicSuggestions as readTopicSuggestions, topicColors } from './topics.js';
+import { parseTopicSuggestions as readTopicSuggestions, topicColors, attachLinkedTables } from './topics.js';
+import { morphRelations } from './morphs.js';
 import { button as uiButton, notice, codeBlock, dataTable, modalHeader, modalFooter, openDialog } from './ui.js';
 import { $, state, activeWorkspace, saveWorkspaces, storageKey, el, headerIcon, confirmAction, showToast } from './core.js';
 import { closeHeaderMenus } from './chrome.js';
@@ -25,7 +26,7 @@ function topicIds(table) {
 export function buildGroups() {
   if (state.customGroups) {
     const all = { id: 'all', label: 'الكل', color: '#746C8D', ids: new Set(state.schema.tables.map(t => t.id)) };
-    state.groups = [all, ...state.customGroups.map(group => ({ ...group, ids: new Set(group.ids.filter(id => all.ids.has(id))) }))];
+    state.groups = attachLinkedTables([all, ...state.customGroups.map(group => ({ ...group, ids: new Set(group.ids.filter(id => all.ids.has(id))) }))], morphRelations(), { onlyOrphans: true });
     if (!state.groups.some(group => group.id === state.topic)) state.topic = 'all';
     return;
   }
@@ -37,8 +38,8 @@ export function buildGroups() {
   }
   const otherIds = new Set(state.schema.tables.filter(table => memberships.get(table.id).includes('other')).map(table => table.id));
   if (otherIds.size) groups.push({ id: 'other', label: 'جداول أخرى', color: '#9C96AA', ids: otherIds });
-  state.groups = groups;
-  if (!groups.some(group => group.id === state.topic)) state.topic = 'all';
+  state.groups = attachLinkedTables(groups, morphRelations());
+  if (!state.groups.some(group => group.id === state.topic)) state.topic = 'all';
 }
 
 export function groupForTable(table) {
@@ -145,6 +146,10 @@ function openTopicProposal(suggestions, sourceAnalysis, request) {
   ], 'يمكن للجدول أن يظهر في كل موضوع يستخدمه.'));
   openDialog(dialog);
 }
+// Re-draws after the morph links changed (new code analysis or live types) without saving topics.
+export function refreshTopicView() {
+  state.edgeRoutes = null; buildTopicPositions(); renderTopics(); renderView(); renderNodes(); updateViewCounts();
+}
 export function refreshTopics() {
   saveTopics(); buildTopicPositions(); renderTopics(); renderView(); renderNodes(); updateViewCounts();
   for (const member of $('topicEditor').querySelectorAll('.topic-member')) {
@@ -201,11 +206,12 @@ export async function analyzeTopicCode() {
     if (!response.ok) throw new Error(data.error || 'تعذّر تحليل الكود');
     if (workspaceId !== state.workspaceId || sourceRoot !== $('topicSourceRoot').value.trim() || snapshot !== JSON.stringify(state.schema.tables)) return;
     activeWorkspace().codeAnalysis = data; saveWorkspaces(); syncCodeSource();
+    buildGroups(); refreshTopicView();
   } catch (error) { if (workspaceId === state.workspaceId) $('topicSourceSummary').textContent = error.message; }
   finally { button.disabled = false; }
 }
 function parseTopicSuggestions(answer) {
-  return readTopicSuggestions(answer, state.schema.tables.map(table => table.id)).map(group => ({ ...group, ids: new Set(group.ids) }));
+  return attachLinkedTables(readTopicSuggestions(answer, state.schema.tables.map(table => table.id)).map(group => ({ ...group, ids: new Set(group.ids) })), morphRelations());
 }
 export function openCodeDialog() {
   closeHeaderMenus(); syncCodeSource(); updateAiSettings(); openDialog($('codeDialog'));

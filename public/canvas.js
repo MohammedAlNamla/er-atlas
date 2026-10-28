@@ -2,7 +2,7 @@
 import { icon, button as uiButton, NODE_WIDTH, previewColumns, nodeHeight as measureNode, fitCamera } from './ui.js';
 import { $, state, el } from './core.js';
 import { chooseFocusTable } from './views.js';
-import { graphPosition, visibleTables, visibleRelations, nodeExpanded, nodeHeight } from './layout.js';
+import { graphPosition, visibleTables, visibleRelations, allRelations, nodeExpanded, nodeHeight } from './layout.js';
 import { edgeRefs, renderEdges, updateEdgeEmphasis, drawCanvasEdges } from './edges.js';
 import { openRelationDetails, renderDetails, openExpandedTable } from './inspector.js';
 import { columnTitle } from './notes.js';
@@ -14,7 +14,7 @@ let involvedColumns = new Map();
 function indexInvolvedColumns() {
   const index = new Map();
   const add = (tableId, column) => { if (!index.has(tableId)) index.set(tableId, new Set()); index.get(tableId).add(column); };
-  for (const relation of state.schema.relations) for (const pair of relation.pairs) { add(relation.source, pair.source); add(relation.target, pair.target); }
+  for (const relation of allRelations()) for (const pair of relation.pairs) { add(relation.source, pair.source); add(relation.target, pair.target); }
   return index;
 }
 // Largest title that fits the zoomed-out tile: words wrap only after underscores, so the
@@ -139,7 +139,7 @@ export function updateEmphasis() {
   const focusTable = state.hoveredTable || state.selectedTable;
   const neighbors = new Set();
   if (focusTable) {
-    for (const relation of state.schema.relations) {
+    for (const relation of allRelations()) {
       if (relation.source === focusTable) neighbors.add(relation.target);
       if (relation.target === focusTable) neighbors.add(relation.source);
     }
