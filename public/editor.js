@@ -2,7 +2,7 @@
 import { applyOperation, replay, describeOperation } from './model.js';
 import { store } from './storage.js';
 import { icon, button as uiButton, notice, openDialog } from './ui.js';
-import { $, state, sprite, storageKey, el, headerIcon, confirmAction, showToast } from './core.js';
+import { $, state, sprite, storageKey, el, headerIcon, confirmAction, showToast, engineOf, engineLabel } from './core.js';
 import { renderEmptyWorkspace } from './workspaces.js';
 import { renderTopics, renderView, updateViewCounts, locateTable } from './views.js';
 import { buildFocusPositions, buildTopicPositions, layoutTables, savePositions, arrangeTables } from './layout.js';
@@ -180,15 +180,17 @@ export function openEditor(kind, context = {}) {
   headerIcon($('editTitle').parentElement, { addTable: 'table', renameTable: 'edit', addColumn: 'plus', editColumn: 'edit', addRelation: 'relation', addIndex: 'search' }[kind]);
   $('editDescription').textContent = kind === 'addTable' ? 'أضف تعريف الجدول إلى المسودة ثم جهّز أعمدته.' : kind === 'renameTable' ? 'سيبقى الجدول مرتبطًا بمواضيعه وعلاقاته.' : kind === 'addRelation' ? 'عمود المفتاح الأجنبي يشير إلى عمود المفتاح الأساسي في الجدول الهدف.' : kind === 'addIndex' ? `فهرس يسرّع البحث والترتيب في ${table.name}. ترتيب الأعمدة مهم: يخدم الفهرس أول عمود فيه وحده أيضًا.` : `تعديل أعمدة ${table.name} ضمن المسودة.`;
   $('editDialog').style.setProperty('--modal-width', `${kind === 'addRelation' ? 560 : kind === 'renameTable' ? 440 : 520}px`);
-  if (kind === 'addTable') fields.append(field('name', 'اسم الجدول', '', 'text', { required: true }), field('schema', 'Schema', 'public', 'text', { required: true }));
+  // On MySQL the schema is the database itself, so a new table starts there rather than in public.
+  const mysql = engineOf(state.schema) === 'mysql';
+  if (kind === 'addTable') fields.append(field('name', 'اسم الجدول', '', 'text', { required: true }), field('schema', mysql ? 'قاعدة البيانات' : 'Schema', mysql ? state.schema.tables[0]?.schema || state.schema.database : 'public', 'text', { required: true }));
   if (kind === 'renameTable') {
     const current = field('currentName', 'الاسم الحالي', table.name); current.classList.add('full'); current.querySelector('input').disabled = true;
     const name = field('name', 'الاسم الجديد', table.name, 'text', { required: true }); name.classList.add('full'); fields.append(current, name);
   }
   if (kind === 'addColumn' || kind === 'editColumn') {
-    const defaultField = field('default', 'القيمة الافتراضية · SQL', column?.default || '', 'text', { placeholder: "مثال: now() أو 'active'" }); defaultField.classList.add('full');
+    const defaultField = field('default', 'القيمة الافتراضية · SQL', column?.default || '', 'text', { placeholder: mysql ? "مثال: CURRENT_TIMESTAMP أو 'active'" : "مثال: now() أو 'active'" }); defaultField.classList.add('full');
     defaultField.append(el('p', 'field-hint', 'اتركه فارغًا إن لم توجد قيمة افتراضية.'));
-    fields.append(field('type', 'النوع PostgreSQL', column?.type || 'text', 'text', { required: true }), field('name', 'اسم العمود', column?.name || '', 'text', { required: true }), defaultField, field('nullable', 'يسمح بقيمة فارغة', column?.nullable ?? true, 'checkbox'));
+    fields.append(field('type', `النوع ${engineLabel(state.schema)}`, column?.type || (mysql ? 'varchar(255)' : 'text'), 'text', { required: true }), field('name', 'اسم العمود', column?.name || '', 'text', { required: true }), defaultField, field('nullable', 'يسمح بقيمة فارغة', column?.nullable ?? true, 'checkbox'));
     if (kind === 'addColumn' && table.kind === 'proposed') fields.append(field('primary', 'مفتاح أساسي', false, 'checkbox'));
   }
   if (kind === 'addRelation') {
@@ -224,9 +226,9 @@ export function openEditor(kind, context = {}) {
       copy.append(name, el('small', '', `${item.type}${item.primary ? ' · PK' : item.foreign ? ' · FK' : ''}`)); label.append(box, copy); list.append(label);
     }
     const columnsField = el('input'); columnsField.type = 'hidden'; columnsField.name = 'columns';
-    fields.append(el('h3', 'full', 'الأعمدة'), list, order, nameField, columnsField, field('unique', 'فهرس فريد (UNIQUE)', false, 'checkbox'), field('concurrently', 'إنشاء دون إيقاف الكتابة (CONCURRENTLY)', big, 'checkbox'));
+    fields.append(el('h3', 'full', 'الأعمدة'), list, order, nameField, columnsField, field('unique', 'فهرس فريد (UNIQUE)', false, 'checkbox'), field('concurrently', mysql ? 'إنشاء دون قفل الجدول (LOCK=NONE)' : 'إنشاء دون إيقاف الكتابة (CONCURRENTLY)', big, 'checkbox'));
     fields.querySelector('[name="unique"]').closest('label').querySelector('small').textContent = 'يمنع تكرار القيمة نفسها في هذه الأعمدة.';
-    fields.querySelector('[name="concurrently"]').closest('label').querySelector('small').textContent = big ? `مستحسن: في الجدول ≈ ${table.approxRows.toLocaleString('en-US')} صف، والإنشاء العادي يوقف الكتابة حتى ينتهي.` : 'يُنفّذ خارج transaction؛ مفيد للجداول الكبيرة.';
+    fields.querySelector('[name="concurrently"]').closest('label').querySelector('small').textContent = big ? `مستحسن: في الجدول ≈ ${table.approxRows.toLocaleString('en-US')} صف، والإنشاء العادي يوقف الكتابة حتى ينتهي.` : mysql ? 'يبني الفهرس والجدول متاح للكتابة؛ مفيد للجداول الكبيرة.' : 'يُنفّذ خارج transaction؛ مفيد للجداول الكبيرة.';
     fields.querySelector('[name="unique"]').addEventListener('change', sync);
     state.indexColumns = chosen; sync();
   }
@@ -245,15 +247,18 @@ export function openEditor(kind, context = {}) {
   }
   const preview = () => {
     const values = new FormData($('editForm')), read = name => String(values.get(name) || '…').trim(); let sql;
-    if (kind === 'addTable') sql = `CREATE TABLE ${read('schema')}.${read('name')} ();`;
-    if (kind === 'renameTable') sql = `ALTER TABLE ${table.schema}.${table.name}\nRENAME TO ${read('name')};`;
+    if (kind === 'addTable') sql = mysql ? `CREATE TABLE ${read('schema')}.${read('name')} (\n  -- MySQL: الأعمدة التي تضيفها في المسودة تُكتب هنا\n);` : `CREATE TABLE ${read('schema')}.${read('name')} ();`;
+    if (kind === 'renameTable') sql = `ALTER TABLE ${table.schema}.${table.name}\nRENAME TO ${mysql ? `${table.schema}.` : ''}${read('name')};`;
     if (kind === 'addColumn') sql = `ALTER TABLE ${table.schema}.${table.name}\nADD COLUMN ${read('name')} ${read('type')}${values.has('nullable') ? '' : ' NOT NULL'}${values.get('default') ? ` DEFAULT ${values.get('default')}` : ''}${values.has('primary') ? ' PRIMARY KEY' : ''};`;
     if (kind === 'editColumn') {
       const target = `ALTER TABLE ${table.schema}.${table.name}`;
       const statements = column.name !== read('name') ? [`${target} RENAME COLUMN ${column.name} TO ${read('name')};`] : [];
-      if (column.type !== read('type')) statements.push(`${target} ALTER COLUMN ${read('name')} TYPE ${read('type')};`);
-      if (column.nullable !== values.has('nullable')) statements.push(`${target} ALTER COLUMN ${read('name')} ${values.has('nullable') ? 'DROP' : 'SET'} NOT NULL;`);
-      if ((column.default || '') !== String(values.get('default') || '')) statements.push(`${target} ALTER COLUMN ${read('name')} ${values.get('default') ? `SET DEFAULT ${values.get('default')}` : 'DROP DEFAULT'};`);
+      const retyped = column.type !== read('type'), renulled = column.nullable !== values.has('nullable'), redefaulted = (column.default || '') !== String(values.get('default') || '');
+      // MySQL changes type or nullability with one MODIFY that restates the whole column.
+      if (mysql && (retyped || renulled)) statements.push(`${target} MODIFY COLUMN ${read('name')} ${read('type')}${values.has('nullable') ? ' NULL' : ' NOT NULL'}${values.get('default') ? ` DEFAULT ${values.get('default')}` : ''};`);
+      if (!mysql && retyped) statements.push(`${target} ALTER COLUMN ${read('name')} TYPE ${read('type')};`);
+      if (!mysql && renulled) statements.push(`${target} ALTER COLUMN ${read('name')} ${values.has('nullable') ? 'DROP' : 'SET'} NOT NULL;`);
+      if (redefaulted && !(mysql && (retyped || renulled))) statements.push(`${target} ALTER COLUMN ${read('name')} ${values.get('default') ? `SET DEFAULT ${values.get('default')}` : 'DROP DEFAULT'};`);
       sql = statements.join('\n') || '-- لا توجد تغييرات على التعريف';
     }
     if (kind === 'addRelation') {
@@ -272,7 +277,9 @@ export function openEditor(kind, context = {}) {
     if (kind === 'addIndex') {
       const columns = state.indexColumns || [];
       $('editSubmit').disabled = !columns.length;
-      sql = `CREATE ${values.has('unique') ? 'UNIQUE ' : ''}INDEX ${values.has('concurrently') ? 'CONCURRENTLY ' : ''}${read('name')}\nON ${table.schema}.${table.name} (${columns.join(', ') || '…'});`;
+      sql = mysql
+        ? `CREATE ${values.has('unique') ? 'UNIQUE ' : ''}INDEX ${read('name')}\nON ${table.schema}.${table.name} (${columns.join(', ') || '…'})${values.has('concurrently') ? ' ALGORITHM=INPLACE LOCK=NONE' : ''};`
+        : `CREATE ${values.has('unique') ? 'UNIQUE ' : ''}INDEX ${values.has('concurrently') ? 'CONCURRENTLY ' : ''}${read('name')}\nON ${table.schema}.${table.name} (${columns.join(', ') || '…'});`;
     }
     $('editPreview').replaceChildren(el('div', 'code-label', 'معاينة التعريف · يُراجع SQL النهائي من المسودة'), el('pre', '', sql));
   };
@@ -290,11 +297,12 @@ export function chooseLinkColumn(tableId, columnName) {
 function buildHandoffPrompt(plan) {
   const operations = state.operations.slice(0, state.cursor);
   const summary = operations.map((operation, index) => `${index + 1}. ${describeOperation(operation, state.schema)}`).join('\n');
-  return `مهمة تعديل مخطط PostgreSQL من ER Atlas
+  const mysql = engineOf(state.base) === 'mysql';
+  return `مهمة تعديل مخطط ${engineLabel(state.base)} من ER Atlas
 
 قواعد التنفيذ:
 - افحص المخطط الحالي أولًا وتأكد أن بصمته أو بنيته تطابق المخطط المرجعي.
-- نفّذ التغييرات بالترتيب داخل transaction واحدة، عدا CREATE INDEX CONCURRENTLY فيُنفّذ بعدها منفصلًا لأنه لا يعمل داخل transaction.
+${mysql ? '- MySQL ينفّذ كل أمر DDL في transaction مستقلة ولا يتراجع عنه: نفّذ الأوامر بالترتيب واحدًا واحدًا، وخذ نسخة احتياطية قبل البدء.' : '- نفّذ التغييرات بالترتيب داخل transaction واحدة، عدا CREATE INDEX CONCURRENTLY فيُنفّذ بعدها منفصلًا لأنه لا يعمل داخل transaction.'}
 - لا تغيّر أي عنصر غير مذكور في متغيرات المسودة.
 - عند فشل أي خطوة نفّذ rollback واشرح السبب.
 - افحص أثر DROP وNOT NULL وتغيير النوع قبل التنفيذ.

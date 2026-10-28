@@ -17,7 +17,9 @@ const aliases = {
   int2: 'smallint', smallserial: 'smallint', serial2: 'smallint',
   'character varying': 'varchar', character: 'char', bpchar: 'char',
   decimal: 'numeric', bool: 'boolean', float8: 'double precision', float: 'double precision', float4: 'real',
-  'timestamp without time zone': 'timestamp', 'time without time zone': 'time', 'time with time zone': 'timetz'
+  'timestamp without time zone': 'timestamp', 'time without time zone': 'time', 'time with time zone': 'timetz',
+  // MySQL spellings. unsigned stays part of the type: a signed key cannot reference an unsigned one there.
+  double: 'double precision', 'int unsigned': 'integer unsigned'
 };
 const irregular = { person: 'people', child: 'children' };
 

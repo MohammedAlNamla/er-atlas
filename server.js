@@ -78,6 +78,7 @@ const paths = {
   '/chrome.js': 'chrome.js',
   '/workspaces.js': 'workspaces.js',
   '/morphs.js': 'morphs.js',
+  '/dialect.js': 'dialect.js',
   '/views.js': 'views.js',
   '/layout.js': 'layout.js',
   '/canvas.js': 'canvas.js',

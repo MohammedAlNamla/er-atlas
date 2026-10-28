@@ -1,6 +1,7 @@
 // The table inspector, the expanded table sheet and relation details.
 import { button as uiButton, notice, codeBlock, tabs as uiTabs, modalHeader, modalFooter, openDialog } from './ui.js';
-import { $, state, activeWorkspace, el, breakableTitle, headerIcon, confirmAction } from './core.js';
+import { $, state, activeWorkspace, el, breakableTitle, headerIcon, confirmAction, engineOf } from './core.js';
+import { toSqlDdl } from './exporters.js';
 import { setViewMode, chooseFocusTable } from './views.js';
 import { updateEmphasis, selectRelation } from './canvas.js';
 import { columnList, columnNotesBar } from './notes.js';
@@ -44,6 +45,8 @@ export function openRelationDetails(id) {
 }
 
 function tableSql(table) {
+  // MySQL spells keys, comments and quoting differently; the DDL exporter already writes its dialect.
+  if (engineOf(state.schema) === 'mysql') return toSqlDdl({ engine: 'mysql', tables: [table], relations: [] }).split('\n').filter(line => line && !line.startsWith('--')).join('\n');
   const quote = value => `"${String(value).replaceAll('"', '""')}"`;
   const primary = table.columns.filter(column => column.primary);
   const lines = table.columns.map(column => `  ${quote(column.name)} ${column.type}${column.primary && primary.length === 1 ? ' PRIMARY KEY' : ''}${!column.nullable && !(column.primary && primary.length === 1) ? ' NOT NULL' : ''}${column.default ? ` DEFAULT ${column.default}` : ''}${column.unique && !column.primary ? ' UNIQUE' : ''}`);

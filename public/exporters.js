@@ -138,13 +138,16 @@ export function toDbml(schema) {
   return `${lines.join('\n')}\n`;
 }
 
-// PostgreSQL DDL
+// SQL DDL, in the schema's own dialect. MySQL quotes with backticks, keeps comments inline and has no
+// unnamed CREATE INDEX, so its indexes are KEY lines inside the table.
+const mysqlName = value => `\`${String(value).replaceAll('`', '``')}\``;
 const sqlName = value => `"${String(value).replaceAll('"', '""')}"`;
 const sqlTable = table => `${sqlName(table.schema || 'public')}.${sqlName(table.name)}`;
 const sqlString = value => `'${String(value).replaceAll("'", "''")}'`;
 const sqlList = names => names.map(sqlName).join(', ');
 
 export function toSqlDdl(schema) {
+  if (schema?.engine === 'mysql') return toMysqlDdl(schema);
   const out = [`-- ER Atlas · ${oneLine(schema.database) || 'schema'}`], comments = [], indexes = [];
   for (const table of sortedTables(schema)) {
     const primary = primaryOf(table);
@@ -174,10 +177,39 @@ export function toSqlDdl(schema) {
   return `${out.join('\n')}\n`;
 }
 
+function toMysqlDdl(schema) {
+  const name = mysqlName, list = names => names.map(name).join(', '), table = item => name(item.name);
+  const out = [`-- ER Atlas · ${oneLine(schema.database) || 'schema'} · MySQL`];
+  for (const item of sortedTables(schema)) {
+    const primary = primaryOf(item);
+    const lines = item.columns.map(column => {
+      let line = `  ${name(column.name)} ${column.type}${column.nullable ? ' NULL' : ' NOT NULL'}`;
+      if (column.default !== null && column.default !== undefined && column.default !== '') line += ` DEFAULT ${column.default}`;
+      if (column.autoIncrement) line += ' AUTO_INCREMENT';
+      if (oneLine(column.description)) line += ` COMMENT ${sqlString(column.description)}`;
+      return line;
+    });
+    if (primary.length) lines.push(`  PRIMARY KEY (${list(primary)})`);
+    for (const key of uniqueKeysOf(item)) lines.push(`  UNIQUE KEY (${list(key)})`);
+    for (const column of item.columns.filter(column => column.unique && !coveredUnique(item, column.name))) lines.push(`  UNIQUE KEY (${name(column.name)})`);
+    for (const index of plainIndexes(item)) lines.push(`  KEY (${list(index)})`);
+    const comment = oneLine(item.description) ? ` COMMENT=${sqlString(item.description)}` : '';
+    out.push('', lines.length ? `CREATE TABLE ${table(item)} (\n${lines.join(',\n')}\n)${comment};` : `-- MySQL لا ينشئ جدولًا بلا أعمدة: ${oneLine(item.name)}`);
+  }
+  const keys = sortedRelations(schema).map(({ relation, source, target }) =>
+    `ALTER TABLE ${table(source)} ADD ${relation.name ? `CONSTRAINT ${name(relation.name)} ` : ''}FOREIGN KEY (${list(relation.pairs.map(p => p.source))}) REFERENCES ${table(target)} (${list(relation.pairs.map(p => p.target))})` +
+    `${deleteWords[relation.onDelete] ? ` ON DELETE ${deleteWords[relation.onDelete]}` : ''}${deleteWords[relation.onUpdate] ? ` ON UPDATE ${deleteWords[relation.onUpdate]}` : ''};`);
+  if (keys.length) out.push('', ...keys);
+  return `${out.join('\n')}\n`;
+}
+
 // Laravel migration
 const php = value => `'${String(value).replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 const phpList = names => names.length === 1 ? php(names[0]) : `[${names.map(php).join(', ')}]`;
-const laravelTable = table => table.schema && table.schema !== 'public' ? `${table.schema}.${table.name}` : table.name;
+// Laravel names a table without its schema when it sits in the connection's default one: public on
+// PostgreSQL, the database itself on MySQL (set per migration by toLaravelMigration).
+let defaultSchema = 'public';
+const laravelTable = table => table.schema && table.schema !== defaultSchema ? `${table.schema}.${table.name}` : table.name;
 const snake = value => String(value || '').replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 const currentDefault = /^(?:now\(\)|current_timestamp(?:\(\d\))?)(?:::[\w ]+)?$/i;
 
@@ -186,6 +218,20 @@ function columnMethod(column, opts) {
   let m;
   if (/\[\]$/.test(type)) return null;
   if (!opts.change && column.name === 'id' && column.primary && /^(bigint|int8|bigserial)$/.test(type)) return { code: '$table->id()', keyed: true };
+  // MySQL: auto-increment keys, unsigned integers, tinyint(1) booleans and its own text/time/enum types.
+  if (!opts.change && column.name === 'id' && column.primary && column.autoIncrement && type === 'bigint unsigned') return { code: '$table->id()', keyed: true };
+  if (!opts.change && column.primary && column.autoIncrement && (m = type.match(/^(tiny|small|medium|big)?int(?:eger)? unsigned$/))) return { code: `$table->${m[1] || ''}${m[1] ? 'I' : 'i'}ncrements(${name})`, keyed: true };
+  if (/^tinyint\(1\)$/.test(type)) return { code: `$table->boolean(${name})` };
+  if ((m = type.match(/^(tiny|small|medium|big)?int(?:eger)?(?:\(\d+\))? unsigned$/))) return { code: `$table->unsigned${{ tiny: 'TinyInteger', small: 'SmallInteger', medium: 'MediumInteger', big: 'BigInteger' }[m[1]] || 'Integer'}(${name})` };
+  if ((m = type.match(/^(tiny|medium)int(?:\(\d+\))?$/))) return { code: `$table->${m[1]}Integer(${name})` };
+  if ((m = type.match(/^datetime(?:\((\d)\))?$/))) return { code: `$table->dateTime(${name}${m[1] ? `, ${m[1]}` : ''})` };
+  if ((m = type.match(/^(tiny|medium|long)text$/))) return { code: `$table->${m[1]}Text(${name})` };
+  if ((m = type.match(/^(enum|set)\((.*)\)$/))) return { code: `$table->${m[1]}(${name}, [${[...m[2].matchAll(/'((?:[^'\\]|'')*)'/g)].map(item => php(item[1].replaceAll("''", "'"))).join(', ')}])` };
+  if (type === 'year') return { code: `$table->year(${name})` };
+  if (/^double$/.test(type)) return { code: `$table->double(${name})` };
+  if (/^float$/.test(type)) return { code: `$table->float(${name})` };
+  if (/^(?:(?:tiny|medium|long)?blob|(?:var)?binary\(\d+\))$/.test(type)) return { code: `$table->binary(${name})` };
+  if ((m = type.match(/^(?:numeric|decimal)\((\d+)(?:,\s*(\d+))?\) unsigned$/))) return { code: `$table->decimal(${name}, ${m[1]}, ${m[2] || 0})->unsigned()` };
   if (!opts.change && column.primary && (m = type.match(/^(small|big)?serial$/))) return { code: `$table->${m[1] || ''}${m[1] ? 'I' : 'i'}ncrements(${name})`, keyed: true };
   if ((m = type.match(/^(small|big)?serial$/))) return { code: `$table->${{ small: 'smallInteger', big: 'bigInteger' }[m[1]] || 'integer'}(${name})`, note: type };
   if (/^(bigint|int8)$/.test(type)) return { code: `$table->bigInteger(${name})` };
@@ -324,7 +370,11 @@ function renderBlocks(blocks, pad) {
   });
 }
 
-export function toLaravelMigration(base, operations = [], { date = '2026_01_01_000000', name } = {}) {
+export function toLaravelMigration(base, ...rest) {
+  defaultSchema = base?.engine === 'mysql' ? base.tables?.[0]?.schema ?? base.database : 'public';
+  try { return buildLaravelMigration(base, ...rest); } finally { defaultSchema = 'public'; }
+}
+function buildLaravelMigration(base, operations = [], { date = '2026_01_01_000000', name } = {}) {
   const work = structuredClone(base || { tables: [], relations: [] });
   work.tables ||= []; work.relations ||= [];
   const ctx = { usesDb: false }, up = [], down = [], created = new Set();
@@ -415,7 +465,8 @@ export function toLaravelMigration(base, operations = [], { date = '2026_01_01_0
       }
       case 'addIndex': {
         const index = op.index;
-        if (index.concurrently) {
+        // MySQL has no CONCURRENTLY and no transactional DDL: its migration just adds the index.
+        if (index.concurrently && base?.engine !== 'mysql') {
           // CONCURRENTLY cannot run inside a transaction, and Laravel wraps PostgreSQL migrations in one.
           ctx.usesDb = true; ctx.outsideTransaction = true;
           const target = `${table.schema && table.schema !== 'public' ? `${table.schema}.` : ''}${table.name}`;
