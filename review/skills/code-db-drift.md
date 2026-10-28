@@ -2,7 +2,7 @@
 id: code-db-drift
 title: تطابق الكود مع القاعدة
 version: 1
-applies_to: PostgreSQL 12+ · Laravel 9–11
+applies_to: PostgreSQL 12+ · MySQL 8.0+ / MariaDB 10.6+ · Laravel 9–11
 ---
 
 # تطابق الكود مع القاعدة
@@ -19,6 +19,11 @@ applies_to: PostgreSQL 12+ · Laravel 9–11
 7. لا تكرر: عمود `*_id` بلا قيد وله علاقة Eloquent يُبلغ عنه في DR01 مع ذكر العلاقة، ولا يُكرر في DR05.
 8. علاقات متعددة الأشكال (`morphTo`, `morphMany`, `morphOne`, `morphToMany`, `morphedByMany`) لا يمكن أن يحميها مفتاح أجنبي؛ لا تبلغ عنها أبدًا كعلاقة بلا FK.
 9. إضافة مفتاح أجنبي على بيانات قائمة قد تفشل بسبب صفوف يتيمة: كل إصلاح يجب أن يبدأ باستعلام كشف اليتامى ثم `NOT VALID` ثم `VALIDATE`.
+
+## How to judge on MySQL (AI)
+1. جداول MyISAM لا تقبل مفاتيح أجنبية أصلًا؛ إصلاح أي علاقة ناقصة عليها يبدأ بتحويل المحرك: `ALTER TABLE t ENGINE=InnoDB`.
+2. أنواع Laravel على MySQL: `id()` و`foreignId()` تنتجان `BIGINT UNSIGNED`، و`increments()` تنتج `INT UNSIGNED`. أي مفتاح أجنبي يجب أن يطابق النوع والإشارة تمامًا.
+3. أسماء الجداول حساسة لحالة الأحرف على Linux فقط: موديل يعمل على Windows قد يفشل على خادم Linux.
 
 ## DR01 · علاقة Eloquent بلا مفتاح أجنبي في القاعدة
 - **Severity:** warning — ارفعها إلى error إذا كان الجدول كبيرًا وتُحذف صفوف الأصل فعليًا (الأصل بلا `SoftDeletes`)؛ اخفضها إلى info إذا كان أحد الجدولين جدول سجلات/أرشيف يُقصد أن يحتفظ بالمعرّف بعد حذف الأصل.
@@ -40,6 +45,7 @@ DB::statement('ALTER TABLE orders ADD CONSTRAINT orders_user_id_foreign FOREIGN 
 DB::statement('ALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_foreign');
 // لجدول جديد أو صغير: $table->foreign('user_id')->references('id')->on('users');
 ```
+- **MySQL:** إن كان الجدول MyISAM فلا يمكن إضافة القيد قبل `ALTER TABLE t ENGINE=InnoDB`. وتأكد أن الأنواع متطابقة مع الإشارة: `foreignId()` = `BIGINT UNSIGNED`. قبل الإضافة احسب الصفوف اليتيمة، فالإضافة تفشل بوجودها.
 - **References:** https://laravel.com/docs/11.x/eloquent-relationships · https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK
 
 ## DR02 · موديل يشير إلى جدول غير موجود
@@ -58,6 +64,7 @@ class OrderItem extends Model {
     protected $table = 'order_items';
 }
 ```
+- **MySQL:** على Linux أسماء الجداول حساسة لحالة الأحرف (`lower_case_table_names = 0`): `$table = 'Orders'` يعمل على Windows ويفشل على الخادم.
 - **References:** https://laravel.com/docs/11.x/eloquent#table-names · https://laravel.com/docs/11.x/eloquent-relationships#defining-custom-intermediate-table-models
 
 ## DR03 · جدول لا يستخدمه أي كود محلَّل
@@ -75,6 +82,7 @@ ALTER TABLE public.legacy_imports RENAME TO legacy_imports_deprecated;
 ```php
 Schema::rename('legacy_imports', 'legacy_imports_deprecated');
 ```
+- **MySQL:** إحصاءات النشاط على MySQL من `performance_schema` (إن كان مفعّلًا) وتبدأ من آخر تشغيل للخادم.
 - **References:** https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW · https://laravel.com/docs/11.x/migrations#renaming-and-dropping-tables
 
 ## DR04 · الموديل يذكر عمودًا غير موجود في الجدول
@@ -93,6 +101,7 @@ class Order extends Model {
     protected $fillable = ['user_id', 'total', 'status']; // أزل 'shipping_cost' إن حُذف من الجدول
 }
 ```
+- **MySQL:** لا فرق في MySQL.
 - **References:** https://laravel.com/docs/11.x/eloquent#mass-assignment · https://laravel.com/docs/11.x/eloquent-mutators#attribute-casting · https://laravel.com/docs/11.x/eloquent-serialization#hiding-attributes-from-json
 
 ## DR05 · عمود ربط *_id بلا مفتاح أجنبي
@@ -114,4 +123,5 @@ ALTER TABLE public.order_items VALIDATE CONSTRAINT order_items_product_id_foreig
 // لجدول جديد:
 $table->foreignId('product_id')->constrained()->restrictOnDelete();
 ```
+- **MySQL:** قبل إضافة القيد ابحث عن الصفوف اليتيمة: `SELECT COUNT(*) FROM child c LEFT JOIN parent p ON p.id = c.parent_id WHERE c.parent_id IS NOT NULL AND p.id IS NULL;` فالإضافة تفشل إن وُجدت. على MyISAM حوّل المحرك أولًا.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://www.postgresql.org/docs/current/sql-altertable.html · https://laravel.com/docs/11.x/migrations#foreign-key-constraints

@@ -3,34 +3,41 @@
 // and may add findings, each of which must cite evidence we sent. Anything else is dropped.
 import { CHECKS, checkById } from './catalog.js';
 import { buildSchemaText } from '../ai-prompts.js';
+import { forEngine } from './skills.js';
 
 const clip = (value, max) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const evidenceKey = item => `${item.file}:${item.line}`;
 
-export const REVIEW_INSTRUCTION = [
-  'أنت مراجع قواعد بيانات PostgreSQL وتطبيقات Laravel بخبرة عالية، تعمل داخل ER Atlas.',
+// The reviewer's brief, in the engine's own terms: on MySQL the MySQL judging rules and each check's
+// MySQL note override the PostgreSQL defaults the playbooks are written in.
+export const reviewInstruction = (engine = 'postgres') => [
+  `أنت مراجع قواعد بيانات ${engine === 'mysql' ? 'MySQL / MariaDB' : 'PostgreSQL'} وتطبيقات Laravel بخبرة عالية، تعمل داخل ER Atlas.`,
   'أمامك: أدلة الخبرة (playbooks) التي كتبناها لكل تخصص، ونتائج محرك فحص محلي حتمي، والأدلة الحرفية من المخطط والكود والإحصاءات.',
   'مهمتك: (1) رتّب النتائج حسب الأثر الفعلي على البيانات والأمان والأداء، (2) اشرح سبب أولوية كل واحدة في جملة، (3) أضف فقط ما فات المحرك بشرط أن تستند كل إضافة إلى دليل موجود حرفيًا في <evidence> أو إلى حقيقة مكتوبة في <schema>، (4) ضع خطة إصلاح قصيرة بالترتيب.',
-  'التزم بقواعد "How to judge (AI)" في كل دليل خبرة. لا تخمّن قيمًا وقت التشغيل، ولا تقدّر أزمنة أو نسب تحسن، ولا تخترع ملفات أو أسطرًا أو جداول أو أعمدة.',
+  engine === 'mysql'
+    ? 'القاعدة MySQL/MariaDB: التزم بقواعد "How to judge (AI)" ثم "How to judge on MySQL (AI)"، وحيث يتعارضان فقواعد MySQL وملاحظة "على MySQL / MariaDB" في الفحص هي الحاكمة. اكتب SQL الإصلاح بصيغة MySQL (backticks، MODIFY COLUMN، ALGORITHM/LOCK) لا PostgreSQL. لا تخمّن قيمًا وقت التشغيل، ولا تقدّر أزمنة أو نسب تحسن، ولا تخترع ملفات أو أسطرًا أو جداول أو أعمدة.'
+    : 'التزم بقواعد "How to judge (AI)" في كل دليل خبرة. لا تخمّن قيمًا وقت التشغيل، ولا تقدّر أزمنة أو نسب تحسن، ولا تخترع ملفات أو أسطرًا أو جداول أو أعمدة.',
   'أي إضافة لا تشير إلى check id موجود في الكتالوج ودليل موجود ستُحذف تلقائيًا. الثقة في إضافاتك medium أو low فقط.',
   'أعد JSON فقط دون أي نص خارجه بالشكل:',
   '{"summary":"فقرة عربية من 2-4 جمل عن حالة القاعدة وأهم المخاطر","order":[{"id":"<finding id حرفيًا>","why":"جملة"}],"extra":[{"check":"IX02","tableId":"<id>","columnName":"<اسم أو فارغ>","title":"عنوان قصير","detail":"جملة واحدة","confidence":"medium","evidence":[{"file":"app/...php","line":12}]}],"plan":["خطوة مرتبة 1","خطوة 2"]}'
 ].join('\n');
+export const REVIEW_INSTRUCTION = reviewInstruction();
 
-// Which playbook text to send: the judging rules of every skill in play, plus the full section of
-// each check that produced a finding (capped so a big review still fits the prompt).
-function playbookText(skills, findings, budget = 26000) {
+// Which playbook text to send: the judging rules of every skill in play (plus the MySQL rules on
+// MySQL), then the section of each check that produced a finding, in the engine's own terms
+// (capped so a big review still fits the prompt).
+function playbookText(skills, findings, budget = 26000, engine = 'postgres') {
   const usedSkills = new Set(findings.map(finding => finding.skill));
   const usedChecks = [...new Set(findings.map(finding => finding.check))];
   const parts = [];
   for (const skill of skills.values()) {
     if (usedSkills.size && !usedSkills.has(skill.id)) continue;
-    parts.push(`### ${skill.id} — ${skill.title}\n${skill.judge}`);
+    parts.push(`### ${skill.id} — ${skill.title}\n${skill.judge}${engine === 'mysql' && skill.judgeMysql ? `\n\nعلى MySQL / MariaDB:\n${skill.judgeMysql}` : ''}`);
   }
   for (const id of usedChecks) {
     for (const skill of skills.values()) {
       const check = skill.checks.get(id);
-      if (check) parts.push(`### ${id} · ${check.title}\n${check.markdown.replace(/```[\s\S]*?```/g, '').trim()}`);
+      if (check) parts.push(`### ${id} · ${check.title}\n${forEngine(check.markdown, engine).replace(/```[\s\S]*?```/g, '').trim()}`);
     }
   }
   let text = '';
@@ -57,12 +64,12 @@ export function collectEvidence(findings, extra = [], limit = 120) {
   return [...seen.values()];
 }
 
-export function buildReviewPrompt({ schema, findings, skills, evidence = [], question = '' }) {
+export function buildReviewPrompt({ schema, findings, skills, evidence = [], question = '', engine = schema?.engine === 'mysql' ? 'mysql' : 'postgres' }) {
   const list = findings.slice(0, 80);
   const { text } = buildSchemaText(schema, { budget: 60000 });
-  const parts = [`<task>\n${REVIEW_INSTRUCTION}\n</task>`,
+  const parts = [`<task>\n${reviewInstruction(engine)}\n</task>`,
     `<catalog>\n${CHECKS.map(check => `${check.id} ${check.skill} ${check.severity} — ${check.title}`).join('\n')}\n</catalog>`,
-    `<playbooks>\n${playbookText(skills, list)}\n</playbooks>`,
+    `<playbooks>\n${playbookText(skills, list, 26000, engine)}\n</playbooks>`,
     `<schema format="sql-like">\n${text}\n</schema>`,
     `<findings format="json" count="${findings.length}"${findings.length > list.length ? ` shown="${list.length}"` : ''}>\n${JSON.stringify(list.map(compactFinding))}\n</findings>`];
   if (evidence.length) parts.push(`<evidence>\n${evidence.map(item => `${item.file}:${item.line} — ${item.text}`).join('\n')}\n</evidence>`);

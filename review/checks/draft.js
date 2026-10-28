@@ -1,6 +1,6 @@
 // Checks on the draft itself: what each staged operation would do to the database as read (base),
 // before anyone runs it. Sizes come from the base tables; a table the draft creates is never at risk.
-import { sizeOf, makeFinding, HUGE, LARGE, SMALL } from './util.js';
+import { sizeOf, shift, makeFinding, HUGE, LARGE, SMALL } from './util.js';
 import { normalizeType } from '../../public/lint.js';
 
 const empty = value => value === null || value === undefined || value === '';
@@ -11,11 +11,14 @@ function bySize(size) {
   return size.rows >= HUGE ? 'error' : size.rows >= LARGE ? 'warning' : 'info';
 }
 // Type changes PostgreSQL makes without rewriting the table (from migration-safety MS03).
-function rewriteFree(before, after) {
+function rewriteFree(before, after, engine = 'postgres') {
   const from = String(before).toLowerCase().trim(), to = String(after).toLowerCase().trim();
   if (normalizeType(from) === normalizeType(to) && !/\(/.test(from) && !/\(/.test(to)) return true; // alias only
   const varchar = /^(?:varchar|character varying)(?:\((\d+)\))?$/, numeric = /^(?:numeric|decimal)(?:\((\d+)(?:,\s*(\d+))?\))?$/;
   const [a, b] = [varchar.exec(from), varchar.exec(to)];
+  // MySQL widens a VARCHAR in place only while its length prefix stays one byte (under 256 bytes,
+  // 63 utf8mb4 characters) or was already two; crossing that line rebuilds the table.
+  if (engine === 'mysql') return Boolean(a && b && a[1] && b[1] && Number(b[1]) >= Number(a[1]) && (Number(b[1]) <= 63 || Number(a[1]) > 63));
   if (a && b) return !b[1] || (a[1] && Number(b[1]) >= Number(a[1]));
   if (a && to === 'text') return true;
   if (from === 'text' && b && !b[1]) return true;
@@ -32,6 +35,10 @@ export const draftChecks = {
       const table = ctx.base.tables.find(t => t.id === op.tableId);
       if (!table) return [];
       const size = sizeOf(table);
+      // MySQL does not fail here: it fills existing rows with the type's implicit value (0, '') silently.
+      if (ctx.engine === 'mysql') return [makeFinding('MS01', table, { column: op.column.name, severity: 'warning', confidence: size.known ? 'high' : 'medium',
+        detail: `MySQL لن يرفض إضافة ${op.column.name} ‏NOT NULL بلا قيمة افتراضية، بل يملأ صفوف ${table.name} القائمة بالقيمة الضمنية للنوع (0 أو نص فارغ) بصمت. أعطه قيمة افتراضية مقصودة أو عبّئه صراحة.`,
+        evidence: [draftEvidence(op, `addColumn ${table.name}.${op.column.name} ${op.column.type} NOT NULL`)] })];
       return [makeFinding('MS01', table, { column: op.column.name, confidence: size.known ? 'high' : 'medium',
         detail: `إضافة ${op.column.name} ‏NOT NULL بلا قيمة افتراضية تفشل إذا كان في ${table.name} صف واحد${size.known ? ` (≈ ${size.rows.toLocaleString('en-US')} صف)` : ''}. أضفه nullable، عبّئه، ثم اجعله NOT NULL، أو أعطه قيمة افتراضية.`,
         evidence: [draftEvidence(op, `addColumn ${table.name}.${op.column.name} ${op.column.type} NOT NULL`)] })];
@@ -54,7 +61,7 @@ export const draftChecks = {
   MS03(ctx) {
     return ctx.operations.filter(op => op.type === 'updateColumn' && op.patch?.type && !ctx.newTables.has(op.tableId)).flatMap(op => {
       const table = ctx.base.tables.find(t => t.id === op.tableId), column = table?.columns.find(c => c.name === op.columnName);
-      if (!table || !column || column.type === op.patch.type || rewriteFree(column.type, op.patch.type)) return [];
+      if (!table || !column || column.type === op.patch.type || rewriteFree(column.type, op.patch.type, ctx.engine)) return [];
       let severity = bySize(sizeOf(table));
       if (!severity) return [];
       const referenced = column.primary && ctx.base.relations.some(r => r.target === table.id && r.pairs.some(p => p.target === column.name));
@@ -103,12 +110,16 @@ export const draftChecks = {
   // MS05: an index built with a write lock on a large table.
   MS05(ctx) {
     return ctx.operations.filter(op => op.type === 'addIndex' && !op.index?.concurrently && !ctx.newTables.has(op.tableId)).flatMap(op => {
-      const table = ctx.base.tables.find(t => t.id === op.tableId), severity = table && bySize(sizeOf(table));
-      if (!severity) return [];
+      const table = ctx.base.tables.find(t => t.id === op.tableId);
       const mysql = ctx.engine === 'mysql';
+      // InnoDB already builds indexes INPLACE with writes allowed (MySQL note): one step lower there.
+      const severity = table && bySize(sizeOf(table)) && (mysql ? shift(bySize(sizeOf(table)), 1) : bySize(sizeOf(table)));
+      if (!severity) return [];
       return [makeFinding('MS05', table, { key: op.index.name, severity, confidence: 'high',
         title: mysql ? 'إنشاء فهرس على جدول كبير دون LOCK=NONE' : undefined,
-        detail: `${op.index.name} على ${table.name} (≈ ${sizeOf(table).rows.toLocaleString('en-US')} صف) يمنع الكتابة حتى ينتهي البناء؛ فعّل «${mysql ? 'دون قفل الجدول (LOCK=NONE)' : 'CONCURRENTLY'}» في الفهرس.${op.index.unique ? ' الفهرس فريد: البناء يفشل إن وُجدت قيم مكررة.' : ''}`,
+        detail: mysql
+          ? `${op.index.name} على ${table.name} (≈ ${sizeOf(table).rows.toLocaleString('en-US')} صف): InnoDB يسمح بالكتابة أثناء البناء عادةً، لكن بلا LOCK=NONE قد ينتقل بصمت إلى بناء يقفل الجدول. فعّل «دون قفل الجدول (LOCK=NONE)» ليفشل بدل ذلك.${op.index.unique ? ' الفهرس فريد: البناء يفشل إن وُجدت قيم مكررة.' : ''}`
+          : `${op.index.name} على ${table.name} (≈ ${sizeOf(table).rows.toLocaleString('en-US')} صف) يمنع الكتابة حتى ينتهي البناء؛ فعّل «CONCURRENTLY» في الفهرس.${op.index.unique ? ' الفهرس فريد: البناء يفشل إن وُجدت قيم مكررة.' : ''}`,
         evidence: [draftEvidence(op, `addIndex ${op.index.name} ON ${table.name} (${op.index.columns.join(', ')})`)] })];
     });
   },

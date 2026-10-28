@@ -2,7 +2,7 @@
 id: indexing-performance
 title: الفهارس والأداء
 version: 1
-applies_to: PostgreSQL 12+ · Laravel 9–11
+applies_to: PostgreSQL 12+ · MySQL 8.0+ / MariaDB 10.6+ · Laravel 9–11
 ---
 
 # الفهارس والأداء
@@ -19,6 +19,13 @@ applies_to: PostgreSQL 12+ · Laravel 9–11
 7. كل اقتراح لإنشاء أو حذف فهرس على جدول فيه بيانات يجب أن يستخدم `CONCURRENTLY`، ويذكر أن Laravel يغلّف الـ migration في معاملة على PostgreSQL فيلزم `public $withinTransaction = false;`.
 8. لا تكرر: FK بلا فهرس يُبلغ عنه IX01 وليس IX02 حتى لو ظهر العمود في `where` في الكود؛ اذكر دليل الكود في شرح IX01 بدلًا من ذلك.
 9. لا تقدّر أزمنة بالمللي ثانية ولا نسب تحسن؛ صف الآلية (مسح كامل، قفل، تضخم الكتابة) فقط.
+
+## How to judge on MySQL (AI)
+1. InnoDB ينشئ فهرسًا تلقائيًا على أعمدة المفتاح الأجنبي إن لم يجد فهرسًا يبدأ بها، فالمفتاح الأجنبي بلا فهرس نادر في قاعدة حية ويظهر غالبًا في المسودة أو في جداول MyISAM.
+2. كل فهرس ثانوي في InnoDB يحمل أعمدة المفتاح الأساسي ضمنيًا في آخره: الفهرس `(a)` يعمل كـ `(a, id)`.
+3. لا فهارس جزئية في MySQL؛ البديل عمود مولّد (generated column) مفهرس أو فهرس مركب. الفهارس الوظيفية متاحة من 8.0.13.
+4. إحصاءات الاستخدام من `performance_schema` وتبدأ من آخر تشغيل للخادم؛ إن كان معطلًا فالقارئ لا يعرف الاستخدام (scans = null) فلا تحكم بأن فهرسًا غير مستخدم.
+5. بدل `CONCURRENTLY` يستخدم MySQL الـ online DDL: `ALGORITHM=INPLACE, LOCK=NONE` يبني الفهرس مع السماح بالكتابة، مع قفل metadata قصير في البداية والنهاية.
 
 ## IX01 · مفتاح أجنبي بلا فهرس
 - **Severity:** warning — ارفعها إلى error إذا كان جدول المصدر كبيرًا والعلاقة `ON DELETE CASCADE` أو `SET NULL` (`onDelete` = `c` أو `n`)؛ اخفضها إلى info إذا كان جدول المصدر صغيرًا (`approxRows < 10,000`).
@@ -39,6 +46,7 @@ return new class extends Migration {
 };
 // لجدول جديد أو صغير يكفي: $table->foreignId('user_id')->index()->constrained();
 ```
+- **MySQL:** InnoDB ينشئ الفهرس تلقائيًا عند إضافة المفتاح الأجنبي إن لم يجد فهرسًا مناسبًا، فالنتيجة في قاعدة حية تعني غالبًا جدول MyISAM أو قيدًا في المسودة. الإصلاح: `ALTER TABLE orders ADD INDEX orders_user_id_index (user_id), ALGORITHM=INPLACE, LOCK=NONE;`
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY · https://laravel.com/docs/11.x/migrations#creating-indexes
 
 ## IX02 · عمود يُبحث أو يُرتَّب به في الكود بلا فهرس
@@ -59,6 +67,7 @@ public function up(): void {
     DB::statement('CREATE INDEX CONCURRENTLY orders_store_status_created_index ON orders (store_id, status, created_at DESC)');
 }
 ```
+- **MySQL:** لـ `LIKE '%…'` استخدم فهرس `FULLTEXT` مع `MATCH … AGAINST` بدل pg_trgm. ولـ `whereDate` أنشئ عمودًا مولّدًا مفهرسًا (`created_date DATE AS (DATE(created_at)) STORED`) أو حوّل الشرط إلى مدى.
 - **References:** https://www.postgresql.org/docs/current/indexes-multicolumn.html · https://www.postgresql.org/docs/current/indexes-ordering.html · https://www.postgresql.org/docs/current/using-explain.html
 
 ## IX03 · SoftDeletes بلا فهرس يخدم deleted_at
@@ -78,6 +87,7 @@ public function up(): void {
     DB::statement('CREATE INDEX CONCURRENTLY orders_user_id_active_index ON orders (user_id) WHERE deleted_at IS NULL');
 }
 ```
+- **MySQL:** لا فهارس جزئية في MySQL: استخدم فهرسًا مركبًا يبدأ بالعمود الانتقائي وينتهي بـ `deleted_at` (مثل `(user_id, deleted_at)`)، أو عمودًا مولّدًا مفهرسًا.
 - **References:** https://www.postgresql.org/docs/current/indexes-partial.html · https://laravel.com/docs/11.x/eloquent#soft-deleting
 
 ## IX04 · فهرس مكرر يغطيه فهرس آخر
@@ -96,6 +106,7 @@ public function up(): void {
     DB::statement('DROP INDEX CONCURRENTLY IF EXISTS orders_user_id_index');
 }
 ```
+- **MySQL:** لأن الفهرس الثانوي يحمل المفتاح الأساسي ضمنيًا، فـ `(a, id)` مكرر لـ `(a)`. العرض `sys.schema_redundant_indexes` يسرد التكرارات. انتبه: إن كان الأقصر هو فهرس مفتاح أجنبي فـ InnoDB يرفض حذفه (خطأ 1553) ما لم يبدأ الأطول بأعمدة المفتاح. الحذف: `ALTER TABLE t DROP INDEX name;`
 - **References:** https://www.postgresql.org/docs/current/indexes-multicolumn.html · https://www.postgresql.org/docs/current/sql-dropindex.html
 
 ## IX05 · فهرس لم يُستخدم منذ آخر تصفير للإحصاءات
@@ -117,6 +128,7 @@ public $withinTransaction = false;
 public function up(): void { DB::statement('DROP INDEX CONCURRENTLY IF EXISTS orders_legacy_ref_index'); }
 public function down(): void { DB::statement('CREATE INDEX CONCURRENTLY orders_legacy_ref_index ON orders (legacy_ref)'); }
 ```
+- **MySQL:** العداد من `performance_schema` ويُصفّر عند كل إعادة تشغيل للخادم؛ `sys.schema_unused_indexes` يسرد غير المستخدم. قبل الحذف اجعل الفهرس غير مرئي واختبر: `ALTER TABLE t ALTER INDEX name INVISIBLE;` ثم أرجعه بـ `VISIBLE` إن احتجته.
 - **References:** https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-INDEXES-VIEW · https://www.postgresql.org/docs/current/sql-dropindex.html
 
 ## IX06 · جدول كبير يُقرأ بمسح كامل أكثر من الفهارس
@@ -136,4 +148,5 @@ FROM pg_stat_user_tables WHERE n_live_tup >= 100000 ORDER BY seq_tup_read DESC L
 $start = $day->copy()->startOfDay();
 Order::where('created_at', '>=', $start)->where('created_at', '<', $start->copy()->addDay());
 ```
+- **MySQL:** القارئ لا يوفر عدد المسوحات الكاملة على MySQL، فهذا الفحص لا يعمل عليها تلقائيًا. افحصه يدويًا بـ `sys.schema_tables_with_full_table_scans` و`sys.statements_with_full_table_scans`.
 - **References:** https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW · https://www.postgresql.org/docs/current/pgstatstatements.html · https://www.postgresql.org/docs/current/using-explain.html

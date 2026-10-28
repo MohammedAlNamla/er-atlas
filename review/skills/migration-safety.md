@@ -2,7 +2,7 @@
 id: migration-safety
 title: أمان تنفيذ المسودة
 version: 1
-applies_to: PostgreSQL 12+ · Laravel 9–11
+applies_to: PostgreSQL 12+ · MySQL 8.0+ / MariaDB 10.6+ · Laravel 9–11
 ---
 
 # أمان تنفيذ المسودة
@@ -19,6 +19,11 @@ applies_to: PostgreSQL 12+ · Laravel 9–11
 7. انصح بضبط `lock_timeout` قبل أي ALTER على جدول مزدحم، لأن انتظار القفل نفسه يوقف كل الاستعلامات التي تصطف خلفه.
 8. لا تفترض ترتيب النشر (كود قبل قاعدة أو العكس)؛ إذا كان الأمان يعتمد عليه فاذكر الترتيب المطلوب صراحة.
 9. لا تحكم بأن الكود "لن يتأثر" في MS04 لمجرد عدم العثور على مرجع؛ المحلل لا يرى SQL داخل النصوص ولا الأعمدة الديناميكية ولا الخدمات الأخرى.
+
+## How to judge on MySQL (AI)
+1. DDL في MySQL ليس جزءًا من المعاملات: كل `ALTER` يُنهي المعاملة الحالية ضمنيًا، فـ migration فشلت في منتصفها تترك القاعدة نصف معدّلة ولا يستطيع Laravel التراجع عنها.
+2. خوارزميات الـ online DDL: `INSTANT` (إضافة عمود منذ 8.0.12، في أي موضع منذ 8.0.29)، `INPLACE` (يسمح بالكتابة غالبًا)، `COPY` (يعيد بناء الجدول ويمنع الكتابة). اقترح تحديد `ALGORITHM` و`LOCK` صراحة ليفشل الأمر بدل أن ينتقل لخوارزمية أبطأ بصمت.
+3. أي `ALTER` ينتظر قفل metadata؛ استعلام طويل مفتوح يجعل الـ ALTER ينتظر ويحجز كل الاستعلامات خلفه. للجداول الضخمة اقترح gh-ost أو pt-online-schema-change.
 
 ## MS01 · إضافة عمود NOT NULL بلا قيمة افتراضية إلى جدول فيه بيانات
 - **Severity:** error — تبقى error لأن العملية تفشل حتمًا إذا كان في الجدول صف واحد؛ اخفضها إلى info إذا ثبت أن الجدول فارغ.
@@ -43,6 +48,7 @@ Schema::table('orders', function (Blueprint $table) {
     $table->string('source')->default('web'); // NOT NULL افتراضيًا في Laravel
 });
 ```
+- **MySQL:** MySQL لا يفشل هنا: يملأ الصفوف القائمة بالقيمة الضمنية للنوع (`0`، `''`، أو تاريخ صفري) بصمت، وهذا أسوأ لأنه يكتب بيانات خاطئة. على MySQL هذه النتيجة تحذير عن بيانات صامتة لا عن فشل.
 - **References:** https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/ddl-alter.html#DDL-ALTER-ADDING-A-COLUMN · https://laravel.com/docs/11.x/migrations#column-modifiers
 
 ## MS02 · جعل عمود NOT NULL في جدول فيه بيانات
@@ -68,6 +74,7 @@ Schema::table('users', function (Blueprint $table) {
 });
 DB::statement('ALTER TABLE users DROP CONSTRAINT users_phone_not_null');
 ```
+- **MySQL:** `MODIFY COLUMN … NOT NULL` يعيد بناء الجدول؛ مع وضع strict يفشل إن وُجدت قيم NULL، وبدونه يحوّلها بصمت إلى القيمة الضمنية. املأ القيم الفارغة أولًا بتحديث على دفعات.
 - **References:** https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/view-pg-stats.html · https://laravel.com/docs/11.x/migrations#modifying-columns
 
 ## MS03 · تغيير نوع عمود في جدول كبير يعيد كتابته
@@ -93,6 +100,7 @@ Schema::table('events', function (Blueprint $table) {
     $table->bigInteger('views')->default(0)->change(); // يعيد كتابة الجدول
 });
 ```
+- **MySQL:** تغيير النوع على MySQL يستخدم خوارزمية COPY (إعادة بناء تمنع الكتابة) إلا في توسيع `VARCHAR` داخل الفئة نفسها (من أقل من 256 بايت إلى أقل من 256، أو ما فوقها)، فيكون INPLACE فوريًا تقريبًا.
 - **References:** https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/explicit-locking.html · https://laravel.com/docs/11.x/migrations#modifying-columns
 
 ## MS04 · حذف أو إعادة تسمية شيء يستخدمه الكود
@@ -115,6 +123,7 @@ Schema::table('orders', function (Blueprint $table) {
     $table->dropColumn('legacy_ref');
 });
 ```
+- **MySQL:** لا فرق في MySQL، لكن تذكر أن DDL لا يُتراجع عنه: الحذف أو التسمية نهائيان فور التنفيذ.
 - **References:** https://www.postgresql.org/docs/current/sql-createview.html#SQL-CREATEVIEW-UPDATABLE-VIEWS · https://laravel.com/docs/11.x/migrations#dropping-columns · https://www.postgresql.org/docs/current/sql-altertable.html
 
 ## MS05 · إنشاء فهرس على جدول كبير دون CONCURRENTLY
@@ -142,6 +151,7 @@ return new class extends Migration {
     }
 };
 ```
+- **MySQL:** إنشاء فهرس في InnoDB يسمح بالكتابة افتراضيًا (INPLACE منذ 5.6)، فالخطر أقل من PostgreSQL. أضف `ALGORITHM=INPLACE, LOCK=NONE` ليفشل الأمر فورًا بدل أن يقفل الجدول إن تعذر البناء المتزامن.
 - **References:** https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY · https://www.postgresql.org/docs/current/explicit-locking.html · https://laravel.com/docs/11.x/migrations#creating-indexes
 
 ## MS06 · مفتاح أجنبي جديد على جدول كبير يُتحقق منه دفعة واحدة
@@ -166,6 +176,7 @@ DB::statement('ALTER TABLE orders ADD CONSTRAINT orders_user_id_foreign FOREIGN 
 // migration 2 (منفصلة)
 DB::statement('ALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_foreign');
 ```
+- **MySQL:** إضافة مفتاح أجنبي مع `foreign_key_checks = 1` تستخدم COPY وتمنع الكتابة طوال إعادة البناء؛ مع `foreign_key_checks = 0` تكون INPLACE لكنها لا تتحقق من الصفوف القائمة. للجداول الضخمة استخدم gh-ost أو pt-online-schema-change.
 - **References:** https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/explicit-locking.html · https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK
 
 ## MS07 · عمود جديد بقيمة افتراضية متغيرة يعيد كتابة جدول كبير
@@ -187,4 +198,5 @@ Schema::table('orders', function (Blueprint $table) {
 });
 DB::statement('ALTER TABLE orders ALTER COLUMN public_id SET DEFAULT gen_random_uuid()');
 ```
+- **MySQL:** إضافة عمود بقيمة افتراضية ثابتة فورية (INSTANT) منذ 8.0.12؛ القيمة التعبيرية مثل `(UUID())` (8.0.13+) تمنع INSTANT وتعيد بناء الجدول.
 - **References:** https://www.postgresql.org/docs/current/ddl-alter.html#DDL-ALTER-ADDING-A-COLUMN · https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/xfunc-volatility.html

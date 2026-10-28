@@ -2,7 +2,7 @@
 id: schema-design
 title: تصميم المخطط
 version: 1
-applies_to: PostgreSQL 12+ · Laravel 9–11
+applies_to: PostgreSQL 12+ · MySQL 8.0+ / MariaDB 10.6+ · Laravel 9–11
 ---
 
 # تصميم المخطط
@@ -18,6 +18,12 @@ applies_to: PostgreSQL 12+ · Laravel 9–11
 6. `approxRows = 0` لا يعني جدولًا فارغًا ما لم يكن الجدول مضافًا في المسودة؛ قد تكون الإحصاءات لم تُجمع بعد. اخفض الثقة ولا تبنِ عليه حكمًا قاطعًا.
 7. عند اقتراح إصلاح على جدول فيه بيانات، استخدم الصيغ الآمنة (`NOT VALID` ثم `VALIDATE`، `CREATE INDEX CONCURRENTLY`) واذكر أن تغيير النوع يعيد كتابة الجدول.
 8. لا تقترح حذف جدول أو قيد بناءً على هذا التخصص وحده؛ هذه فحوص بنية وليست دليل استخدام.
+
+## How to judge on MySQL (AI)
+1. InnoDB يرتّب الصفوف فعليًا بالمفتاح الأساسي (clustered index)؛ بلا مفتاح يولّد معرّفًا مخفيًا من 6 بايت لا يراه التطبيق ولا ينفع النسخ المتماثل.
+2. المحرك يُقرأ من كل جدول: MyISAM لا يدعم مفاتيح أجنبية ولا معاملات، فغياب العلاقات في جدول MyISAM حقيقة عن المحرك لا عن التصميم. اذكر المحرك قبل الحكم.
+3. MySQL يرفض إنشاء مفتاح أجنبي بين نوعين مختلفين في الحجم أو الإشارة (signed/unsigned)، فأي عدم تطابق قائم مصدره غالبًا `foreign_key_checks = 0` أو مسودة لم تُنفذ.
+4. `lower_case_table_names` يختلف بين Linux (حساس لحالة الأحرف) وWindows/macOS؛ لا تفترض أن اسمين يختلفان بالحالة فقط جدولان مختلفان.
 
 ## SD01 · جدول بلا مفتاح أساسي
 - **Severity:** warning — ارفعها إلى error إذا كان الجدول كبيرًا ويُحدَّث أو يُحذف منه (أو مستخدمًا في نسخ منطقي)؛ اخفضها إلى info إذا كان له مفتاح فريد على أعمدة كلها NOT NULL.
@@ -38,6 +44,7 @@ Schema::table('role_user', function (Blueprint $table) {
     $table->primary(['role_id', 'user_id']);
 });
 ```
+- **MySQL:** InnoDB يستخدم معرّفًا مخفيًا (GEN_CLUST_INDEX) لا يُشار إليه، والنسخ المتماثل بصيغة row يمسح الجدول كاملًا لكل صف معدّل في جدول بلا مفتاح؛ Group Replication و`sql_require_primary_key` (8.0.13+) يرفضانه. الإصلاح: `ALTER TABLE t ADD COLUMN id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY FIRST;` وهو يعيد بناء الجدول.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-PRIMARY-KEYS · https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/logical-replication-publication.html
 
 ## SD02 · جدول بلا أعمدة
@@ -56,6 +63,7 @@ Schema::create('coupons', function (Blueprint $table) {
     $table->timestamps();
 });
 ```
+- **MySQL:** MySQL لا يسمح بجدول بلا أعمدة إطلاقًا، فهذه النتيجة على MySQL تأتي من المسودة فقط: المخطِط يكتب الجدول الجديد مع الأعمدة التي تضيفها له.
 - **References:** https://www.postgresql.org/docs/current/sql-createtable.html
 
 ## SD03 · نوع المفتاح الأجنبي لا يطابق المفتاح الذي يشير إليه
@@ -76,6 +84,7 @@ Schema::table('orders', function (Blueprint $table) {
 // للأعمدة الجديدة استخدم foreignId() ليطابق id() من نوع bigint
 $table->foreignId('user_id')->constrained();
 ```
+- **MySQL:** InnoDB يرفض إنشاء القيد عند اختلاف الحجم أو الإشارة (`INT` مقابل `BIGINT`، أو `UNSIGNED` مقابل signed) بخطأ 3780، ويشترط تطابق charset والـ collation في الأعمدة النصية. اختلاف unsigned خطأ دائمًا على MySQL.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-INT · https://laravel.com/docs/11.x/migrations#foreign-key-constraints
 
 ## SD04 · علاقة مكررة بين الجدولين نفسيهما
@@ -93,6 +102,7 @@ Schema::table('orders', function (Blueprint $table) {
     $table->dropForeign('orders_user_id_foreign1');
 });
 ```
+- **MySQL:** MySQL يقبل قيدين مكررين ويسمي غير المسمّى `<table>_ibfk_N`؛ التكرار يأتي غالبًا من خلط قيد Laravel المسمّى بقيد أُضيف يدويًا. احذف أحدهما بـ `ALTER TABLE t DROP FOREIGN KEY name;`.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://laravel.com/docs/11.x/migrations#foreign-key-constraints
 
 ## SD05 · جدول معزول بلا أي علاقة
@@ -110,4 +120,5 @@ FROM pg_stat_user_tables WHERE relname = 'legacy_imports';
 // إن كانت العلاقة مقصودة:
 $table->foreignId('store_id')->constrained();
 ```
+- **MySQL:** جدول MyISAM يبدو معزولًا لأن المحرك لا يحفظ المفاتيح الأجنبية أصلًا؛ تحقق من `ENGINE` قبل اعتباره مهجورًا.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW

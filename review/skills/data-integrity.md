@@ -2,7 +2,7 @@
 id: data-integrity
 title: سلامة البيانات
 version: 1
-applies_to: PostgreSQL 12+ · Laravel 9–11
+applies_to: PostgreSQL 12+ · MySQL 8.0+ / MariaDB 10.6+ · Laravel 9–11
 ---
 
 # سلامة البيانات
@@ -19,6 +19,12 @@ applies_to: PostgreSQL 12+ · Laravel 9–11
 7. أي إصلاح يغيّر نوع عمود أو يضيف NOT NULL على جدول فيه بيانات يجب أن يذكر كلفة إعادة الكتابة أو المسح والصيغة الآمنة (CHECK `NOT VALID` ثم `VALIDATE`).
 8. لا تدّعِ وجود بيانات تالفة فعلًا (فروقات، NULL، قيم غريبة) إلا إذا قدّمت الإحصاءات (`pg_stats.null_frac`, `n_distinct`) دليلًا؛ صِف الخطر لا الضرر.
 9. عند غياب `approxRows` أو كونه صفرًا اخفض الثقة في DI04.
+
+## How to judge on MySQL (AI)
+1. سلوك القيم الخاطئة يتبع `sql_mode`: مع `STRICT_TRANS_TABLES` (الافتراضي منذ 5.7) تُرفض، وبدونه تُقصّ أو تُحوّل بصمت. إن لم يُعرف الوضع فاذكر الاحتمالين.
+2. قيود CHECK تُفرض في MySQL 8.0.16+ وMariaDB 10.2+؛ في الأقدم تُقبل في التعريف وتُتجاهل.
+3. BOOLEAN في MySQL هو `TINYINT(1)` ويقبل أي قيمة من -128 إلى 127، و`ENUM` نوع أصلي يقيّد القيم.
+4. TIMESTAMP يُخزن بتوقيت UTC ويُحوّل حسب `time_zone` للجلسة ومداه حتى 2038؛ DATETIME يخزن الوقت كما كُتب بلا منطقة زمنية.
 
 ## DI01 · مبلغ مالي مخزّن بنوع عشري تقريبي
 - **Severity:** error — تبقى error لأي عمود مالي يدخل في حساب أو مقارنة؛ اخفضها إلى warning إذا كان العمود للعرض أو التقدير فقط (`estimated_*`, `avg_*`).
@@ -37,6 +43,7 @@ Schema::table('orders', function (Blueprint $table) {
 });
 // في الموديل: 'total' => 'decimal:2' (يُرجع نصًا للحفاظ على الدقة)
 ```
+- **MySQL:** `FLOAT` و`DOUBLE` تقريبيان أيضًا، و`FLOAT(M,D)` مهمل منذ 8.0.17. الإصلاح `DECIMAL(14,2)`: `ALTER TABLE t MODIFY COLUMN amount DECIMAL(14,2) NOT NULL;` (يعيد بناء الجدول).
 - **References:** https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL · https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-FLOAT · https://laravel.com/docs/11.x/eloquent-mutators#attribute-casting
 
 ## DI02 · عمود حالة نصي بلا قيد يحدد قيمه
@@ -57,6 +64,7 @@ DB::statement("ALTER TABLE orders ADD CONSTRAINT orders_status_check CHECK (stat
 DB::statement('ALTER TABLE orders VALIDATE CONSTRAINT orders_status_check');
 // وفي الموديل: 'status' => OrderStatus::class (PHP backed enum)
 ```
+- **MySQL:** MySQL يملك `ENUM` أصليًا (القارئ يعلّم العمود `enum`) وهو حل مقبول؛ إضافة قيمة في آخر القائمة فورية (INSTANT) لكن إعادة ترتيبها أو حذف قيمة تعيد بناء الجدول. قيد CHECK بديل يُفرض من 8.0.16.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-CHECK-CONSTRAINTS · https://www.postgresql.org/docs/current/sql-altertable.html · https://laravel.com/docs/11.x/eloquent-mutators#enum-casting
 
 ## DI03 · SET NULL على عمود لا يقبل NULL
@@ -80,6 +88,7 @@ ALTER TABLE public.orders VALIDATE CONSTRAINT orders_coupon_id_foreign;
 ```php
 $table->foreignId('coupon_id')->nullable()->constrained()->nullOnDelete();
 ```
+- **MySQL:** InnoDB يرفض إنشاء قيد SET NULL على عمود NOT NULL (خطأ 1830)، ويرفض لاحقًا جعل العمود NOT NULL ما دام القيد قائمًا؛ النتيجة على MySQL تأتي عادة من المسودة، وتنفيذها سيفشل.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://laravel.com/docs/11.x/migrations#foreign-key-constraints
 
 ## DI04 · حذف متسلسل (CASCADE) إلى جدول كبير
@@ -102,6 +111,7 @@ $table->foreignId('store_id')->constrained()->restrictOnDelete();
 // والحذف على دفعات:
 Order::where('store_id', $store->id)->chunkById(1000, fn ($orders) => $orders->each->delete());
 ```
+- **MySQL:** الحذف المتسلسل في InnoDB يتم صفًا صفًا داخل المعاملة، ولا يُطلق triggers على الصفوف المحذوفة بالتسلسل، وعمقه محدود بـ 15 مستوى. على جدول كبير يطيل الأقفال ويضخم الـ undo log.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://laravel.com/docs/11.x/migrations#foreign-key-constraints · https://laravel.com/docs/11.x/eloquent#soft-deleting
 
 ## DI05 · عمود منطقي يقبل NULL بلا قيمة افتراضية
@@ -122,6 +132,7 @@ ALTER TABLE public.users DROP CONSTRAINT users_is_active_not_null;
 ```php
 $table->boolean('is_active')->default(false)->nullable(false)->change();
 ```
+- **MySQL:** `BOOLEAN` هو `TINYINT(1)` ويقبل 2 و-1 أيضًا، فالمشكلة أوسع من NULL. الإصلاح: `MODIFY COLUMN is_active TINYINT(1) NOT NULL DEFAULT 0` وقيد `CHECK (is_active IN (0, 1))` على 8.0.16+.
 - **References:** https://www.postgresql.org/docs/current/sql-altertable.html · https://www.postgresql.org/docs/current/functions-comparison.html
 
 ## DI06 · وقت حدث مخزّن بلا منطقة زمنية
@@ -142,6 +153,7 @@ $table->timestampTz('paid_at')->nullable();
 $table->timestampsTz();
 // config/database.php → 'pgsql' => [..., 'timezone' => 'UTC']
 ```
+- **MySQL:** على MySQL النوع بلا منطقة زمنية هو `DATETIME`؛ أما `TIMESTAMP` فيُخزن UTC ويُحوّل حسب `time_zone` للجلسة، لكنه ينتهي في 2038-01-19. Laravel ينشئ `timestamps()` كـ `TIMESTAMP` على MySQL. الحل الشائع: `DATETIME` مع ضبط `app.timezone` و`time_zone` للاتصال على UTC.
 - **References:** https://www.postgresql.org/docs/current/datatype-datetime.html · https://wiki.postgresql.org/wiki/Don%27t_Do_This · https://laravel.com/docs/11.x/migrations#available-column-types
 
 ## DI07 · SET DEFAULT على عمود إلزامي بلا قيمة افتراضية
@@ -166,4 +178,5 @@ ALTER TABLE public.products VALIDATE CONSTRAINT products_category_id_foreign;
 $table->foreignId('category_id')->default(1)->constrained()->onDelete('set default');
 // أو: $table->foreignId('category_id')->constrained()->restrictOnDelete();
 ```
+- **MySQL:** InnoDB لا يدعم `SET DEFAULT` في المفاتيح الأجنبية أصلًا: المحلل يقبله وInnoDB يرفض التعريف. على MySQL كل قيد SET DEFAULT خطأ بغض النظر عن القيمة الافتراضية؛ استبدله بـ `SET NULL` أو `RESTRICT`.
 - **References:** https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK · https://laravel.com/docs/11.x/migrations#foreign-key-constraints

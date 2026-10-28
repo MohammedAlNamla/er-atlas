@@ -252,7 +252,8 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ...result, inputs: { code: code ? { project: code.project, scannedFiles: code.scannedFiles, parsedFiles: code.parsedFiles } : null, codeError, stats: Boolean(stats), statsError } });
     }
     if (req.method === 'GET' && req.url.startsWith('/api/review/guide?')) {
-      const guide = checkGuide(await loadSkills(), new URL(req.url, 'http://local').searchParams.get('check'));
+      const query = new URL(req.url, 'http://local').searchParams;
+      const guide = checkGuide(await loadSkills(), query.get('check'), query.get('engine') === 'mysql' ? 'mysql' : 'postgres');
       return guide ? send(res, 200, guide) : send(res, 404, { error: 'لا يوجد دليل لهذا الفحص بعد' });
     }
     if (req.method === 'POST' && req.url === '/api/databases') {

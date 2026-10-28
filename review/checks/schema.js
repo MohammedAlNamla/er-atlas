@@ -195,6 +195,10 @@ export const schemaChecks = {
   DI07(ctx) {
     return ctx.relations.filter(r => r.onDelete === 'd' || r.onUpdate === 'd').flatMap(relation => {
       const source = ctx.byId.get(relation.source);
+      // InnoDB does not support SET DEFAULT at all (MySQL note), so there every such key is the finding.
+      if (ctx.engine === 'mysql') return [makeFinding('DI07', source, { column: relation.pairs[0]?.source, key: relation.id,
+        detail: `${relation.name || 'القيد'} يستخدم SET DEFAULT، وInnoDB لا يدعمه؛ استبدله بـ SET NULL أو RESTRICT.`,
+        evidence: [schemaEvidence(`${relationText(ctx, relation)} SET DEFAULT`)] })];
       return relation.pairs.filter(p => { const c = ctx.column(source, p.source); return c && c.nullable === false && (c.default === null || c.default === undefined || c.default === ''); })
         .map(pair => makeFinding('DI07', source, { column: pair.source, key: relation.id,
           detail: `${relation.name || 'القيد'} يضع القيمة الافتراضية في ${source.name}.${pair.source}، ولا قيمة افتراضية للعمود وهو NOT NULL.`,

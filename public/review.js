@@ -51,16 +51,17 @@ function orderedFindings() {
 }
 
 async function toggleGuide(finding, host) {
-  if (!review.guides.has(finding.check)) {
+  const engine = state.schema?.engine === 'mysql' ? 'mysql' : 'postgres', key = `${engine}:${finding.check}`;
+  if (!review.guides.has(key)) {
     host.replaceChildren(el('p', 'field-hint', 'أقرأ الدليل…'));
     try {
-      const response = await fetch(`/api/review/guide?check=${encodeURIComponent(finding.check)}`);
+      const response = await fetch(`/api/review/guide?check=${encodeURIComponent(finding.check)}&engine=${engine}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      review.guides.set(finding.check, data);
+      review.guides.set(key, data);
     } catch (error) { host.replaceChildren(el('p', 'field-hint error', error.message || 'تعذّر تحميل الدليل')); return; }
   }
-  const guide = review.guides.get(finding.check);
+  const guide = review.guides.get(key);
   host.replaceChildren(el('p', 'review-guide-title', `${guide.skillTitle} · ${finding.check}`), ...answerNodes(guide.markdown));
 }
 

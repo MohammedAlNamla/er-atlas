@@ -2,7 +2,7 @@
 id: laravel-security
 title: أمان البيانات في Laravel
 version: 1
-applies_to: PostgreSQL 12+ · Laravel 9–11
+applies_to: PostgreSQL 12+ · MySQL 8.0+ / MariaDB 10.6+ · Laravel 9–11
 ---
 
 # أمان البيانات في Laravel
@@ -19,6 +19,10 @@ applies_to: PostgreSQL 12+ · Laravel 9–11
 7. لا تطلب تشفير أعمدة يجب البحث فيها أو ربطها دون أن تذكر الكلفة (لا فهرسة ولا بحث على عمود `encrypted`؛ يلزم عمود hash منفصل للبحث).
 8. لا تقترح أبدًا تخزين كلمات المرور بتشفير قابل للعكس؛ كلمات المرور تُجزأ (`Hash::make` أو cast `hashed`)، والأسرار التي يلزم استرجاعها تُشفّر (cast `encrypted`).
 9. لا تكشف قيمًا حقيقية في الشرح؛ اذكر الأعمدة والملفات فقط.
+
+## How to judge on MySQL (AI)
+1. Laravel على MySQL يستخدم prepared statements محاكاة (`PDO::ATTR_EMULATE_PREPARES`)؛ الـ bindings تبقى آمنة للقيم، لكن أسماء الأعمدة والجداول لا تُمرر كـ bindings أبدًا.
+2. لا تقترح تشفيرًا داخل SQL (`AES_ENCRYPT` بمفتاح في نص الاستعلام): المفتاح يصل إلى سجلات الاستعلامات والـ binlog. التشفير مكانه التطبيق (cast `encrypted`).
 
 ## SEC01 · استعلام SQL خام يدمج متغيرات في النص
 - **Severity:** error — تبقى error عندما يصل مدخل المستخدم إلى النص الخام؛ warning عندما يكون المتغير غير معروف المصدر أو اسم عمود يُمرر إلى `orderBy`/`where` كمعرّف (لا كقيمة)؛ info في الأوامر والـ Seeders بلا مدخل خارجي.
@@ -41,6 +45,7 @@ Product::whereRaw('name = ?', [$request->input('name')])->get();
 $sort = in_array($request->input('sort'), ['name', 'price', 'created_at'], true) ? $request->input('sort') : 'created_at';
 Product::orderBy($sort, $request->input('dir') === 'asc' ? 'asc' : 'desc')->get();
 ```
+- **MySQL:** الـ bindings آمنة مع المحاكاة الافتراضية في PDO MySQL مع ترميز `utf8mb4`؛ الخطر يبقى في دمج النص. `DB::unprepared` على MySQL ينفذ عدة أوامر مفصولة بـ `;` دفعة واحدة، فأي متغير فيه يسمح بحقن أوامر إضافية.
 - **References:** https://laravel.com/docs/11.x/queries#raw-expressions · https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html · https://cheatsheetseries.owasp.org/cheatsheets/Laravel_Cheat_Sheet.html
 
 ## SEC02 · إسناد جماعي مفتوح أو يشمل أعمدة صلاحيات
@@ -62,6 +67,7 @@ $user = User::create($request->validated());
 $user->is_admin = $request->user()->can('promote') && $request->boolean('is_admin');
 $user->save();
 ```
+- **MySQL:** لا فرق في MySQL: الإسناد الجماعي سلوك Laravel لا القاعدة.
 - **References:** https://laravel.com/docs/11.x/eloquent#mass-assignment · https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html · https://laravel.com/docs/11.x/validation#working-with-validated-input
 
 ## SEC03 · سر أو رمز مخزّن دون تشفير أو تجزئة ظاهرة
@@ -87,6 +93,7 @@ Integration::query()->chunkById(500, function ($rows) {
     }
 });
 ```
+- **MySQL:** لا تستخدم `PASSWORD()` (أُزيلت في 8.0) ولا `MD5()`/`SHA1()` في SQL للتجزئة؛ استخدم cast `hashed` في الموديل. تشفير InnoDB للملفات (keyring) يحمي القرص فقط، لا القيم المقروءة من التطبيق.
 - **References:** https://laravel.com/docs/11.x/eloquent-mutators#encrypted-casting · https://laravel.com/docs/11.x/hashing · https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 
 ## SEC04 · عمود حساس غير مخفي عند تحويل الموديل إلى JSON
@@ -109,6 +116,7 @@ class UserResource extends JsonResource {
     }
 }
 ```
+- **MySQL:** لا فرق في MySQL: التحويل إلى JSON يتم في Laravel.
 - **References:** https://laravel.com/docs/11.x/eloquent-serialization#hiding-attributes-from-json · https://laravel.com/docs/11.x/eloquent-resources · https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
 
 ## SEC05 · بيانات شخصية حساسة في عمود نصي عادي
@@ -128,4 +136,5 @@ protected function casts(): array {
 }
 // للبحث: hash_hmac('sha256', $nationalId, config('app.key'))
 ```
+- **MySQL:** تشفير الجداول في InnoDB (`ENCRYPTION='Y'`) يحمي الملفات المسروقة لا من يملك صلاحية القراءة؛ البيانات الحساسة تحتاج cast `encrypted` في التطبيق.
 - **References:** https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html · https://laravel.com/docs/11.x/eloquent-mutators#encrypted-casting · https://www.postgresql.org/docs/current/pgcrypto.html
