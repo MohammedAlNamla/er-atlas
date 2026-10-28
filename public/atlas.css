@@ -2647,7 +2647,7 @@ html[dir="rtl"] .chrome-center { transform: translateX(50%); }
 #workspaceSwitchButton { padding-inline-start: 8px; }
 .brand-sep { width: 1px; height: 16px; background: var(--outline-strong); flex: none; }
 .brand-word { font: 700 14px/1 "Segoe UI", var(--ui); letter-spacing: -.01em; color: var(--ink); }
-.workspace-menu-brand { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 8px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.workspace-menu-brand { display: flex; align-items: center; gap: 8px; margin: 0; }
 
 /* Tool strip */
 /* One icon strip, Excalidraw-style: 36px tools, the shortcut in the corner, the active one tinted. */
@@ -2883,16 +2883,20 @@ dialog::backdrop { background: var(--scrim); }
   padding: 6px; overflow: hidden;
 }
 .workspace-menu[hidden] { display: none; }
-.workspace-menu-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px 4px; margin: 0; }
-.workspace-menu-head h2 { font: 600 12px/20px var(--ui); color: var(--muted); margin: 0; }
-.workspace-menu-count { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--context); color: var(--muted); font: 600 11px/18px var(--mono); text-align: center; }
-.workspace-filter { flex: none; display: flex; align-items: center; gap: 6px; height: 32px; margin: 4px 2px 6px; padding: 0 8px; border-radius: 8px; background: var(--context); border: 1px solid transparent; color: var(--muted); cursor: text; }
+/* One head row: who (the brand) and how many. */
+.workspace-menu-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 8px; margin: 0; }
+.workspace-menu-count { font: 500 12px/20px var(--ui); color: var(--muted); }
+.workspace-filter { flex: none; display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 34px; margin: 0 2px 6px; padding: 0 10px; border-radius: 8px; background: var(--context); border: 1px solid transparent; color: var(--muted); cursor: text; transition: border-color .12s, background-color .12s; }
 .workspace-filter[hidden] { display: none; }
 .workspace-filter:focus-within { background: var(--surface); border-color: var(--accent); }
-.workspace-filter input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 13px/1 var(--ui); }
+/* The global field style (border, padding, inset focus ring) must not leak into embedded inputs. */
+.workspace-filter input, .search-wrap input { flex: 1; width: auto; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; outline: 0; box-shadow: none; background: transparent; color: var(--ink); font: 400 13px/1 var(--ui); }
+.workspace-filter input:focus, .search-wrap input:focus { border: 0; box-shadow: none; }
 .workspace-filter input::placeholder { color: var(--faint); }
 .workspace-filter input::-webkit-search-cancel-button { display: none; }
-.workspace-list { flex: 1 1 auto; min-height: 0; max-height: none; display: flex; flex-direction: column; gap: 1px; padding: 0 0 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+/* No native scrollbar (Windows draws arrow buttons); soft edges show there is more. */
+.workspace-list { flex: 1 1 auto; min-height: 0; max-height: none; display: flex; flex-direction: column; gap: 1px; padding: 4px 0; scroll-padding-block: 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-mask-image: linear-gradient(to bottom, transparent, black 10px, black calc(100% - 10px), transparent); mask-image: linear-gradient(to bottom, transparent, black 10px, black calc(100% - 10px), transparent); }
+.workspace-list::-webkit-scrollbar { display: none; }
 .workspace-option { flex: none; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 5px 8px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; cursor: pointer; transition: background-color .12s; }
 .workspace-option[hidden] { display: none; }
 .workspace-option:hover { background: var(--context); }
@@ -2906,7 +2910,7 @@ dialog::backdrop { background: var(--scrim); }
 .workspace-option-copy small { font: 400 11.5px/16px var(--ui); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-option .workspace-option-check { width: 16px; height: 16px; flex: none; color: var(--accent); }
 .workspace-filter-empty { flex: none; margin: 0; padding: 16px 8px; text-align: center; font: 400 12.5px/20px var(--ui); color: var(--muted); }
-.workspace-menu-actions { flex: none; display: flex; flex-direction: column; gap: 1px; border-top: 1px solid var(--line); padding-top: 4px; margin-top: 2px; }
+.workspace-menu-actions { flex: none; display: flex; flex-direction: column; gap: 1px; border-top: 1px solid var(--line); padding-top: 4px; }
 .workspace-menu .workspace-menu-actions button { min-height: 34px; padding: 0 8px; gap: 10px; font-size: 13px; }
 .workspace-menu-actions button .i { width: 16px; height: 16px; color: var(--muted); }
 .workspace-current-actions { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; }

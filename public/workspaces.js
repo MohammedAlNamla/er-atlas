@@ -30,6 +30,8 @@ export function toggleWorkspaceMenu() {
   active?.scrollIntoView({ block: 'nearest' });
   ($('workspaceFilterWrap').hidden ? active : $('workspaceFilter'))?.focus();
 }
+// Arabic counts: the noun is plural from 3 to 10 and singular otherwise.
+const workspaceCountLabel = n => n === 1 ? 'مساحة واحدة' : n === 2 ? 'مساحتان' : n >= 3 && n <= 10 ? `${n} مساحات` : `${n} مساحة`;
 // Long lists get a filter; it matches names and the kind line under them.
 const FILTER_FROM = 7;
 function filterWorkspaces(query) {
@@ -66,7 +68,7 @@ export function renderWorkspaces() {
   $('workspaceCurrentName').textContent = activeWorkspace()?.name || 'مساحة العمل';
   $('workspaceStatus').style.filter = state.connectionLive ? '' : 'grayscale(1)';
   $('workspaceSwitchButton').title = state.connectionLive ? 'اتصال PostgreSQL نشط' : 'مخطط محفوظ على الجهاز';
-  $('workspaceMenuCount').textContent = String(state.workspaces.length);
+  $('workspaceMenuCount').textContent = workspaceCountLabel(state.workspaces.length);
   $('workspaceFilterWrap').hidden = state.workspaces.length < FILTER_FROM;
   for (const workspace of state.workspaces) {
     const button = el('button', `workspace-option${workspace.id === state.workspaceId ? ' active' : ''}`);
