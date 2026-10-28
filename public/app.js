@@ -13,7 +13,7 @@ import { renderAiMessages, autosizeComposer, sendAiQuestion, saveAiMessages, ope
 import { updateAiSettings, loadLocalAiStatus, testAiConnection, restoreAiSettings, changeProvider } from './ai.js';
 import { openLint, openExport } from './sheets.js';
 import { openShortcuts, openQuickActions, filterQuickActions } from './commands.js';
-import { resetDatabaseList, renderDatabaseList, browseDatabases, openConnectionDialog, fillFromEnv, openDemo, refreshSchema, submitConnection } from './connect.js';
+import { resetDatabaseList, renderDatabaseList, browseDatabases, openConnectionDialog, fillFromEnv, openDemo, refreshSchema, submitConnection, bindEngineTabs } from './connect.js';
 function installEvents() {
   initOverlays();
   for (const [id, name] of Object.entries(DIALOG_ICONS)) { const header = $(id)?.querySelector('.modal-header'); if (header) headerIcon(header, name); }
@@ -89,7 +89,7 @@ function installEvents() {
   $('exportWorkspaceButton').addEventListener('click', exportWorkspace);
   $('importWorkspaceButton').addEventListener('click', importWorkspace);
   $('deleteWorkspaceButton').addEventListener('click', deleteWorkspace);
-  $('envConnectionButton').addEventListener('click', fillFromEnv);
+  $('envConnectionButton').addEventListener('click', fillFromEnv); bindEngineTabs();
   $('closeWorkspaceDialog').addEventListener('click', () => $('workspaceDialog').close());
   $('workspaceForm').addEventListener('submit', submitWorkspace);
   $('emptyPrimaryButton').addEventListener('click', () => activeWorkspace()?.kind === 'ideas' ? openEditor('addTable') : openConnectionDialog());

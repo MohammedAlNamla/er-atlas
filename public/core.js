@@ -16,6 +16,9 @@ export const state = {
 export const WORKSPACES_KEY = 'eratlas.workspaces.v1';
 export const activeWorkspace = () => state.workspaces.find(item => item.id === state.workspaceId);
 export const blankSchema = name => ({ database: name, tables: [], relations: [], readOnly: true });
+// Schemas read before MySQL support carry no engine; they all came from PostgreSQL.
+export const engineOf = schema => schema?.engine === 'mysql' ? 'mysql' : 'postgres';
+export const engineLabel = schema => engineOf(schema) === 'mysql' ? 'MySQL' : 'PostgreSQL';
 export function saveWorkspaces() {
   store.setItem(WORKSPACES_KEY, JSON.stringify({ activeId: state.workspaceId, items: state.workspaces }));
 }

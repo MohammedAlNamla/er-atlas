@@ -1,4 +1,4 @@
-// Connecting to PostgreSQL and browsing the databases on a server.
+// Connecting to PostgreSQL or MySQL/MariaDB and browsing the databases on a server.
 import { $, state, activeWorkspace, saveWorkspaces, sprite, el, showToast } from './core.js';
 import { renderWorkspaces, sampleSchema, setSchema } from './workspaces.js';
 import { defaultSourceRoot } from './groups.js';
@@ -6,6 +6,31 @@ import { defaultSourceRoot } from './groups.js';
 function connectPayload() {
   const form = new FormData($('connectForm')), payload = Object.fromEntries(form.entries());
   payload.ssl = form.has('ssl'); return payload;
+}
+// The engine tab decides the driver; a port or user still at the other engine's default follows it.
+const ENGINE_DEFAULTS = { postgres: { port: '5432', user: 'postgres' }, mysql: { port: '3306', user: 'root' } };
+export function setConnectEngine(engine) {
+  const next = engine === 'mysql' ? 'mysql' : 'postgres', form = $('connectForm'), field = name => form.elements.namedItem(name);
+  const previous = field('engine').value === 'mysql' ? 'mysql' : 'postgres';
+  field('engine').value = next;
+  for (const tab of $('engineTabs').querySelectorAll('[data-engine]')) {
+    const active = tab.dataset.engine === next;
+    tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1;
+  }
+  if (previous !== next && (!field('port').value || field('port').value === ENGINE_DEFAULTS[previous].port)) field('port').value = ENGINE_DEFAULTS[next].port;
+  field('user').placeholder = ENGINE_DEFAULTS[next].user;
+  if (previous !== next) resetDatabaseList();
+}
+export function bindEngineTabs() {
+  const tabs = $('engineTabs');
+  tabs.addEventListener('click', event => { const tab = event.target.closest('[data-engine]'); if (tab) setConnectEngine(tab.dataset.engine); });
+  tabs.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = $('connectForm').elements.namedItem('engine').value === 'mysql' ? 'postgres' : 'mysql';
+    setConnectEngine(event.key === 'Home' ? 'postgres' : event.key === 'End' ? 'mysql' : next);
+    tabs.querySelector('[aria-selected="true"]').focus();
+  });
 }
 const formatBytes = bytes => bytes < 1024 ** 2 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : bytes < 1024 ** 3 ? `${(bytes / 1024 ** 2).toFixed(bytes < 1024 ** 2 * 10 ? 1 : 0)} MB` : `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 export function resetDatabaseList(hint = 'أدخل المستخدم وكلمة المرور، ثم «استعرض» لاختيار قاعدة من الخادم.') {
@@ -54,6 +79,7 @@ export function openConnectionDialog() {
   resetDatabaseList();
   $('browseDatabasesButton').querySelector('span').textContent = 'استعرض';
   const settings = activeWorkspace()?.connection;
+  setConnectEngine(settings?.engine || 'postgres');
   if (settings) {
     const form = $('connectForm');
     for (const key of ['host', 'port', 'database', 'user']) if (settings[key] != null) form.elements.namedItem(key).value = settings[key];
@@ -70,6 +96,7 @@ export async function fillFromEnv() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'تعذّرت القراءة من .env');
     const form = $('connectForm');
+    setConnectEngine(data.engine);
     for (const key of ['host', 'port', 'database', 'user']) form.elements.namedItem(key).value = data[key];
     form.elements.namedItem('password').focus();
     showToast('عُبّئت البيانات من .env. أدخل كلمة المرور.');
@@ -83,7 +110,7 @@ export async function openDemo() {
   saveWorkspaces(); renderWorkspaces();
 }
 export async function refreshSchema() {
-  if (!state.connectionLive) { openConnectionDialog(); showToast('أعد الاتصال لتحديث المخطط من PostgreSQL'); return; }
+  if (!state.connectionLive) { openConnectionDialog(); showToast('أعد الاتصال لتحديث المخطط من قاعدة البيانات'); return; }
   try {
     const response = await fetch('/api/schema'); const data = await response.json();
     if (!response.ok || !data.tables) throw new Error(data.error || 'لا يوجد اتصال حالي');
@@ -101,7 +128,7 @@ export async function submitConnection(event) {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'تعذّر الاتصال');
     const workspace = activeWorkspace(); workspace.kind = 'database';
-    workspace.connection = { host: payload.host, port: payload.port, database: payload.database, user: payload.user, ssl: payload.ssl };
+    workspace.connection = { engine: payload.engine === 'mysql' ? 'mysql' : 'postgres', host: payload.host, port: payload.port, database: payload.database, user: payload.user, ssl: payload.ssl };
     state.connectionLive = true;
     setSchema(result, false); saveWorkspaces(); renderWorkspaces(); $('connectDialog').close(); showToast(`تم قراءة ${result.tables.length} جدولًا`);
   } catch (error) { $('connectError').textContent = error.message; $('connectError').hidden = false; }

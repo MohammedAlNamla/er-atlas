@@ -149,7 +149,7 @@
               <button id="topicManageButton" type="button">تنظيم المواضيع</button
               ><button id="lintButton" type="button">فحص المخطط <span id="lintCount" class="menu-count" hidden></span><kbd>L</kbd></button
               ><button id="exportButton" type="button">تصدير المخطط <kbd>E</kbd></button
-              ><button id="connectionButton" type="button"><span id="connectionLabel">اتصال PostgreSQL</span></button
+              ><button id="connectionButton" type="button"><span id="connectionLabel">اتصال بقاعدة البيانات</span></button
               ><button id="refreshButton" type="button">تحديث المخطط</button
               ><button id="themeButton" type="button" title="تبديل المظهر بين تلقائي وفاتح وليلي">المظهر: <span id="themeLabel">تلقائي</span></button
               ><button id="quickActionsButton" type="button">الأوامر السريعة <kbd>Ctrl K</kbd></button>
@@ -269,10 +269,15 @@
           >
             <span data-icon="close"></span>
           </button>
-          <h2 id="connectTitle">اتصال PostgreSQL</h2>
+          <h2 id="connectTitle">اتصال بقاعدة البيانات</h2>
           <p>اتصال للقراءة فقط. اختر القاعدة من الخادم، والتعديلات تبقى في مسودة.</p>
         </div>
         <div class="modal-body">
+          <div id="engineTabs" class="ui-tabs engine-tabs" role="tablist" aria-label="نوع قاعدة البيانات">
+            <button class="ui-tab active" type="button" role="tab" aria-selected="true" data-engine="postgres" dir="ltr">PostgreSQL</button
+            ><button class="ui-tab" type="button" role="tab" aria-selected="false" tabindex="-1" data-engine="mysql" dir="ltr">MySQL / MariaDB</button>
+          </div>
+          <input type="hidden" name="engine" value="postgres" />
           <div class="form-grid">
             <label>الخادم<input name="host" value="localhost" required spellcheck="false" dir="ltr" /></label
             ><label>المنفذ<input name="port" type="number" value="5432" min="1" max="65535" required dir="ltr" /></label
@@ -341,7 +346,7 @@
             <label class="choice"
               ><input type="radio" name="kind" value="database" checked /><span
                 ><strong>قاعدة بيانات</strong
-                ><small>اتصال PostgreSQL وخريطة مستقلة</small></span
+                ><small>PostgreSQL أو MySQL وخريطة مستقلة</small></span
               ></label
             ><label class="choice"
               ><input type="radio" name="kind" value="ideas" /><span
@@ -677,7 +682,7 @@
         <p id="aiTestResult" class="notice" role="status" aria-live="polite" hidden></p>
       </div>
       <div class="modal-footer">
-        <p>نرسل البنية والعلاقات والتعليقات والمحادثة فقط، دون صفوف البيانات أو كلمة مرور PostgreSQL.</p>
+        <p>نرسل البنية والعلاقات والتعليقات والمحادثة فقط، دون صفوف البيانات أو كلمة مرور قاعدة البيانات.</p>
         <div class="footer-actions">
           <button id="saveAiSettingsButton" class="primary-button" type="button">تم</button>
           <button id="testAiButton" class="secondary-button" type="button">اختبر الاتصال</button>

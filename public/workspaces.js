@@ -4,7 +4,7 @@ import { store } from './storage.js';
 import { buildExport, parseExport, recoverOperations } from './workspace-io.js';
 import { normalizeTopics } from './topics.js';
 import { icon } from './ui.js';
-import { $, state, activeWorkspace, blankSchema, saveWorkspaces, storageKey, el, confirmAction, showToast, slug } from './core.js';
+import { $, state, activeWorkspace, blankSchema, saveWorkspaces, storageKey, el, confirmAction, showToast, slug, engineLabel } from './core.js';
 import { scheduleFitChrome } from './chrome.js';
 import { renderTopics, renderView } from './views.js';
 import { buildTopicPositions, aiLayoutKey, loadPositions, normalizeAiLayout } from './layout.js';
@@ -68,7 +68,7 @@ export function renderWorkspaces() {
   const tabs = $('workspaceTabs'); tabs.replaceChildren();
   $('workspaceCurrentName').textContent = activeWorkspace()?.name || 'مساحة العمل';
   $('workspaceStatus').style.filter = state.connectionLive ? '' : 'grayscale(1)';
-  $('workspaceSwitchButton').title = state.connectionLive ? 'اتصال PostgreSQL نشط' : 'مخطط محفوظ على الجهاز';
+  $('workspaceSwitchButton').title = state.connectionLive ? `اتصال ${engineLabel(state.schema)} نشط` : 'مخطط محفوظ على الجهاز';
   $('workspaceMenuCount').textContent = workspaceCountLabel(state.workspaces.length);
   $('workspaceFilterWrap').hidden = state.workspaces.length < FILTER_FROM;
   for (const workspace of state.workspaces) {
@@ -84,7 +84,7 @@ export function renderWorkspaces() {
       ? (tableTotal ? `${tableTotal} جدول · أفكار ومخطط حر` : 'أفكار ومخطط حر')
       : workspace.kind === 'demo'
         ? 'الخريطة النموذجية'
-        : `${tableTotal} جدول · PostgreSQL`;
+        : `${tableTotal} جدول · ${engineLabel(workspace.schema || workspace.connection)}`;
     copy.append(el('strong', '', workspace.name), el('small', '', description));
     button.append(mark, copy);
     if (workspace.id === state.workspaceId) { const check = icon('check'); check.classList.add('workspace-option-check'); button.append(check); }
@@ -101,8 +101,8 @@ export function renderEmptyWorkspace() {
   const ideas = workspace.kind === 'ideas';
   $('emptyWorkspaceKicker').textContent = ideas ? 'IDEAS / CANVAS' : 'DATABASE / MAP';
   $('emptyWorkspaceTitle').textContent = ideas ? `مساحة ${workspace.name}` : `اربط ${workspace.name} بقاعدة بيانات`;
-  $('emptyWorkspaceText').textContent = ideas ? 'ابدأ بنقاش فكرة مع AI أو ارسم جدولًا وعلاقاته كمسودة. كل شيء محفوظ داخل هذه المساحة.' : 'اربط PostgreSQL لعرض الجداول والعلاقات، ثم راجعها وأنشئ التعديلات كمسودة مستقلة لهذه المساحة.';
-  $('emptyPrimaryButton').textContent = ideas ? '+ ارسم جدولًا' : 'ربط PostgreSQL';
+  $('emptyWorkspaceText').textContent = ideas ? 'ابدأ بنقاش فكرة مع AI أو ارسم جدولًا وعلاقاته كمسودة. كل شيء محفوظ داخل هذه المساحة.' : 'اربط PostgreSQL أو MySQL لعرض الجداول والعلاقات، ثم راجعها وأنشئ التعديلات كمسودة مستقلة لهذه المساحة.';
+  $('emptyPrimaryButton').textContent = ideas ? '+ ارسم جدولًا' : 'ربط قاعدة البيانات';
   $('emptyAiButton').hidden = !ideas;
 }
 export async function activateWorkspace(id, { initial = false, live = false } = {}) {
@@ -210,7 +210,7 @@ export function setSchema(schema, demo = false) {
   } else if (kind === 'database') {
     $('connectionLabel').textContent = schema.tables.length
       ? 'نسخة محفوظة · ربط'
-      : 'ربط PostgreSQL';
+      : 'ربط قاعدة البيانات';
   } else {
     $('connectionLabel').textContent = 'وضع التجربة';
   }
@@ -219,11 +219,11 @@ export function setSchema(schema, demo = false) {
   if (kind === 'ideas') {
     $('mapSubtitle').textContent = 'فكرة ومخطط في مساحة مستقلة';
   } else if (state.connectionLive) {
-    $('mapSubtitle').textContent = 'عرض مباشر لبنية PostgreSQL';
+    $('mapSubtitle').textContent = `عرض مباشر لبنية ${engineLabel(schema)}`;
   } else if (kind === 'database') {
     $('mapSubtitle').textContent = schema.tables.length
       ? 'المخطط محفوظ محليًا · أعد الاتصال للتحديث'
-      : 'مساحة جاهزة لربط PostgreSQL';
+      : 'مساحة جاهزة لربط PostgreSQL أو MySQL';
   } else {
     $('mapSubtitle').textContent = 'استكشف العلاقات بين الجداول';
   }

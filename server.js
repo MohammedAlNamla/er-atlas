@@ -4,8 +4,10 @@ import { extname, join, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { Pool } from 'pg';
+import { createPool as createMysqlPool } from 'mysql2/promise';
 import { planChanges } from './planner.js';
 import { readSchema, listDatabases, readMorphTypes } from './pg-schema.js';
+import { readMysqlSchema, listMysqlDatabases, readMysqlMorphTypes } from './mysql-schema.js';
 import { askLocal, cliStatus, localProviders, openLoginTerminal } from './local-ai.js';
 import { analyzeSource, compactCodeContext, groundTopicSuggestions } from './code-context.js';
 import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, readColumnNotes, splitFollowups } from './ai-prompts.js';
@@ -14,6 +16,8 @@ const root = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const port = Number(process.env.PORT || 4317);
 const sourceSettings = await readFile(new URL('./source-projects.json', import.meta.url), 'utf8').then(JSON.parse).catch(() => ({}));
 let pool = null;
+// 'postgres' or 'mysql': which reader the open pool belongs to.
+let engine = 'postgres';
 let databaseLabel = '';
 let connectionId = '';
 const dataFile = join(process.env.ER_ATLAS_DATA || fileURLToPath(new URL('./data', import.meta.url)), 'store.json');
@@ -49,9 +53,10 @@ async function readEnvConnection(sourceRoot) {
     const match = /^\s*(DB_[A-Z_]+)\s*=\s*(.*?)\s*$/.exec(line);
     if (match) values[match[1]] = match[2].replace(/^(["'])(.*)\1$/, '$2');
   }
-  if (values.DB_CONNECTION && !/^(?:pgsql|postgres)/.test(values.DB_CONNECTION)) throw new Error(`قاعدة المشروع من نوع ${values.DB_CONNECTION} وليست PostgreSQL`);
+  const engine = /^(?:mysql|mariadb)/i.test(values.DB_CONNECTION || '') ? 'mysql' : 'postgres';
+  if (values.DB_CONNECTION && engine === 'postgres' && !/^(?:pgsql|postgres)/i.test(values.DB_CONNECTION)) throw new Error(`قاعدة المشروع من نوع ${values.DB_CONNECTION}، والمدعوم PostgreSQL وMySQL`);
   if (!values.DB_DATABASE) throw new Error('لا يحتوي .env على DB_DATABASE');
-  return { host: values.DB_HOST || 'localhost', port: Number(values.DB_PORT) || 5432, database: values.DB_DATABASE, user: values.DB_USERNAME || '' };
+  return { engine, host: values.DB_HOST || 'localhost', port: Number(values.DB_PORT) || (engine === 'mysql' ? 3306 : 5432), database: values.DB_DATABASE, user: values.DB_USERNAME || '' };
 }
 
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.json': 'application/json; charset=utf-8' };
@@ -102,17 +107,34 @@ async function readJson(req, limit = 2000000) {
   return JSON.parse(data || '{}');
 }
 
-const getSchema = db => readSchema(db, { database: databaseLabel, source: connectionId });
+const getSchema = db => (engine === 'mysql' ? readMysqlSchema : readSchema)(db, { database: databaseLabel, source: connectionId });
 // Every connection is read-only, short-lived on failure, and never keeps the password beyond the pool.
 function connectionSettings(body) {
+  if (body.engine === 'mysql') return mysqlSettings(body);
   return {
-    host: String(body.host || 'localhost').trim(), port: Number(body.port || 5432),
+    engine: 'postgres', host: String(body.host || 'localhost').trim(), port: Number(body.port || 5432),
     database: String(body.database || '').trim(), user: String(body.user || '').trim(),
     password: String(body.password || ''), ssl: body.ssl ? { rejectUnauthorized: true } : false,
     connectionTimeoutMillis: 7000, query_timeout: 10000, max: 1, idleTimeoutMillis: 30000,
     options: '-c default_transaction_read_only=on'
   };
 }
+function mysqlSettings(body) {
+  return {
+    engine: 'mysql', host: String(body.host || 'localhost').trim(), port: Number(body.port || 3306),
+    database: String(body.database || '').trim(), user: String(body.user || '').trim(),
+    password: String(body.password || ''), ssl: body.ssl ? { rejectUnauthorized: true } : undefined,
+    connectTimeout: 7000, connectionLimit: 1, maxIdle: 1, idleTimeout: 30000, multipleStatements: false,
+    supportBigNumbers: true, bigNumberStrings: true, dateStrings: true
+  };
+}
+// A MySQL session has no read-only default; each pooled connection sets it before its first query.
+function openMysql({ engine: _, ...settings }) {
+  const next = createMysqlPool(settings);
+  next.pool.on('connection', connection => connection.query('SET SESSION TRANSACTION READ ONLY'));
+  return next;
+}
+const openPool = settings => settings.engine === 'mysql' ? openMysql(settings) : new Pool((({ engine: _, ...rest }) => rest)(settings));
 
 async function askProvider(body, signal) {
   signal?.throwIfAborted();
@@ -186,22 +208,22 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/connect') {
       const settings = connectionSettings(await readJson(req));
       if (!settings.database || !settings.user || !Number.isInteger(settings.port) || settings.port < 1 || settings.port > 65535) return send(res, 400, { error: 'أدخل اسم القاعدة والمستخدم والمنفذ الصحيح' });
-      const next = new Pool(settings);
+      const next = openPool(settings);
       next.on('error', error => {
-        console.error(`PostgreSQL connection lost: ${error.message}`);
+        console.error(`Database connection lost: ${error.message}`);
         if (pool === next) { pool = null; databaseLabel = ''; connectionId = ''; }
       });
-      const previous = pool;
+      const previous = pool, previousEngine = engine;
       try {
         await next.query('SELECT 1');
-        pool = next;
+        pool = next; engine = settings.engine;
         databaseLabel = settings.database;
-        connectionId = `${settings.host}:${settings.port}/${settings.database}`;
+        connectionId = `${settings.engine === 'mysql' ? 'mysql://' : ''}${settings.host}:${settings.port}/${settings.database}`;
         const schema = await getSchema(pool);
         previous?.end().catch(() => {});
         return send(res, 200, schema);
       } catch (error) {
-        if (pool === next) pool = previous;
+        if (pool === next) { pool = previous; engine = previousEngine; }
         await next.end().catch(() => {});
         return send(res, 400, { error: `تعذّر الاتصال: ${error.message}` });
       }
@@ -209,6 +231,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/databases') {
       const settings = connectionSettings(await readJson(req));
       if (!settings.user || !Number.isInteger(settings.port) || settings.port < 1 || settings.port > 65535) return send(res, 400, { error: 'أدخل المستخدم والمنفذ الصحيح' });
+      if (settings.engine === 'mysql') {
+        // MySQL can log in without choosing a database, so one probe lists them all.
+        const probe = openMysql({ ...settings, database: undefined });
+        try { return send(res, 200, { databases: await listMysqlDatabases(probe), via: '' }); }
+        catch (error) { return send(res, 400, { error: `تعذّر عرض قواعد البيانات: ${error.message}` }); }
+        finally { await probe.end().catch(() => {}); }
+      }
       // pg_database is shared, so any database the login can open will list them all: try the typed one, then the defaults.
       let lastError;
       for (const database of [...new Set([settings.database, 'postgres', 'template1'].filter(Boolean))]) {
@@ -223,7 +252,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/morph-types') {
       const body = await readJson(req);
       if (!pool || body.source !== connectionId) return send(res, 409, { error: 'قراءة الأنواع تحتاج اتصالًا مباشرًا بالقاعدة نفسها.' });
-      return send(res, 200, { columns: await readMorphTypes(pool, Array.isArray(body.candidates) ? body.candidates : []) });
+      return send(res, 200, { columns: await (engine === 'mysql' ? readMysqlMorphTypes : readMorphTypes)(pool, Array.isArray(body.candidates) ? body.candidates : []) });
     }
     if (req.method === 'GET' && req.url === '/api/schema') {
       if (!pool) return send(res, 200, { connected: false });

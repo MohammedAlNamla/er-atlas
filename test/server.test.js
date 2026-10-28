@@ -46,8 +46,19 @@ test('the store persists keys to disk and ignores unsafe ones', async () => {
 
 test('.env prefill returns connection settings without the password', async () => {
   const result = await request('POST', '/api/code/env', { body: { sourceRoot: project } });
-  assert.deepEqual(result.json, { host: 'db.local', port: 6543, database: 'shop', user: 'app' });
+  assert.deepEqual(result.json, { engine: 'postgres', host: 'db.local', port: 6543, database: 'shop', user: 'app' });
   assert.equal((await request('POST', '/api/code/env', { body: { sourceRoot: 'relative/path' } })).status, 500);
+});
+
+test('.env prefill recognises MySQL and MariaDB projects and their default port', async () => {
+  const mysqlProject = await mkdtemp(join(tmpdir(), 'er-atlas-mysql-'));
+  try {
+    await writeFile(join(mysqlProject, '.env'), 'DB_CONNECTION=mariadb\nDB_HOST=127.0.0.1\nDB_DATABASE=shop\nDB_USERNAME=root\nDB_PASSWORD=never-read\n');
+    const result = await request('POST', '/api/code/env', { body: { sourceRoot: mysqlProject } });
+    assert.deepEqual(result.json, { engine: 'mysql', host: '127.0.0.1', port: 3306, database: 'shop', user: 'root' });
+    await writeFile(join(mysqlProject, '.env'), 'DB_CONNECTION=sqlsrv\nDB_DATABASE=shop\n');
+    assert.match((await request('POST', '/api/code/env', { body: { sourceRoot: mysqlProject } })).json.error, /PostgreSQL وMySQL/);
+  } finally { await rm(mysqlProject, { recursive: true, force: true }); }
 });
 
 test('removed built-in assets are no longer served', async () => {

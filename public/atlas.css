@@ -3531,6 +3531,8 @@ dialog :is(.choice, .edit-field) small { font: 400 12.5px/20px var(--ui); color:
   font: 600 13px/20px var(--ui); box-shadow: none; cursor: pointer; transition: background-color .15s, color .15s, box-shadow .15s;
 }
 .ui-tab::after { content: none; }
+/* The database type sits above the connection fields it changes. */
+.engine-tabs { margin-bottom: 16px; }
 .ui-tab:hover { color: var(--ink); }
 .ui-tab.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / .12), 0 0 0 1px rgb(var(--shadow-rgb) / .04); }
 .ui-tab:focus-visible { outline: none; box-shadow: var(--focus-ring); }
