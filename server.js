@@ -10,7 +10,9 @@ import { readSchema, listDatabases, readMorphTypes } from './pg-schema.js';
 import { readMysqlSchema, listMysqlDatabases, readMysqlMorphTypes } from './mysql-schema.js';
 import { askLocal, cliStatus, localProviders, openLoginTerminal } from './local-ai.js';
 import { analyzeSource, compactCodeContext, groundTopicSuggestions } from './code-context.js';
-import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, readColumnNotes, splitFollowups } from './ai-prompts.js';
+import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, extractJson, readColumnNotes, splitFollowups } from './ai-prompts.js';
+import { loadSkills, checkGuide } from './review/skills.js';
+import { buildReviewPrompt, readReviewAnswer } from './review/ai-review.js';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const port = Number(process.env.PORT || 4317);
@@ -91,7 +93,8 @@ const paths = {
   '/ai.js': 'ai.js',
   '/sheets.js': 'sheets.js',
   '/commands.js': 'commands.js',
-  '/connect.js': 'connect.js'
+  '/connect.js': 'connect.js',
+  '/review.js': 'review.js'
 };
 
 function send(res, status, body) {
@@ -148,10 +151,14 @@ async function askProvider(body, signal) {
   if (!local && provider !== 'compatible' && !key) throw new Error('أدخل مفتاح API');
   const codeContext = mode === 'topics' ? await analyzeSource(body.sourceRoot, schema.tables) : null;
   const codeText = codeContext ? JSON.stringify(compactCodeContext(codeContext)) : '';
-  const { prompt } = buildPrompt({ mode, question, schema, history: mode === 'explain' || mode === 'ideas' ? body.history : [], focus: body.focus, evidence: body.evidence, codeText });
+  // The review mode is guided by our playbooks and may only cite findings and evidence we send.
+  const review = mode === 'review' ? { findings: (Array.isArray(body.review?.findings) ? body.review.findings : []).slice(0, 200), evidence: (Array.isArray(body.review?.evidence) ? body.review.evidence : []).slice(0, 200) } : null;
+  const { prompt } = review ? { prompt: buildReviewPrompt({ schema, findings: review.findings, evidence: review.evidence, skills: await loadSkills(), question }) }
+    : buildPrompt({ mode, question, schema, history: mode === 'explain' || mode === 'ideas' ? body.history : [], focus: body.focus, evidence: body.evidence, codeText });
   if (prompt.length > 190000) throw new Error('ملخص الكود كبير جدًا. اختر مخططًا أصغر لتحليل المواضيع.');
   const maxTokens = TOKEN_LIMITS[mode];
   const finish = answer => {
+    if (review) return { answer, review: readReviewAnswer(answer, { schema, ...review }, extractJson) };
     if (mode === 'columns') {
       const table = schema.tables.find(item => item.id === body.focus?.tableId);
       return { answer, notes: readColumnNotes(answer, table) };
@@ -228,6 +235,25 @@ const server = http.createServer(async (req, res) => {
         await next.end().catch(() => {});
         return send(res, 400, { error: `تعذّر الاتصال: ${error.message}` });
       }
+    }
+    if (req.method === 'POST' && req.url === '/api/review') {
+      // Deterministic review: the schema as shown (draft applied), the base as read, the code and live statistics.
+      const body = await readJson(req, 20000000), schema = body.schema, base = body.base || schema;
+      if (!Array.isArray(schema?.tables) || !Array.isArray(schema?.relations)) return send(res, 400, { error: 'لا يوجد مخطط للمراجعة' });
+      const { runReview } = await import('./review/engine.js');
+      let code = null, codeError = '';
+      if (body.sourceRoot) { try { code = await analyzeSource(body.sourceRoot, base.tables); } catch (error) { codeError = error.message; } }
+      let stats = null, statsError = '';
+      if (body.stats) {
+        if (!pool || !base.source || base.source !== connectionId) statsError = 'الإحصاءات الحية تحتاج اتصالًا مباشرًا بالقاعدة نفسها.';
+        else { try { stats = engine === 'mysql' ? await (await import('./mysql-schema.js')).readMysqlStats(pool) : await (await import('./pg-schema.js')).readStats(pool); } catch (error) { statsError = error.message; } }
+      }
+      const result = runReview({ schema, base, code, stats, operations: Array.isArray(body.operations) ? body.operations : [] });
+      return send(res, 200, { ...result, inputs: { code: code ? { project: code.project, scannedFiles: code.scannedFiles, parsedFiles: code.parsedFiles } : null, codeError, stats: Boolean(stats), statsError } });
+    }
+    if (req.method === 'GET' && req.url.startsWith('/api/review/guide?')) {
+      const guide = checkGuide(await loadSkills(), new URL(req.url, 'http://local').searchParams.get('check'));
+      return guide ? send(res, 200, guide) : send(res, 404, { error: 'لا يوجد دليل لهذا الفحص بعد' });
     }
     if (req.method === 'POST' && req.url === '/api/databases') {
       const settings = connectionSettings(await readJson(req));

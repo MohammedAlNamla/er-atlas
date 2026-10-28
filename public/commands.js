@@ -20,11 +20,12 @@ import { openEditor } from './editor.js';
 import { openCodeDialog } from './groups.js';
 import { openAiConversation } from './chat.js';
 import { openLint, openExport } from './sheets.js';
+import { openReview } from './review.js';
 import { openConnectionDialog } from './connect.js';
 const SHORTCUTS = [
   ['الخريطة', [['تحديد', ['V']], ['جدول جديد', ['T']], ['علاقة جديدة', ['R']], ['ترتيب الجداول', ['A']], ['تقريب / تبعيد', ['+', '−']], ['حجم مقروء', ['0']], ['كامل المخطط', ['F']], ['تحريك الخريطة', ['←', '↑', '→', '↓']]]],
   ['البحث والتنقل', [['الخريطة / الجداول / المواضيع / جدول واحد', ['1', '2', '3', '4']], ['البحث في الخريطة', ['/']], ['النتيجة التالية', ['Enter']], ['النتيجة السابقة', ['Shift', 'Enter']], ['مسح البحث', ['Esc']], ['الأوامر والقفز إلى جدول', ['Ctrl', 'K']]]],
-  ['المسودة والأدوات', [['تراجع', ['Ctrl', 'Z']], ['إعادة', ['Ctrl', 'Y']], ['مراجعة المسودة', ['D']], ['فحص المخطط', ['L']], ['تصدير المخطط', ['E']], ['إغلاق النافذة أو التحديد', ['Esc']]]]
+  ['المسودة والأدوات', [['تراجع', ['Ctrl', 'Z']], ['إعادة', ['Ctrl', 'Y']], ['مراجعة المسودة', ['D']], ['مراجعة القاعدة', ['M']], ['فحص المخطط', ['L']], ['تصدير المخطط', ['E']], ['إغلاق النافذة أو التحديد', ['Esc']]]]
 ];
 export function openShortcuts() {
   closeHeaderMenus();
@@ -51,8 +52,8 @@ export function openShortcuts() {
 }
 export function openQuickActions() {
   closeHeaderMenus();
-  const hints = { 'جدول جديد': 'T', 'إضافة علاقة': 'R', 'ترتيب الجداول': 'A', 'إظهار كامل المخطط': 'F', 'فحص المخطط': 'L', 'تصدير المخطط (Mermaid · DBML · SQL)': 'E', 'مراجعة المسودة': 'D', 'اختصارات لوحة المفاتيح': '?' };
-  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['فحص المخطط', openLint], ['تصدير المخطط (Mermaid · DBML · SQL)', () => openExport()], ['تحويل المسودة إلى Laravel migration', () => openExport('laravel')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحديث المخطط من القاعدة', () => $('refreshButton').click()], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))], ['اختصارات لوحة المفاتيح', openShortcuts]];
+  const hints = { 'جدول جديد': 'T', 'إضافة علاقة': 'R', 'ترتيب الجداول': 'A', 'إظهار كامل المخطط': 'F', 'فحص المخطط': 'L', 'مراجعة القاعدة (المخطط والكود والأداء والأمان)': 'M', 'تصدير المخطط (Mermaid · DBML · SQL)': 'E', 'مراجعة المسودة': 'D', 'اختصارات لوحة المفاتيح': '?' };
+  const commands = [['جدول جديد', () => openEditor('addTable')], ['إضافة علاقة', () => openEditor('addRelation')], ['مراجعة القاعدة (المخطط والكود والأداء والأمان)', openReview], ['فحص المخطط', openLint], ['تصدير المخطط (Mermaid · DBML · SQL)', () => openExport()], ['تحويل المسودة إلى Laravel migration', () => openExport('laravel')], ['تنظيم المواضيع', () => $('topicManageButton').click()], ['ترتيب الجداول', () => openArrangement()], ['ترتيب بالـAI', () => openArrangement('ai')], ['اسأل عن المخطط', openAiConversation], ['مراجعة المسودة', () => openDialog($('changesPanel'))], ['اتصال PostgreSQL', openConnectionDialog], ['تحديث المخطط من القاعدة', () => $('refreshButton').click()], ['تحليل كود المشروع', openCodeDialog], ['مساحة عمل جديدة', () => openWorkspaceDialog()], ['تبديل المظهر (تلقائي / فاتح / ليلي)', cycleTheme], ['تصدير المساحة الحالية', exportWorkspace], ['استيراد مساحة من ملف', importWorkspace], ['إظهار كامل المخطط', () => fitView(false, { overview: true })], ['إعدادات المساعد', () => openDialog($('aiSettingsDialog'))], ['اختصارات لوحة المفاتيح', openShortcuts]];
   const root = $('quickActionList'); root.replaceChildren();
   for (const [label, action] of commands) {
     const command = uiButton(label, () => { $('quickActionsDialog').close(); action(); }, 'quick-command'); command.dataset.label = label.toLowerCase();

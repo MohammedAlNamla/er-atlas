@@ -24,12 +24,17 @@ export function validateSchema(schema) {
       approxRows: Number.isFinite(table.approxRows) ? table.approxRows : 0,
       ...(table.kind === 'proposed' ? { kind: 'proposed' } : {}),
       ...(Array.isArray(table.uniqueKeys) ? { uniqueKeys: table.uniqueKeys.filter(key => Array.isArray(key) && key.every(name => typeof name === 'string')) } : {}),
+      // Indexes and CHECK constraints travel with the file so the review can judge them after an import.
+      ...(Array.isArray(table.indexes) ? { indexes: table.indexes.filter(key => Array.isArray(key) && key.length && key.every(name => typeof name === 'string')).slice(0, 200) } : {}),
+      ...(Array.isArray(table.indexNames) && Array.isArray(table.indexes) && table.indexNames.length === table.indexes.length ? { indexNames: table.indexNames.map(name => typeof name === 'string' ? name.slice(0, 200) : '') } : {}),
+      ...(Array.isArray(table.checks) ? { checks: table.checks.filter(check => typeof check?.definition === 'string').slice(0, 100).map(check => ({ name: typeof check.name === 'string' ? check.name.slice(0, 200) : '', definition: check.definition.slice(0, 2000), columns: Array.isArray(check.columns) ? check.columns.filter(name => typeof name === 'string') : [] })) } : {}),
       columns: table.columns.map((column, index) => ({
         number: Number.isInteger(column?.number) ? column.number : index + 1,
         name: text(column?.name, 'اسم العمود', 200), type: text(column?.type, 'نوع العمود', 120),
         nullable: column.nullable !== false, default: typeof column.default === 'string' ? column.default.slice(0, 500) : null,
         description: typeof column.description === 'string' ? column.description.slice(0, 1000) : '',
         primary: column.primary === true, unique: column.unique === true, foreign: column.foreign === true,
+        ...(column.autoIncrement === true ? { autoIncrement: true } : {}), ...(column.enum === true ? { enum: true } : {}),
         ...(column.kind === 'proposed' ? { kind: 'proposed' } : {})
       }))
     };
@@ -44,7 +49,7 @@ export function validateSchema(schema) {
       ...(typeof relation.onUpdate === 'string' ? { onUpdate: relation.onUpdate.slice(0, 1) } : {}),
       kind: relation.kind === 'proposed' ? 'proposed' : 'actual' };
   });
-  return { database: typeof schema.database === 'string' ? schema.database.slice(0, 200) : 'مخطط مستورد', tables, relations, readOnly: true,
+  return { database: typeof schema.database === 'string' ? schema.database.slice(0, 200) : 'مخطط مستورد', ...(schema.engine === 'mysql' ? { engine: 'mysql' } : {}), tables, relations, readOnly: true,
     ...(typeof schema.fingerprint === 'string' ? { fingerprint: schema.fingerprint } : {}) };
 }
 

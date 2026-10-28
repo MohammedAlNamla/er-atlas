@@ -12,6 +12,7 @@ import { buildGroups, topicKey, renderTopicEditor, refreshTopics, syncCodeSource
 import { renderAiMessages, autosizeComposer, sendAiQuestion, saveAiMessages, openAiConversation } from './chat.js';
 import { updateAiSettings, loadLocalAiStatus, testAiConnection, restoreAiSettings, changeProvider } from './ai.js';
 import { openLint, openExport } from './sheets.js';
+import { openReview } from './review.js';
 import { openShortcuts, openQuickActions, filterQuickActions } from './commands.js';
 import { resetDatabaseList, renderDatabaseList, browseDatabases, openConnectionDialog, fillFromEnv, openDemo, refreshSchema, submitConnection, bindEngineTabs } from './connect.js';
 function installEvents() {
@@ -47,6 +48,7 @@ function installEvents() {
   });
   $('quickActionsButton').addEventListener('click', openQuickActions);
   $('lintButton').addEventListener('click', openLint);
+  $('dbReviewButton').addEventListener('click', openReview);
   $('exportButton').addEventListener('click', () => openExport());
   $('themeButton').addEventListener('click', cycleTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (currentTheme() === 'auto') applyTheme('auto'); });
@@ -256,6 +258,7 @@ function installEvents() {
       if (tool && !$(tool).hidden && !$(tool).disabled) { event.preventDefault(); $(tool).click(); return; }
       if (event.key === '?') { event.preventDefault(); openShortcuts(); return; }
       if (event.key.toLowerCase() === 'l') { event.preventDefault(); openLint(); return; }
+      if (event.key.toLowerCase() === 'm') { event.preventDefault(); openReview(); return; }
       if (event.key.toLowerCase() === 'e') { event.preventDefault(); openExport(); return; }
       if (event.key.toLowerCase() === 'd') { event.preventDefault(); openDialog($('changesPanel')); return; }
       if (event.key.toLowerCase() === 'f') { fitView(state.topic !== 'all', { overview: true }); return; }

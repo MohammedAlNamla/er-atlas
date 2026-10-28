@@ -2,6 +2,7 @@ import Parser from 'php-parser';
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
+import { collectReviewFacts, mergeReviewFacts } from './review/code-facts.js';
 
 const parser = new Parser({ parser: { version: '8.3' }, ast: { withPositions: true } });
 const cache = new Map();
@@ -154,7 +155,8 @@ export function extractPhpFacts(code, file, tables) {
     }
   };
   scanMorphMaps(ast.children);
-  return { symbols, migrations, routes, morphMaps };
+  const review = collectReviewFacts(ast, code, file, { lookup, resolveName, importsFor, plural, snake });
+  return { symbols, migrations, routes, morphMaps, review };
 }
 
 function moduleFor(file) {
@@ -241,7 +243,9 @@ export function buildCodeContext(facts, tables, stats = {}) {
     matchedTableIds: [...matched], unmatchedTableIds: tables.map(table => table.id).filter(id => !matched.has(id)),
     sharedTableIds: tables.filter(table => moduleList.filter(module => module.tableIds.includes(table.id)).length > 1).map(table => table.id),
     modules: moduleList,
-    tables: tables.filter(table => matched.has(table.id)).map(table => ({ tableId: table.id, evidence: tableEvidence.get(table.id) })) };
+    tables: tables.filter(table => matched.has(table.id)).map(table => ({ tableId: table.id, evidence: tableEvidence.get(table.id) })),
+    // Review-engine facts (see review/engine.js); not part of compactCodeContext or the topics prompt.
+    facts: mergeReviewFacts(facts.map(fact => fact.review).filter(Boolean)) };
 }
 
 async function sourceFiles(root) {

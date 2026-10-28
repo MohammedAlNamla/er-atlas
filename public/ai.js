@@ -136,16 +136,16 @@ export async function testAiConnection() {
   } catch (error) { show(error.message, 'error'); }
   finally { button.disabled = false; }
 }
-export async function askAi(mode, question, schema = state.schema, signal, { focus, evidence } = {}) {
+export async function askAi(mode, question, schema = state.schema, signal, { focus, evidence, review } = {}) {
   updateAiSettings({ save: true });
   const response = await fetch('/api/ai', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider: $('aiProvider').value, model: $('aiModel').value.trim(),
-      endpoint: $('aiEndpoint').value.trim(), key: $('aiKey').value, question, mode, schema, focus, evidence,
+      endpoint: $('aiEndpoint').value.trim(), key: $('aiKey').value, question, mode, schema, focus, evidence, review,
       ...(mode === 'topics' ? { sourceRoot: $('topicSourceRoot').value.trim() } : {}),
       history: mode === 'explain' || mode === 'ideas' ? state.aiMessages.slice(-12) : [] }) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'تعذّر الاتصال بخدمة AI');
-  if (['topics', 'columns', 'explain', 'ideas'].includes(mode)) return data;
+  if (['topics', 'columns', 'explain', 'ideas', 'review'].includes(mode)) return data;
   return data.answer;
 }
 export function providerLabel() {

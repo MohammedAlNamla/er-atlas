@@ -1,11 +1,11 @@
 // Prompt assembly and answer parsing for every AI mode. Pure functions so they can be tested
 // without a provider: the server only decides *where* a prompt goes, never what it says.
 
-export const MODES = ['explain', 'ideas', 'layout', 'topics', 'migration', 'columns', 'ping'];
+export const MODES = ['explain', 'ideas', 'layout', 'topics', 'migration', 'columns', 'review', 'ping'];
 
 // Output budgets per mode. Column notes and layouts are JSON for every table, so they need room;
 // a truncated JSON answer is worse than a slow one.
-export const TOKEN_LIMITS = { explain: 2200, ideas: 2200, layout: 3000, topics: 4500, migration: 4500, columns: 4000, ping: 64 };
+export const TOKEN_LIMITS = { explain: 2200, ideas: 2200, layout: 3000, topics: 4500, migration: 4500, columns: 4000, review: 6000, ping: 64 };
 
 export const SYSTEM_PROMPT = [
   'أنت مساعد متخصص في مخططات قواعد بيانات PostgreSQL داخل ER Atlas.',
