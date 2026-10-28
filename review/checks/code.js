@@ -1,7 +1,7 @@
 // Checks that read the analysed Laravel code (code.facts from review/code-facts.js): security,
 // code/database drift, and the index checks that need query evidence. DR05 and SEC05 need only the
 // schema but belong to these skills; with code present they use it to cut false positives.
-import { sizeOf, isFrameworkTable, covered, indexesRead, makeFinding } from './util.js';
+import { isFrameworkTable, covered, indexesRead, makeFinding } from './util.js';
 import { targetForStem } from './schema.js';
 
 const tail = name => String(name || '').split('\\').at(-1);
@@ -39,14 +39,14 @@ export const codeChecks = {
       const table = queryTable(ctx, query);
       const name = query.column.includes('.') ? query.column.split('.')[1] : query.column;
       const column = ctx.column(table, name);
-      if (!table || !column || column.foreign || sizeOf(table).small || !indexesRead(table)) continue;
+      if (!table || !column || column.foreign || ctx.size(table).small || !indexesRead(table)) continue;
       if (covered(ctx.keysOf(table), [name])) continue;
       const key = `${table.id}\u0000${name}`;
       if (!groups.has(key)) groups.set(key, { table, column, queries: [] });
       groups.get(key).queries.push(query);
     }
     return [...groups.values()].map(({ table, column, queries }) => {
-      const size = sizeOf(table), direct = queries.some(q => q.receiver?.root?.via === 'static' || q.receiver?.root?.kind === 'table');
+      const size = ctx.size(table), direct = queries.some(q => q.receiver?.root?.via === 'static' || q.receiver?.root?.kind === 'table');
       const lowSelectivity = /^(is_|has_)|^(status|state|active|enabled)$/.test(column.name);
       return makeFinding('IX02', table, { column: column.name, severity: lowSelectivity ? 'info' : 'warning',
         confidence: !size.known ? 'low' : size.large && direct ? 'high' : 'medium',
@@ -60,11 +60,11 @@ export const codeChecks = {
     return ctx.facts.models.filter(model => model.softDeletes && !model.abstract).flatMap(model => {
       const table = ctx.byId.get(model.tableId);
       const name = model.constants?.DELETED_AT || 'deleted_at';
-      if (!table || !ctx.column(table, name) || sizeOf(table).small || !indexesRead(table)) return [];
+      if (!table || !ctx.column(table, name) || ctx.size(table).small || !indexesRead(table)) return [];
       if ((table.indexes || []).some(index => index.includes(name)) || (table.partialIndexes || []).some(index => new RegExp(`\\b${name}\\b`).test(index.predicate || ''))) return [];
       const nulls = ctx.stats?.nullFraction?.[table.id]?.[name];
       if (nulls >= 0.9) return []; // few deleted rows: "deleted_at IS NULL" is not selective, an index would not be used
-      return [makeFinding('IX03', table, { column: name, severity: sizeOf(table).large && nulls != null && nulls < 0.8 ? 'warning' : 'info',
+      return [makeFinding('IX03', table, { column: name, severity: ctx.size(table).large && nulls != null && nulls < 0.8 ? 'warning' : 'info',
         confidence: nulls == null ? 'low' : 'medium',
         detail: `كل استعلام على ${tail(model.class)} يضيف ${name} IS NULL، ولا فهرس يذكر ${name}.${nulls != null ? ` ${Math.round((1 - nulls) * 100)}% من الصفوف محذوفة.` : ''}`,
         evidence: [{ kind: 'code', file: model.file, line: model.line, text: `class ${tail(model.class)} … use SoftDeletes` }] })];
@@ -166,7 +166,7 @@ export const codeChecks = {
         if (!ctx.column(source, column) || isFrameworkTable(source)) continue;
         if (ctx.relations.some(r => r.source === source.id && r.target === target.id && r.pairs.some(p => p.source === column))) continue;
         const parentModel = belongs ? related : model;
-        let severity = sizeOf(source).large && !parentModel?.softDeletes ? 'error' : 'warning';
+        let severity = ctx.size(source).large && !parentModel?.softDeletes ? 'error' : 'warning';
         if (logLike.test(source.name) || logLike.test(target.name)) severity = 'info';
         findings.push(makeFinding('DR01', source, { column, key: target.id, severity,
           confidence: strings[0] ? 'high' : model.explicitTable || related.explicitTable ? 'high' : 'medium',
@@ -188,7 +188,7 @@ export const codeChecks = {
         confidence: model.connection ? 'low' : model.explicitTable ? 'high' : 'medium',
         title: `${tail(model.class)} يشير إلى جدول غير موجود: ${model.table}`,
         detail: pending ? `migration تنشئ ${model.table} لكنها لم تُنفذ على هذه القاعدة.` : `لا يوجد جدول ${model.table} في المخطط المقروء${model.explicitTable ? ' ($table صريح)' : ' (بالعرف من اسم الصنف)'}.`,
-        evidence: [{ kind: 'code', file: model.file, line: model.line, text: model.explicitTable ? `protected $table = '${model.explicitTable}';` : `class ${tail(model.class)}` }] });
+        evidence: [{ kind: 'code', file: model.file, line: model.explicitTable?.line || model.line, text: model.explicitTable ? `protected $table = '${model.explicitTable.name}';` : `class ${tail(model.class)}` }] });
     });
   },
   // DR03: a table no analysed code uses (only a nudge to check).
@@ -264,7 +264,7 @@ export const codeChecks = {
         const model = ctx.facts?.models.find(m => m.tableId === table.id);
         if (model?.relations.some(r => r.type === 'belongsTo' && (r.args.includes(column.name) || `${snake(r.method)}_id` === column.name))) continue; // DR01's finding
         const sameType = ctx.type(column) === ctx.type(key);
-        findings.push(makeFinding('DR05', table, { column: column.name, severity: logLike.test(table.name) || sizeOf(table).small ? 'info' : 'warning',
+        findings.push(makeFinding('DR05', table, { column: column.name, severity: logLike.test(table.name) || ctx.size(table).small ? 'info' : 'warning',
           confidence: sameType ? 'high' : 'medium',
           detail: `${table.name}.${column.name} يشبه مرجعًا إلى ${target.name}.${key.name}، ولا مفتاح أجنبي يضمنه.${sameType ? '' : ` النوعان مختلفان (${column.type} / ${key.type}).`}`,
           evidence: [schemaEvidence(`${table.name}.${column.name} ${column.type} → ${target.name}.${key.name} ${key.type}؟`)],

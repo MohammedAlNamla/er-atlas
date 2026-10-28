@@ -3801,6 +3801,27 @@ dialog .index-columns .index-column small { margin-inline-start: auto; white-spa
 .review-confidence { font: 500 11.5px/20px var(--ui); color: var(--muted); }
 .review-confidence.high { color: var(--ink); }
 .review-ai-badge { font: 600 11px/20px var(--ui); color: var(--teal-deep); background: var(--selected); border-radius: 6px; padding: 0 7px; }
+/* Team rules: a severity the project set, an accepted risk with its reason, the inline accept form. */
+.review-override { font: 600 11px/20px var(--ui); color: var(--warn-ink); background: color-mix(in srgb, var(--warn-ink) 10%, var(--surface)); border-radius: 6px; padding: 0 7px; }
+.review-accepted { margin: 8px 0 0; padding: 8px 12px; margin-inline-start: 16px; border-radius: 10px; background: var(--context); color: var(--ink); font: 400 13px/20px var(--ui); }
+.review-accepted-date { color: var(--muted); }
+.review-accept { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0; padding-inline-start: 16px; }
+.review-accept input { flex: 1 1 240px; min-width: 0; height: 36px; padding: 0 10px; }
+.review-accept .secondary-button { height: 36px; }
+/* Settings: size limits, then one row per check with its switch and severity. */
+.review-settings { display: flex; flex-direction: column; gap: 20px; }
+.review-settings h3 { margin: 0 0 6px; font: 600 13px/20px var(--ui); color: var(--muted); }
+.review-limits .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.review-settings-skill { display: flex; flex-direction: column; gap: 2px; }
+.review-setting { display: grid; grid-template-columns: minmax(0, 1fr) 150px; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 8px; }
+.review-setting:hover { background: var(--context); }
+.review-setting.off .review-setting-toggle span, .review-setting.off .review-check { opacity: .5; }
+.review-setting-toggle { display: flex; align-items: center; gap: 10px; min-width: 0; font: 400 13.5px/20px var(--ui); color: var(--ink); cursor: pointer; }
+.review-setting-toggle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-setting-toggle input { width: 16px; height: 16px; flex: none; accent-color: var(--accent); }
+.review-setting select { height: 32px; padding: 0 8px; font: 500 12.5px/1 var(--ui); }
+@media (max-width: 640px) { .review-setting { grid-template-columns: 1fr; }
+.review-limits .form-grid { grid-template-columns: 1fr; } }
 .review-detail { margin: 8px 0 0; padding-inline-start: 16px; color: var(--ink); font: 400 13.5px/22px var(--ui); }
 .review-why { margin: 6px 0 0; padding: 8px 12px; margin-inline-start: 16px; border-radius: 10px; background: var(--selected); color: var(--teal-deep); font: 500 13px/20px var(--ui); }
 .review-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; padding-inline-start: 16px; }

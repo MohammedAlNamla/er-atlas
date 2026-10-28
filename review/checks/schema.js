@@ -1,7 +1,7 @@
 // Checks that need only the schema (and, for IX05/IX06, live statistics): schema design, data
 // integrity and the index checks that do not read code. Each follows its section in
 // review/skills/<skill>.md; the comments name the playbook rule a branch implements.
-import { sizeOf, isFrameworkTable, covered, indexesRead, makeFinding, HUGE, LARGE } from './util.js';
+import { isFrameworkTable, covered, indexesRead, makeFinding } from './util.js';
 
 const DAY = 86400000;
 const morphNames = table => new Set(table.columns.map(c => /^(.+)_type$/.exec(c.name)?.[1]).filter(name => name && table.columns.some(c => c.name === `${name}_id`)));
@@ -26,7 +26,7 @@ export const schemaChecks = {
     return ctx.tables.filter(table => table.columns.length && !table.columns.some(c => c.primary) && !isFrameworkTable(table)).map(table => {
       const notNull = key => key.every(name => ctx.column(table, name)?.nullable === false);
       const alternate = [...(table.uniqueKeys || []), ...table.columns.filter(c => c.unique).map(c => [c.name])].find(notNull);
-      const pivot = isPivot(ctx, table), size = sizeOf(table);
+      const pivot = isPivot(ctx, table), size = ctx.size(table);
       const writes = ctx.stats?.tables?.[table.id] ? (ctx.stats.tables[table.id].updates || 0) + (ctx.stats.tables[table.id].deletes || 0) : 0;
       const severity = alternate ? 'info' : size.large && writes > 0 ? 'error' : 'warning';
       return makeFinding('SD01', table, { severity, confidence: ctx.newTables.has(table.id) ? 'low' : pivot ? 'medium' : 'high',
@@ -126,7 +126,7 @@ export const schemaChecks = {
         const checksRead = Array.isArray(table.checks);
         let confidence = checksRead ? 'high' : 'low';
         if (cast) confidence = confidence === 'high' ? 'medium' : 'low';
-        const severity = sizeOf(table).large && /^(status|state)$/.test(column.name) ? 'warning' : 'info';
+        const severity = ctx.size(table).large && /^(status|state)$/.test(column.name) ? 'warning' : 'info';
         return makeFinding('DI02', table, { column: column.name, severity, confidence,
           detail: `${table.name}.${column.name} نص حر؛ أي قيمة مكتوبة خطأً تُقبل.${cast ? ` الموديل يحوّله إلى ${cast.value.split('\\').at(-1)} لكن القاعدة لا تتحقق.` : ''}`,
           evidence: [schemaEvidence(`${table.name}.${column.name} ${column.type}، بلا CHECK`), ...(cast && model ? [{ kind: 'code', file: model.file, line: model.casts.line, text: model.casts.text }] : [])] });
@@ -146,9 +146,9 @@ export const schemaChecks = {
   DI04(ctx) {
     return ctx.relations.filter(r => r.onDelete === 'c').flatMap(relation => {
       const child = ctx.byId.get(relation.source), parent = ctx.byId.get(relation.target);
-      const size = sizeOf(child);
+      const size = ctx.size(child);
       if (!child || !parent || !size.large || isPivot(ctx, child) || isFrameworkTable(child) || isFrameworkTable(parent)) return [];
-      const parentRows = sizeOf(parent).rows;
+      const parentRows = ctx.size(parent).rows;
       const unindexed = indexesRead(child) && !covered(ctx.keysOf(child), relation.pairs.map(p => p.source));
       // The cascade path upward: parents that themselves cascade from another table.
       const path = [child.name, parent.name];
@@ -213,7 +213,7 @@ export const schemaChecks = {
       const columns = relation.pairs.map(p => p.source);
       if (covered(ctx.keysOf(source), columns)) return [];
       if (source.id === target.id && columns.every(name => ctx.column(source, name)?.primary)) return [];
-      const size = sizeOf(source), reference = /^(countries|currencies|languages|locales)$/.test(target.name);
+      const size = ctx.size(source), reference = /^(countries|currencies|languages|locales)$/.test(target.name);
       let severity = 'warning';
       if (size.large && ['c', 'n'].includes(relation.onDelete)) severity = 'error';
       if (size.known && size.small) severity = 'info';
@@ -243,7 +243,7 @@ export const schemaChecks = {
         const io = ctx.stats?.tables?.[table.id];
         const busy = io && (io.inserts || 0) + (io.updates || 0) > 1000000;
         const drop = a.name ? (ctx.engine === 'mysql' ? `ALTER TABLE ${sqlTable(ctx, table)} DROP INDEX ${quote(ctx, a.name)};` : `DROP INDEX CONCURRENTLY ${quote(ctx, table.schema)}.${quote(ctx, a.name)};`) : '';
-        findings.push(makeFinding('IX04', table, { key: a.name || a.columns.join(','), severity: sizeOf(table).large && busy ? 'warning' : 'info', confidence: exact ? 'high' : 'medium',
+        findings.push(makeFinding('IX04', table, { key: a.name || a.columns.join(','), severity: ctx.size(table).large && busy ? 'warning' : 'info', confidence: exact ? 'high' : 'medium',
           detail: `الفهرس ${a.name || ''} (${a.columns.join(', ')}) ${exact ? 'يطابق' : 'بادئة لـ'} ${b.name || 'فهرس آخر'} (${b.columns.join(', ')}).`,
           evidence: [schemaEvidence(`${table.name}: (${a.columns.join(', ')}) ⊂ (${b.columns.join(', ')})`)], ...(drop ? { fix: { sql: drop } } : {}) }));
       });
@@ -255,11 +255,11 @@ export const schemaChecks = {
     const age = statsAgeDays(ctx.stats);
     return (ctx.stats.indexes || []).filter(index => index.scans === 0 && !index.unique && !index.primary && !index.exclusion).flatMap(index => {
       const table = ctx.byId.get(index.tableId);
-      if (!table || sizeOf(table).small) return [];
+      if (!table || ctx.size(table).small) return [];
       // An index serving a foreign key is used when target rows are deleted, which may not have happened yet.
       if (ctx.relations.some(r => r.source === table.id && covered([index.columns], r.pairs.map(p => p.source)))) return [];
       const confidence = age == null ? 'medium' : age < 7 ? 'low' : age > 30 ? 'high' : 'medium';
-      const severity = sizeOf(table).large && (index.sizeBytes || 0) > 100 * 1024 ** 2 && age > 90 ? 'warning' : 'info';
+      const severity = ctx.size(table).large && (index.sizeBytes || 0) > 100 * 1024 ** 2 && age > 90 ? 'warning' : 'info';
       return [makeFinding('IX05', table, { key: index.name, severity, confidence,
         detail: `${index.name} (${index.columns.join(', ')}) لم يُقرأ منذ ${age == null ? 'آخر تصفير للإحصاءات' : `${Math.round(age)} يومًا`}${index.sizeBytes ? ` ويشغل ${(index.sizeBytes / 1024 ** 2).toFixed(1)} MB` : ''}.`,
         evidence: [{ kind: 'stats', text: `${table.name}.${index.name}: scans = 0` }] })];
@@ -270,10 +270,10 @@ export const schemaChecks = {
     const age = statsAgeDays(ctx.stats);
     return ctx.tables.flatMap(table => {
       const s = ctx.stats.tables?.[table.id];
-      if (!s || s.seqScan == null || s.seqTupRead == null || !(s.liveRows >= LARGE) || !s.lastAnalyze) return [];
+      if (!s || s.seqScan == null || s.seqTupRead == null || !(s.liveRows >= ctx.limits.large) || !s.lastAnalyze) return [];
       const perScan = s.seqTupRead / (s.seqScan || 1);
       if (!(s.seqScan > (s.idxScan || 0) && s.seqScan >= 100 && perScan >= 10000)) return [];
-      const severity = s.liveRows >= HUGE && perScan >= s.liveRows / 2 ? 'error' : 'warning';
+      const severity = s.liveRows >= ctx.limits.huge && perScan >= s.liveRows / 2 ? 'error' : 'warning';
       return [makeFinding('IX06', table, { severity, confidence: age != null && age < 7 ? 'low' : 'medium',
         detail: `${s.seqScan.toLocaleString('en-US')} مسحًا كاملًا مقابل ${(s.idxScan || 0).toLocaleString('en-US')} عبر الفهارس، بمتوسط ${Math.round(perScan).toLocaleString('en-US')} صف لكل مسح.`,
         evidence: [{ kind: 'stats', text: `${table.name}: seq_scan ${s.seqScan}, idx_scan ${s.idxScan || 0}, rows ${s.liveRows}` }] })];

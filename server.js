@@ -12,6 +12,7 @@ import { askLocal, cliStatus, localProviders, openLoginTerminal } from './local-
 import { analyzeSource, compactCodeContext, groundTopicSuggestions } from './code-context.js';
 import { MODES, SYSTEM_PROMPT, TOKEN_LIMITS, buildPrompt, extractJson, readColumnNotes, splitFollowups } from './ai-prompts.js';
 import { loadSkills, checkGuide } from './review/skills.js';
+import { SKILLS, CHECKS } from './review/catalog.js';
 import { buildReviewPrompt, readReviewAnswer } from './review/ai-review.js';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
@@ -248,9 +249,10 @@ const server = http.createServer(async (req, res) => {
         if (!pool || !base.source || base.source !== connectionId) statsError = 'الإحصاءات الحية تحتاج اتصالًا مباشرًا بالقاعدة نفسها.';
         else { try { stats = engine === 'mysql' ? await (await import('./mysql-schema.js')).readMysqlStats(pool) : await (await import('./pg-schema.js')).readStats(pool); } catch (error) { statsError = error.message; } }
       }
-      const result = runReview({ schema, base, code, stats, operations: Array.isArray(body.operations) ? body.operations : [] });
+      const result = runReview({ schema, base, code, stats, operations: Array.isArray(body.operations) ? body.operations : [], settings: body.settings });
       return send(res, 200, { ...result, inputs: { code: code ? { project: code.project, scannedFiles: code.scannedFiles, parsedFiles: code.parsedFiles } : null, codeError, stats: Boolean(stats), statsError } });
     }
+    if (req.method === 'GET' && req.url === '/api/review/catalog') return send(res, 200, { skills: SKILLS, checks: CHECKS });
     if (req.method === 'GET' && req.url.startsWith('/api/review/guide?')) {
       const query = new URL(req.url, 'http://local').searchParams;
       const guide = checkGuide(await loadSkills(), query.get('check'), query.get('engine') === 'mysql' ? 'mysql' : 'postgres');

@@ -1,14 +1,14 @@
 // Checks on the draft itself: what each staged operation would do to the database as read (base),
 // before anyone runs it. Sizes come from the base tables; a table the draft creates is never at risk.
-import { sizeOf, shift, makeFinding, HUGE, LARGE, SMALL } from './util.js';
+import { shift, makeFinding } from './util.js';
 import { normalizeType } from '../../public/lint.js';
 
 const empty = value => value === null || value === undefined || value === '';
 const draftEvidence = (operation, text) => ({ kind: 'draft', text: text || `${operation.type}` });
 // Lock-heavy work grows with the table: none under 10k rows, info to 100k, warning above, error from 10M.
 function bySize(size) {
-  if (!size.known || size.rows < SMALL) return null;
-  return size.rows >= HUGE ? 'error' : size.rows >= LARGE ? 'warning' : 'info';
+  if (!size.known || size.small) return null;
+  return size.huge ? 'error' : size.large ? 'warning' : 'info';
 }
 // Type changes PostgreSQL makes without rewriting the table (from migration-safety MS03).
 function rewriteFree(before, after, engine = 'postgres') {
@@ -34,7 +34,7 @@ export const draftChecks = {
       && !/^(small|big)?serial$/i.test(String(op.column.type))).flatMap(op => {
       const table = ctx.base.tables.find(t => t.id === op.tableId);
       if (!table) return [];
-      const size = sizeOf(table);
+      const size = ctx.size(table);
       // MySQL does not fail here: it fills existing rows with the type's implicit value (0, '') silently.
       if (ctx.engine === 'mysql') return [makeFinding('MS01', table, { column: op.column.name, severity: 'warning', confidence: size.known ? 'high' : 'medium',
         detail: `MySQL لن يرفض إضافة ${op.column.name} ‏NOT NULL بلا قيمة افتراضية، بل يملأ صفوف ${table.name} القائمة بالقيمة الضمنية للنوع (0 أو نص فارغ) بصمت. أعطه قيمة افتراضية مقصودة أو عبّئه صراحة.`,
@@ -50,7 +50,7 @@ export const draftChecks = {
       const table = ctx.base.tables.find(t => t.id === op.tableId), column = table?.columns.find(c => c.name === op.columnName);
       if (!table || !column?.nullable) return [];
       if ((table.checks || []).some(check => new RegExp(`\\b${column.name}\\b\\s+IS NOT NULL`, 'i').test(check.definition || ''))) return []; // a validated CHECK skips the scan
-      const size = sizeOf(table), nulls = ctx.stats?.nullFraction?.[table.id]?.[column.name];
+      const size = ctx.size(table), nulls = ctx.stats?.nullFraction?.[table.id]?.[column.name];
       const severity = nulls > 0 ? 'error' : size.known && size.small ? 'info' : 'warning';
       return [makeFinding('MS02', table, { column: column.name, severity, confidence: nulls > 0 || size.large ? 'high' : size.known ? 'medium' : 'low',
         detail: `جعل ${table.name}.${column.name} NOT NULL يفحص كل الصفوف تحت قفل${nulls > 0 ? `، و${Math.round(nulls * 100)}% منها NULL الآن فستفشل العملية` : ''}.`,
@@ -62,7 +62,7 @@ export const draftChecks = {
     return ctx.operations.filter(op => op.type === 'updateColumn' && op.patch?.type && !ctx.newTables.has(op.tableId)).flatMap(op => {
       const table = ctx.base.tables.find(t => t.id === op.tableId), column = table?.columns.find(c => c.name === op.columnName);
       if (!table || !column || column.type === op.patch.type || rewriteFree(column.type, op.patch.type, ctx.engine)) return [];
-      let severity = bySize(sizeOf(table));
+      let severity = bySize(ctx.size(table));
       if (!severity) return [];
       const referenced = column.primary && ctx.base.relations.some(r => r.target === table.id && r.pairs.some(p => p.target === column.name));
       if (referenced) severity = 'error';
@@ -83,7 +83,7 @@ export const draftChecks = {
       if (op.type === 'dropTable' || op.type === 'renameTable') {
         // Renaming to the name a model without $table already expects fixes the mapping instead of breaking it.
         if (op.type === 'renameTable' && models.every(m => !m.explicitTable && m.table === op.name) && models.length) continue;
-        const refs = [...models.map(m => ({ file: m.file, line: m.line, text: m.explicitTable ? `protected $table = '${m.explicitTable}';` : `class ${m.class.split('\\').at(-1)}` })),
+        const refs = [...models.map(m => ({ file: m.file, line: m.explicitTable?.line || m.line, text: m.explicitTable ? `protected $table = '${m.explicitTable.name}';` : `class ${m.class.split('\\').at(-1)}` })),
           ...ctx.facts.queries.filter(q => q.receiver?.root?.kind === 'table' && q.receiver.root.name === table.name).map(q => ({ file: q.file, line: q.line, text: q.text })),
           ...(live(ctx.facts.mentions?.[table.id]) ? [ctx.facts.mentions[table.id]] : [])].filter(live);
         if (refs.length) findings.push(makeFinding('MS04', table, { key: op.type, confidence: models.some(m => m.explicitTable) ? 'high' : 'medium',
@@ -113,20 +113,20 @@ export const draftChecks = {
       const table = ctx.base.tables.find(t => t.id === op.tableId);
       const mysql = ctx.engine === 'mysql';
       // InnoDB already builds indexes INPLACE with writes allowed (MySQL note): one step lower there.
-      const severity = table && bySize(sizeOf(table)) && (mysql ? shift(bySize(sizeOf(table)), 1) : bySize(sizeOf(table)));
+      const severity = table && bySize(ctx.size(table)) && (mysql ? shift(bySize(ctx.size(table)), 1) : bySize(ctx.size(table)));
       if (!severity) return [];
       return [makeFinding('MS05', table, { key: op.index.name, severity, confidence: 'high',
         title: mysql ? 'إنشاء فهرس على جدول كبير دون LOCK=NONE' : undefined,
         detail: mysql
-          ? `${op.index.name} على ${table.name} (≈ ${sizeOf(table).rows.toLocaleString('en-US')} صف): InnoDB يسمح بالكتابة أثناء البناء عادةً، لكن بلا LOCK=NONE قد ينتقل بصمت إلى بناء يقفل الجدول. فعّل «دون قفل الجدول (LOCK=NONE)» ليفشل بدل ذلك.${op.index.unique ? ' الفهرس فريد: البناء يفشل إن وُجدت قيم مكررة.' : ''}`
-          : `${op.index.name} على ${table.name} (≈ ${sizeOf(table).rows.toLocaleString('en-US')} صف) يمنع الكتابة حتى ينتهي البناء؛ فعّل «CONCURRENTLY» في الفهرس.${op.index.unique ? ' الفهرس فريد: البناء يفشل إن وُجدت قيم مكررة.' : ''}`,
+          ? `${op.index.name} على ${table.name} (≈ ${ctx.size(table).rows.toLocaleString('en-US')} صف): InnoDB يسمح بالكتابة أثناء البناء عادةً، لكن بلا LOCK=NONE قد ينتقل بصمت إلى بناء يقفل الجدول. فعّل «دون قفل الجدول (LOCK=NONE)» ليفشل بدل ذلك.${op.index.unique ? ' الفهرس فريد: البناء يفشل إن وُجدت قيم مكررة.' : ''}`
+          : `${op.index.name} على ${table.name} (≈ ${ctx.size(table).rows.toLocaleString('en-US')} صف) يمنع الكتابة حتى ينتهي البناء؛ فعّل «CONCURRENTLY» في الفهرس.${op.index.unique ? ' الفهرس فريد: البناء يفشل إن وُجدت قيم مكررة.' : ''}`,
         evidence: [draftEvidence(op, `addIndex ${op.index.name} ON ${table.name} (${op.index.columns.join(', ')})`)] })];
     });
   },
   // MS06: a new foreign key validated against every row of a large table at once.
   MS06(ctx) {
     return ctx.operations.filter(op => op.type === 'addRelation' && !ctx.newTables.has(op.relation?.source)).flatMap(op => {
-      const table = ctx.base.tables.find(t => t.id === op.relation.source), severity = table && bySize(sizeOf(table));
+      const table = ctx.base.tables.find(t => t.id === op.relation.source), severity = table && bySize(ctx.size(table));
       if (!severity) return [];
       return [makeFinding('MS06', table, { key: op.relation.name, severity, confidence: 'high',
         detail: `إضافة ${op.relation.name} تتحقق من كل صفوف ${table.name} دفعة واحدة تحت قفل. ${ctx.engine === 'mysql' ? 'في MySQL أضفه في نافذة صيانة أو بأداة online schema change.' : 'أضفه بـ NOT VALID ثم VALIDATE CONSTRAINT في خطوة منفصلة.'}`,
@@ -138,7 +138,7 @@ export const draftChecks = {
     const volatile = /(gen_random_uuid|uuid_generate_v[14]|clock_timestamp|timeofday|random|nextval|uuid)\s*\(/i;
     return ctx.operations.filter(op => op.type === 'addColumn' && !ctx.newTables.has(op.tableId)
       && (volatile.test(String(op.column?.default || '')) || /^(small|big)?serial$/i.test(String(op.column?.type)))).flatMap(op => {
-      const table = ctx.base.tables.find(t => t.id === op.tableId), severity = table && bySize(sizeOf(table));
+      const table = ctx.base.tables.find(t => t.id === op.tableId), severity = table && bySize(ctx.size(table));
       if (!severity) return [];
       return [makeFinding('MS07', table, { column: op.column.name, severity, confidence: 'high',
         detail: `القيمة الافتراضية ${op.column.default || op.column.type} تُحسب لكل صف، فتُعاد كتابة ${table.name} كاملًا. أضف العمود بلا قيمة، عبّئه على دفعات، ثم ضع القيمة الافتراضية.`,

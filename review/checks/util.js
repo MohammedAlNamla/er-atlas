@@ -3,12 +3,25 @@
 import { checkById } from '../catalog.js';
 import { normalizeType } from '../../public/lint.js';
 
-// Size classes from the playbooks. approxRows of 0 is "unknown or empty": statistics may not be collected.
-export const SMALL = 10000, LARGE = 100000, HUGE = 10000000;
-export function sizeOf(table) {
+// Size classes from the playbooks; a project may move them (review settings). approxRows of 0 is
+// "unknown or empty": statistics may not be collected.
+export const DEFAULT_LIMITS = { small: 10000, large: 100000, huge: 10000000 };
+export function sizeOf(table, limits = DEFAULT_LIMITS) {
   const rows = Number(table?.approxRows);
   if (!Number.isFinite(rows) || rows <= 0) return { rows: null, known: false, small: false, large: false, huge: false };
-  return { rows, known: true, small: rows < SMALL, large: rows >= LARGE, huge: rows >= HUGE };
+  return { rows, known: true, small: rows < limits.small, large: rows >= limits.large, huge: rows >= limits.huge };
+}
+
+const SEVERITIES = new Set(['error', 'warning', 'info']);
+// A project's review settings, cleaned: checks switched off, severities set by the team, and size
+// limits. Anything unknown is dropped, and limits must stay in order (small < large < huge).
+export function reviewSettings(input = {}) {
+  const known = new Set([...checkById.keys()]);
+  const disabled = [...new Set((Array.isArray(input?.disabled) ? input.disabled : []).filter(id => known.has(id)))];
+  const severity = Object.fromEntries(Object.entries(input?.severity && typeof input.severity === 'object' ? input.severity : {}).filter(([id, value]) => known.has(id) && SEVERITIES.has(value)));
+  const asked = input?.limits || {}, number = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Math.round(Number(value)) : null;
+  const limits = { small: number(asked.small) ?? DEFAULT_LIMITS.small, large: number(asked.large) ?? DEFAULT_LIMITS.large, huge: number(asked.huge) ?? DEFAULT_LIMITS.huge };
+  return { disabled, severity, limits: limits.small < limits.large && limits.large < limits.huge ? limits : { ...DEFAULT_LIMITS } };
 }
 
 // Laravel and common package tables: designed the way they are, and not the project's to change.
@@ -24,14 +37,16 @@ export const shift = (severity, by) => STEPS[Math.max(0, Math.min(2, STEPS.index
 
 // What every check gets: the schema as it would be after the draft, the base as read, code facts,
 // statistics, the draft operations, and shared lookups.
-export function reviewContext({ schema, base = schema, code = null, stats = null, operations = [] }) {
+export function reviewContext({ schema, base = schema, code = null, stats = null, operations = [], settings = {} }) {
+  const { limits } = reviewSettings(settings);
   const tables = schema.tables || [], relations = schema.relations || [];
   const byId = new Map(tables.map(table => [table.id, table]));
   const byName = new Map();
   for (const table of tables) byName.set(table.name, byName.has(table.name) ? null : table);
   const newTables = new Set(operations.filter(op => op?.type === 'addTable').map(op => op.id));
   const engine = schema.engine === 'mysql' || base?.engine === 'mysql' ? 'mysql' : 'postgres';
-  return { schema, base, code, facts: code?.facts || null, stats, operations, tables, relations, byId, byName, newTables, engine,
+  return { schema, base, code, facts: code?.facts || null, stats, operations, tables, relations, byId, byName, newTables, engine, limits,
+    size: table => sizeOf(table, limits),
     column: (table, name) => table?.columns.find(column => column.name === name) || null,
     type: column => normalizeType(column?.type),
     // Keys that can serve a lookup on these columns: plain indexes, the primary key in column order,

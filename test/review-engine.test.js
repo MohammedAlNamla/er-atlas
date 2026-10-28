@@ -213,3 +213,28 @@ test('exported workspaces keep indexes, checks and the engine through an import'
   assert.equal(back.tables[0].checks[0].definition, "email <> ''");
   assert.equal(back.tables[0].columns[0].autoIncrement, true);
 });
+
+test('project settings switch checks off, set severities and move the size limits', async () => {
+  const { reviewSettings } = await import('../review/checks/util.js');
+  const base = runReview({ schema: shopSchema() });
+  const tuned = runReview({ schema: shopSchema(), settings: { disabled: ['DI06', 'SD05'], severity: { DI01: 'warning' }, limits: { small: 10, large: 1000000, huge: 50000000 } } });
+  assert.ok(!tuned.findings.some(f => ['DI06', 'SD05'].includes(f.check)));
+  assert.deepEqual(tuned.coverage.skipped.filter(item => item.reason === 'disabled').map(item => item.check), ['SD05', 'DI06']);
+  const money = find(tuned.findings, 'DI01', 'orders', 'total');
+  assert.equal(money.severity, 'warning');
+  assert.equal(money.defaultSeverity, 'error', 'the playbook severity stays visible');
+  // orders (500k rows) is no longer "large" once large starts at 1M: the cascade into it is not reported.
+  assert.ok(find(base.findings, 'DI04', 'orders'));
+  assert.ok(!find(tuned.findings, 'DI04', 'orders'));
+  // Unknown checks, severities and out-of-order limits are dropped rather than trusted.
+  assert.deepEqual(reviewSettings({ disabled: ['XX99', 'SD01'], severity: { SD01: 'fatal', SD02: 'info' }, limits: { small: 500, large: 100, huge: 1 } }),
+    { disabled: ['SD01'], severity: { SD02: 'info' }, limits: { small: 10000, large: 100000, huge: 10000000 } });
+});
+
+test('evidence quotes a model\'s explicit $table by name and line', async () => {
+  const schema = shopSchema();
+  const { findings } = runReview({ schema, code: await analyzeSource(fixture, schema.tables) });
+  const legacy = findings.find(f => f.check === 'DR02' && f.title.includes('legacy_things'));
+  assert.equal(legacy.evidence[0].text, "protected $table = 'legacy_things';");
+  assert.ok(!findings.some(f => f.evidence.some(item => String(item.text).includes('[object Object]'))));
+});
