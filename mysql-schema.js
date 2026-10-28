@@ -174,3 +174,64 @@ export async function readMysqlMorphTypes(pool, candidates) {
   } finally { connection.release(); }
   return result;
 }
+
+// Live usage statistics for the review, in readStats' shape (pg-schema.js). MySQL measures other
+// things than PostgreSQL, so only what means the same is filled in and the rest stays null:
+// - row counts come from information_schema (estimates, as n_live_tup is);
+// - insert/update/delete counts and per-index use come from performance_schema, when it is on;
+//   per-index "scans" there count row operations through the index, so 0 still means unused;
+// - null fractions come from MariaDB's persistent column stats or MySQL 8 histograms, when collected;
+// - counters run since the server started, so resetAt is the start time.
+// There is no dead-row, seq-scan or last-analyze equivalent; those are null.
+export const MYSQL_STATS_TABLES_SQL = `
+    SELECT TABLE_SCHEMA AS schema_name, TABLE_NAME AS table_name, TABLE_ROWS AS live_rows, DATA_LENGTH AS data_bytes, INDEX_LENGTH AS index_bytes
+    FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'`;
+export const MYSQL_STATS_IO_SQL = `
+    SELECT OBJECT_NAME AS table_name, COUNT_INSERT AS inserts, COUNT_UPDATE AS updates, COUNT_DELETE AS deletes
+    FROM performance_schema.table_io_waits_summary_by_table WHERE OBJECT_SCHEMA = DATABASE()`;
+export const MYSQL_STATS_INDEX_USE_SQL = `
+    SELECT OBJECT_NAME AS table_name, INDEX_NAME AS index_name, COUNT_STAR AS uses, COUNT_FETCH AS fetched
+    FROM performance_schema.table_io_waits_summary_by_index_usage WHERE OBJECT_SCHEMA = DATABASE()`;
+export const MYSQL_STATS_UPTIME_SQL = `
+    SELECT VARIABLE_VALUE AS uptime FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'UPTIME'`;
+export const MARIADB_NULLS_SQL = `
+    SELECT table_name, column_name, nulls_ratio AS null_frac FROM mysql.column_stats WHERE db_name = DATABASE() AND nulls_ratio IS NOT NULL`;
+export const MYSQL_HISTOGRAM_NULLS_SQL = `
+    SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name, JSON_EXTRACT(HISTOGRAM, '$."null-values"') AS null_frac
+    FROM information_schema.COLUMN_STATISTICS WHERE SCHEMA_NAME = DATABASE()`;
+const optional = (db, sql) => run(db, sql).catch(() => null);
+const counted = value => value == null ? null : Number(value);
+
+export async function readMysqlStats(db) {
+  const tableRows = await run(db, MYSQL_STATS_TABLES_SQL);
+  // With performance_schema off its tables still exist, just empty: reading them would call every index unused.
+  const measured = Number((await optional(db, 'SELECT @@performance_schema AS enabled'))?.[0]?.enabled) === 1;
+  const [io, indexUse, uptime, mariaNulls, histogramNulls, indexRows] = await Promise.all([
+    measured ? optional(db, MYSQL_STATS_IO_SQL) : null, measured ? optional(db, MYSQL_STATS_INDEX_USE_SQL) : null, optional(db, MYSQL_STATS_UPTIME_SQL),
+    optional(db, MARIADB_NULLS_SQL), optional(db, MYSQL_HISTOGRAM_NULLS_SQL), optional(db, MYSQL_INDEXES_SQL)]);
+  const schemaName = tableRows[0]?.schema_name || '';
+  const id = name => `${schemaName}.${name}`;
+  const ioByTable = new Map((io || []).map(row => [row.table_name, row]));
+  const tables = {};
+  for (const row of tableRows) {
+    const counts = ioByTable.get(row.table_name);
+    tables[id(row.table_name)] = { seqScan: null, seqTupRead: null, idxScan: null, liveRows: counted(row.live_rows), deadRows: null,
+      inserts: counted(counts?.inserts), updates: counted(counts?.updates), deletes: counted(counts?.deletes), lastAnalyze: null,
+      dataBytes: counted(row.data_bytes), indexBytes: counted(row.index_bytes) };
+  }
+  const uses = new Map((indexUse || []).filter(row => row.index_name).map(row => [`${row.table_name}\u0000${row.index_name}`, counted(row.uses)]));
+  const grouped = new Map();
+  for (const row of indexRows || []) {
+    const key = `${row.table_name}\u0000${row.name}`;
+    if (!grouped.has(key)) grouped.set(key, { tableId: id(row.table_name), name: row.name, columns: [], unique: Number(row.non_unique) === 0, primary: row.name === 'PRIMARY' });
+    if (row.column_name) grouped.get(key).columns.push(row.column_name);
+  }
+  const indexes = [...grouped.entries()].map(([key, index]) => ({ ...index, scans: indexUse ? uses.get(key) ?? 0 : null, sizeBytes: null, partial: false, exclusion: false }));
+  const nullFraction = {};
+  for (const row of [...(mariaNulls || []), ...(histogramNulls || [])]) {
+    const value = Number(row.null_frac);
+    if (Number.isFinite(value)) (nullFraction[id(row.table_name)] ||= {})[row.column_name] = value;
+  }
+  const seconds = Number(uptime?.[0]?.uptime);
+  return { engine: 'mysql', usageMeasured: measured, tables, indexes, nullFraction, ...(Number.isFinite(seconds) ? { resetAt: new Date(Date.now() - seconds * 1000).toISOString() } : {}) };
+}

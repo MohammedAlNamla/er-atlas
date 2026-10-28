@@ -125,5 +125,35 @@ test('reads the fixture database on a real MySQL/MariaDB server', { skip: !proce
     const morphs = await readMysqlMorphTypes(pool, [{ tableId: `${name}.events`, column: 'eventable_type' }]);
     assert.deepEqual(morphs[0].values.sort(), ['App\\Models\\Order', 'user']);
     await assert.rejects(pool.query('INSERT INTO products (sku) VALUES (?)', ['x']), /read only|READ ONLY|read-only/i);
+    const stats = await (await import('../mysql-schema.js')).readMysqlStats(pool);
+    assert.equal(stats.tables[`${name}.users`].liveRows >= 0, true);
+    if (!stats.usageMeasured) assert.ok(stats.indexes.every(index => index.scans === null));
   } finally { await pool.end(); }
+});
+
+test('stats fill only what MySQL measures the same way, and never call an index unused without measuring', async () => {
+  const { readMysqlStats, MYSQL_STATS_TABLES_SQL, MYSQL_STATS_IO_SQL, MYSQL_STATS_INDEX_USE_SQL, MYSQL_STATS_UPTIME_SQL, MARIADB_NULLS_SQL } = await import('../mysql-schema.js');
+  const rows = enabled => ({
+    [MYSQL_STATS_TABLES_SQL]: [{ schema_name: 'shop', table_name: 'orders', live_rows: '120', data_bytes: '16384', index_bytes: '32768' }],
+    'SELECT @@performance_schema AS enabled': [{ enabled }],
+    [MYSQL_STATS_IO_SQL]: [{ table_name: 'orders', inserts: '7', updates: '3', deletes: '1' }],
+    [MYSQL_STATS_INDEX_USE_SQL]: [{ table_name: 'orders', index_name: 'PRIMARY', uses: '40', fetched: '40' }, { table_name: 'orders', index_name: null, uses: '9', fetched: '900' }],
+    [MYSQL_STATS_UPTIME_SQL]: [{ uptime: '60' }],
+    [MARIADB_NULLS_SQL]: [{ table_name: 'orders', column_name: 'meta', null_frac: '0.25' }],
+    [MYSQL_INDEXES_SQL]: [
+      { table_name: 'orders', name: 'PRIMARY', non_unique: 0, seq: 1, column_name: 'id' },
+      { table_name: 'orders', name: 'orders_user_id_index', non_unique: 1, seq: 1, column_name: 'user_id' }
+    ]
+  });
+  const fakeWith = enabled => ({ query: async sql => { const table = rows(enabled); if (!(sql in table)) throw new Error('no such table'); return [table[sql]]; } });
+  const on = await readMysqlStats(fakeWith(1));
+  assert.equal(on.usageMeasured, true);
+  assert.deepEqual(on.tables['shop.orders'], { seqScan: null, seqTupRead: null, idxScan: null, liveRows: 120, deadRows: null, inserts: 7, updates: 3, deletes: 1, lastAnalyze: null, dataBytes: 16384, indexBytes: 32768 });
+  assert.deepEqual(on.indexes.map(index => [index.name, index.primary, index.scans]), [['PRIMARY', true, 40], ['orders_user_id_index', false, 0]]);
+  assert.deepEqual(on.nullFraction, { 'shop.orders': { meta: 0.25 } });
+  assert.ok(Math.abs(Date.now() - 60000 - Date.parse(on.resetAt)) < 5000, 'counters run since the server started');
+  const off = await readMysqlStats(fakeWith(0));
+  assert.equal(off.usageMeasured, false);
+  assert.deepEqual(off.indexes.map(index => index.scans), [null, null], 'performance_schema off: unknown, not unused');
+  assert.equal(off.tables['shop.orders'].inserts, null);
 });
