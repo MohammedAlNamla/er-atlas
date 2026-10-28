@@ -2610,10 +2610,10 @@ body { font-family: var(--ui); background: var(--paper); color: var(--ink); -web
 .chrome { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
 .chrome-zone { position: absolute; display: flex; align-items: center; gap: 8px; pointer-events: none; }
 .chrome-zone > * { pointer-events: auto; }
-.chrome-start { top: 12px; inset-inline-start: 12px; }
+.chrome-start { top: 16px; inset-inline-start: 12px; }
 .chrome-center { top: 12px; inset-inline-start: 50%; transform: translateX(50%); flex-direction: column; gap: 6px; }
 html[dir="rtl"] .chrome-center { transform: translateX(50%); }
-.chrome-end { top: 12px; inset-inline-end: 12px; }
+.chrome-end { top: 16px; inset-inline-end: 12px; }
 .chrome-bottom-start { bottom: 12px; inset-inline-start: 12px; }
 .chrome-bottom-end { bottom: 12px; inset-inline-end: 12px; }
 
@@ -2642,29 +2642,36 @@ html[dir="rtl"] .chrome-center { transform: translateX(50%); }
 .status-dot { width: 6px; height: 6px; flex: none; }
 
 /* Brand */
-.brand { gap: 8px; padding: 3px 8px; box-shadow: var(--pill-shadow); }
+/* The logo leads the workspace button: one pill for "where am I". The wordmark lives in the menu head. */
 .logo-mark { width: 22px; height: 18px; color: var(--ink); flex: none; }
-.brand-word { font: 700 14px/1 "Segoe UI", var(--ui); letter-spacing: -.01em; }
+#workspaceSwitchButton { padding-inline-start: 8px; }
+.brand-sep { width: 1px; height: 16px; background: var(--outline-strong); flex: none; }
+.brand-word { font: 700 14px/1 "Segoe UI", var(--ui); letter-spacing: -.01em; color: var(--ink); }
+.workspace-menu-brand { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 8px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
 
 /* Tool strip */
-.toolbar { gap: 2px; padding: 3px; }
-.segmented { display: inline-flex; padding: 2px; background: var(--context); border-radius: 7px; gap: 2px; }
-.seg { height: 24px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: 600 13px/1 var(--ui); cursor: pointer; transition: background-color .15s, color .15s; }
-.seg.active, .seg[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / .12); }
-.divider { width: 1px; height: 18px; background: var(--line); margin-inline: 4px; flex: none; }
+/* One icon strip, Excalidraw-style: 36px tools, the shortcut in the corner, the active one tinted. */
+.toolbar { gap: 2px; padding: 4px; min-height: 44px; border-radius: 12px; box-shadow: 0 1px 3px rgb(var(--shadow-rgb) / .08), 0 4px 14px rgb(var(--shadow-rgb) / .06); }
+.segmented { display: inline-flex; gap: 2px; }
+.divider { width: 1px; height: 20px; background: var(--line); margin-inline: 6px; flex: none; }
 .tool {
-  position: relative; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 7px;
+  position: relative; display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px;
   background: transparent; color: var(--muted); cursor: pointer; transition: background-color .15s, color .15s, transform .12s var(--ease-out);
 }
+.tool { color: var(--ink); }
 .tool:hover { color: var(--ink); }
-.tool[aria-pressed="true"] { background: var(--selected); color: var(--teal-deep); }
+.tool[aria-pressed="true"], .tool.active { background: var(--selected); color: var(--teal-deep); }
+.tool[aria-pressed="true"]:hover, .tool.active:hover { background: var(--selected); }
 .tool:disabled { opacity: .35; cursor: default; pointer-events: none; }
-.tool kbd { position: absolute; inset-block-end: 4px; inset-inline-end: 4px; font: 500 9px/1 var(--mono); color: var(--faint); background: none; border: 0; padding: 0; pointer-events: none; }
+.tool kbd { position: absolute; bottom: 3px; right: 4px; font: 500 9px/1 var(--ui); color: var(--faint); background: none; border: 0; padding: 0; pointer-events: none; }
+.tool[aria-pressed="true"] kbd, .tool.active kbd { color: color-mix(in srgb, var(--teal-deep) 60%, transparent); }
 .tool[hidden], .pill-button[hidden], .pill[hidden] { display: none; }
 
 .search-field { position: relative; display: flex; align-items: center; }
-.search-toggle { display: none; }
-.search-wrap { display: flex; align-items: center; gap: 6px; box-sizing: border-box; width: 168px; height: 28px; padding: 0 8px; border-radius: 7px; background: var(--context); border: 1px solid transparent; transition: border-color .15s, background-color .15s; }
+.search-toggle { display: inline-grid; }
+.search-wrap { display: none; }
+.chrome.search-open .search-wrap { display: flex; position: absolute; top: calc(100% + 10px); inset-inline-end: 0; width: min(320px, 90vw); height: 36px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 4px 14px rgb(var(--shadow-rgb) / .14); z-index: 5; }
+.search-wrap { align-items: center; gap: 6px; box-sizing: border-box; width: 168px; height: 28px; padding: 0 8px; border-radius: 7px; background: var(--context); border: 1px solid transparent; transition: border-color .15s, background-color .15s; }
 .search-wrap:focus-within { width: 232px; background: var(--surface); border-color: var(--accent); }
 .search-wrap input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 13px/1 var(--ui); }
 .search-wrap input::placeholder { color: var(--faint); }
@@ -2687,10 +2694,10 @@ html[dir="rtl"] .chrome-center { transform: translateX(50%); }
 .ai-menu { padding: 3px; }
 
 /* Bottom */
-.zoom .tool { width: 28px; }
+.zoom .tool { width: 28px; height: 28px; }
 .zoom-value { min-width: 48px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); font: 500 12px/1 var(--mono); cursor: pointer; font-variant-numeric: tabular-nums; }
 .zoom-value:hover { background: var(--context); }
-.history .tool { width: 28px; }
+.history .tool { width: 28px; height: 28px; }
 .counts { padding: 0 12px; min-height: 30px; gap: 8px; font: 500 13px/1 var(--ui); color: var(--muted); font-variant-numeric: tabular-nums; box-shadow: none; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(6px); }
 .counts .dot { opacity: .5; }
 #helpButton { min-height: 36px; width: 36px; padding: 0; border-radius: 18px; color: var(--muted); }
@@ -2764,11 +2771,6 @@ dialog::backdrop { background: var(--scrim); }
    window never lets the tool strip cover the menu. d1: search collapses into a
    toggle and the wordmark hides. d2: pill labels hide. d3: the tool strip drops
    to its own row. d4: the logo pill hides so the side zones clear on phones. ---- */
-.chrome.d1 .search-toggle { display: inline-grid; }
-.chrome.d1 .search-wrap { display: none; }
-.chrome.d1.search-open .search-wrap { display: flex; position: absolute; top: calc(100% + 10px); inset-inline-end: 0; width: min(320px, 90vw); height: 36px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 4px 14px rgb(var(--shadow-rgb) / .14); z-index: 5; }
-.chrome.d1 .brand-word { display: none; }
-.chrome.d1 .brand { padding: 3px 7px; }
 .chrome.d2 .pill-button .label { display: none; }
 .chrome.d2 #changesButton { padding: 3px 8px; }
 .chrome.d2 .pill-button strong { max-width: 112px; }
@@ -2779,7 +2781,7 @@ dialog::backdrop { background: var(--scrim); }
 .app-shell:has(.chrome.d3) .map-area .view-overlay { padding-top: 156px; }
 .app-shell:has(.chrome.d3) .details-panel { top: 140px; }
 .chrome.d3 .toolbar { box-sizing: border-box; }
-.chrome.d4 .brand { display: none; }
+.chrome.d4 .brand-sep, .chrome.d4 #workspaceStatus { display: none; }
 .chrome.d4 .pill-button strong { max-width: 84px; }
 @media (max-width: 900px) {
   .tool kbd { display: none; }
@@ -2825,8 +2827,6 @@ dialog::backdrop { background: var(--scrim); }
 .topic-overview-meta { margin-top: auto; }
 .view-overlay-heading { margin-top: 28px; }
 
-/* Shortcut hints live in the tooltip; a letter under each icon cost the strip 12px of height. */
-.tool kbd { display: none; }
 .search-wrap input::placeholder { color: var(--faint); }
 
 /* The inspector never hides the start edge of a full-page view. */
@@ -3705,7 +3705,7 @@ dialog.chat-dialog > .chat-thread { flex: 1 1 auto; min-height: 0; overflow: aut
 /* Phones: when the strip still overflows its row, the view tabs take the first line, full width. */
 .chrome.vc .toolbar { flex-wrap: wrap; justify-content: center; overflow: visible; row-gap: 3px; }
 .chrome.vc .segmented { flex: 1 1 100%; }
-.chrome.vc .segmented .seg { flex: 1; padding: 0 8px; }
+.chrome.vc .segmented { justify-content: center; }
 .chrome.vc .toolbar > .divider:first-of-type { display: none; }
 .app-shell:has(.chrome.vc) .map-area .view-overlay { padding-top: 188px; }
 

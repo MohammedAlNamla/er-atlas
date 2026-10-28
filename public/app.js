@@ -250,6 +250,8 @@ function installEvents() {
       if (['+', '='].includes(event.key)) { zoom(1.2, rect.left + rect.width / 2, rect.top + rect.height / 2); return; }
       if (['-', '_'].includes(event.key)) { zoom(1 / 1.2, rect.left + rect.width / 2, rect.top + rect.height / 2); return; }
       if (event.key === '0') { fitView(state.topic !== 'all'); return; }
+      const view = { 1: 'map', 2: 'tables', 3: 'topics', 4: 'focus' }[event.key];
+      if (view) { event.preventDefault(); setViewMode(view); return; }
       const tool = { v: 'selectionModeButton', t: 'addTableButton', r: 'linkModeButton', a: 'arrangeButton' }[event.key.toLowerCase()];
       if (tool && !$(tool).hidden && !$(tool).disabled) { event.preventDefault(); $(tool).click(); return; }
       if (event.key === '?') { event.preventDefault(); openShortcuts(); return; }
@@ -261,7 +263,7 @@ function installEvents() {
     if (event.key === 'Escape' && (!$('toolsMenu').hidden || !$('aiMenu').hidden || !$('topics').hidden)) { closeHeaderMenus(); return; }
     if (event.key === 'Escape' && !$('workspaceMenu').hidden) { closeWorkspaceMenu({ focus: true }); return; }
     if (event.key === '/' && !editing) { event.preventDefault(); setNavbarSearch(true, { focus: true }); }
-    if (event.key === 'Escape' && document.querySelector('.chrome.d1.search-open')) { event.preventDefault(); setNavbarSearch(false, { focus: true }); return; }
+    if (event.key === 'Escape' && document.querySelector('.chrome.search-open')) { event.preventDefault(); setNavbarSearch(false, { focus: true }); return; }
     if (event.key === 'Escape' && !$('connectDialog').open) { closeContextMenu(); state.selectedTable = null; state.selectedRelation = null; $('details').hidden = true; updateEmphasis(); }
   });
   let previousViewport = { width: viewport.clientWidth, height: viewport.clientHeight };
