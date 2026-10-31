@@ -213,13 +213,13 @@ Near-black ink and cool neutral grays with a single violet. Values below are lig
 
 A fixed full-viewport shell: `.map-area` fills the screen and a pointer-transparent chrome layer sits above it in four zones, inset 16px from the edges (12px under 520px). In RTL, start is the right edge.
 - **Top-start:** logo pill, workspace pill, menu pill.
-- **Top-center:** the tool strip (map/tables segmented control, select, table, relation, arrange, search) with a quiet context row beneath (topic, view).
+- **Top-center:** the tool strip (one segmented control for the four views — map, tables, topics, one table — then select, table, relation, arrange, search). A quiet context row appears beneath it only when the view has context of its own: the open topic and "all topics" in topics view, "choose a table" in the one-table view.
 - **Top-end:** drafts chip and the single violet AI button.
 - **Bottom-end:** zoom pill, undo/redo pill and help button. The bottom-start edge is deliberately empty so sidebars can use the full height.
 - **Inspector and sidebars:** a 420px panel on the start side under the menu (76px from the top, 16px from the bottom); full-page views pad 408px on that side while it is open.
 - **Full-page views** (catalog, topic overview, focus picker) fill the map area and clear the chrome (128px top padding).
 
-Spacing runs on a 4/8/12/16/24 rhythm; pill internals are 2-3px padding with 8px gaps. Responsive: under 1180px the wordmark is hidden and search collapses into a toggle; under 900px button labels hide, the tool strip drops to 68px and scrolls horizontally, shortcut hints hide, and the inspector becomes a bottom sheet; under 520px history and counts are hidden.
+Spacing runs on a 4/8/12/16/24 rhythm; pill internals are 2-3px padding with 8px gaps. Responsive: the top row is fitted by measurement, not by breakpoints. `fitChrome()` in app.js checks the three top zones on load, resize, workspace rename and view change: if the strip fits between the side zones it stays centered on the screen, or shifts to the middle of the free gap; otherwise it steps density classes on `.chrome` one at a time: `d1` collapses search into a toggle and hides the wordmark, `d2` hides pill labels, `d3` drops the tool strip to its own row at 68px (scrolling horizontally), `d4` hides the logo pill so the side zones clear on phones. Under 900px shortcut hints hide and the inspector becomes a bottom sheet; under 520px history is hidden.
 
 Table geometry is shared with `public/ui.js`: nodes are 320px wide with a 1px border, so measured positions of wires and anchors hold. Do not change node borders, heights or paddings in CSS without updating ui.js.
 
@@ -277,6 +277,9 @@ Inspector and expanded table share one list: per column a mono name (LTR, semibo
 ### AI chat
 A sheet in the sidebar slot, three parts: head (title, provider chip with a status dot, new-conversation and close), a scrolling thread, a pinned composer. The user speaks in a violet-tint bubble on the start edge; the assistant has no bubble, only a label line (sparkle, name, scope) above plain text, so long answers keep the full width. Waiting shows three pulsing dots with a stage phrase that advances every 4 s and the elapsed seconds after 6. A new answer fades in block by block, and the thread scrolls to the question that produced it rather than the end. After the last answer: copy, regenerate, and up to three quick-reply chips (from the model, with generic fallbacks) that send on click. The composer is one rounded box: auto-growing textarea, a round send button that turns into a stop button while a request is in flight, and a scope chip above it that says exactly what is sent and toggles to the whole schema.
 
+### Schema check and export
+Both are sidebars in the sheet slot. The schema check (`L`) lists findings from `public/lint.js` as outlined cards: a severity dot (danger for errors, warn ink for warnings, muted for notes), a one-line title, the identifier as a mono chip when the title does not already name it, one muted sentence, and text actions ("show on map", "add the relation to the draft"). Severity filters are the standard tabs; a footer action stages every suggested relation at once. Fixes only ever go into the draft. The menu item carries a count pill (warn tint, danger tint when there are errors) and the closed menu button gets a small danger dot only for errors. Export (`E`) is tabs per format over one code block filling the sheet, with download as the primary action and copy beside it; the Laravel tab reads the draft and says so when it is empty.
+
 ### AI connection
 A short modal, one decision: pick a card. Local assistants (Claude Code, Codex) are probed on open and show ready / sign in once (with a copyable command) / not installed. API services are four compact cards; picking one reveals the key (memory only), an endpoint for compatible services, and a model with suggestions. The footer tests the connection and closes. When the chat has no usable assistant, its welcome state carries a connect card instead of failing on the first question.
 
@@ -284,7 +287,7 @@ A short modal, one decision: pick a card. Local assistants (Claude Code, Codex) 
 Answers render as short paragraphs, `##` headings and bullets with identifiers in LTR code chips. `[مثبت]` (violet) marks what the schema states, `[استنتاج]` (amber) what was inferred. The scope shown under the dialog title is exactly what a question sends. A new answer opens at its first line, not at the end.
 
 ### Edges
-Crow's-foot notation, from schema evidence only: at the foreign-key end a crow's foot (many) or a bar (one) when uniqueness is known; at the referenced key two bars (exactly one) or a circle plus bar (zero or one, when the FK is nullable). Markers are SVG markers with auto-start-reverse and are redrawn the same way in the canvas renderer. Wires read the wire tokens: 1.5px at 80% by default, 2.2px on hover, trace 2.25px, selected 2.6px, proposed dashed 6/6, unrelated 28%. No text labels.
+Crow's-foot notation, from schema evidence only: at the foreign-key end a crow's foot (many) or a bar (one) when uniqueness is known; at the referenced key two bars (exactly one) or a circle plus bar (zero or one, when the FK is nullable). Markers are SVG markers with auto-start-reverse and are redrawn the same way in the canvas renderer. Wires read the wire tokens: 1.5px at 80% by default, 2.2px on hover, trace 2.25px, selected 2.6px, proposed dashed 6/6 — only for relations the current draft adds (a schema imported as a proposal reads as a normal map), unrelated 28%. No text labels.
 
 ### Catalog and topic overview
 The catalog is a sortable list on a surface band: 64px grid rows (name mono 500, counts, topic chips with their color dot). Topic cards are 12px-radius cards with a 4px topic band across the top, a pill count tinted from the topic color, and the first tables as mono chips; hover lifts 2px.
@@ -317,27 +320,24 @@ Light is `:root`; dark applies under `prefers-color-scheme: dark` unless `data-t
 - **Don't** give nodes a resting shadow or use hard offset shadows.
 - **Don't** thicken the node border above 1px or change node header and row heights in CSS alone.
 
-## Overlays
+## Overlays (v3)
 
-Dialogs, sheets, menus, fields, notices, code blocks, tabs and tables share one grammar, defined in the final "Overlays" section of `public/atlas.css`.
+Every modal, sheet and the inspector share one shell, defined in the unlayered "Overlays v3" block at the end of `public/atlas.css`. Everything older sits in `@layer legacy`, so v3 wins by cascade order, never by specificity or `!important`; move rules out of the layer as they are rewritten.
 
-- **Dialogs:** 16px radius, 1px outline, soft shadow. Header carries a 19px title with a 13px muted subtitle and a ghost close button at the end edge; no divider. The footer is separated by a 1px rule; the primary action sits at the end. At 600px and below every dialog becomes a bottom sheet that slides up.
-- **Entrance:** modals scale from 0.97 and fade in 180ms with the shared ease-out curve; menus grow from their trigger (`pop-in`, 160ms); the AI conversation is a side sheet that slides in from the end edge and leaves the map visible. Nothing appears from `scale(0)`. Buttons press to `scale(.97)`. Reduced motion removes the movement.
-- **Fields:** 40px high, 10px radius, resting fill `--context` with no border, a hover outline, and an accent border plus a 3px accent ring on focus. Selects are custom (chevron, no native arrow). Identifier fields stay LTR but align to the reading start.
-- **Choice cards:** 10px radius; the checked card takes `--selected` and an accent border. Checkboxes and radios use native controls tinted with `--accent`.
-- **Notices:** neutral (`--context`, 1px outline) by default; success, warning and error tint with their own semantic colors. Violet is never used for a notice.
-- **Code blocks:** follow the theme (`--code-bg` is light in light mode) with a 1px outline and 12.5px mono.
-- **Tabs:** a segmented control on `--context`; the active tab is a raised surface with `--teal-deep` text.
-- **Menus and dropdowns:** every item is 38px, 8px radius, 13.5px/500, hover `--context`, active `--selected`, optional mono `kbd` hint at the end. Menu groups are separated by a 1px rule; destructive items are red and sit last.
-- **Command palette:** top-anchored (12vh), 560px wide, large search line, items with shortcut hints, arrow-key and Enter navigation.
+- **Anatomy** (after Linear, Vercel and Radix dialogs): header = a 42px icon tile (context fill, hairline, ink icon; `accent` for AI proposals, `danger` for destructive confirmations), an 18px/650 title, one 13.5px muted line, and a 34px ghost close at the end. Body = one scrolling column with 18px between blocks. Footer = a tinted band (`--footer-bg`) under a hairline, the hint at the start, actions at the end with the primary outermost. Icons come from `DIALOG_ICONS` (static dialogs) or `headerIcon()` (built ones) in app.js.
+- **Radii and depth:** dialogs and sheets 20px with a layered soft shadow (`--dialog-shadow`); fields, buttons and cards 11–12px; tabs 9px inside a 12px track. Backdrop is `--scrim` with a 3px blur for modals; sheets keep the map visible behind a 6% tint.
+- **Motion:** open and close both animate. Modals rise 12px and scale from .97; sheets slide 16px from the start edge; phones slide up from the bottom. Implemented with transitions plus `@starting-style` and `allow-discrete` on `display` and `overlay` (no keyframes), so `dialog.close()` animates too. Reduced motion keeps only a short fade.
+- **Fields:** 42px, border-box, a 1px `--field-border` outline that darkens on hover, accent border plus a 3px `--focus-ring` on focus. Labels sit above in 13px/600. Identifier inputs (`dir="ltr"`) use the mono face. Two-column forms use `minmax(0, 1fr)` tracks and collapse to one column under 640px.
+- **Choices:** bordered 12px cards; the checked one takes an accent border, an inset accent ring and a 7% accent fill. Workspace kinds sit side by side.
+- **Buttons:** primary violet with a faint top highlight; secondary surface with a field border; ghost transparent; danger uses `--danger`. All 40px with a .98 press.
+- **Tabs:** one segmented control everywhere (dialogs, inspector, lint, export).
+- **Notices:** information is a soft context-tinted block; success, warning and error tint with their semantic pairs.
+- **Code:** a framed block with a 34px label bar and a 12.5px mono body.
+- **Empty states:** a 52px icon tile, a 15px title and one sentence, centered.
+- **Sizes:** confirmations 440px, forms 520–560px, previews 780px, keyboard shortcuts 780px; sheets 440px, 480px for the schema check, 680px when `.wide`.
+- **Small screens:** under 900px sheets become 86dvh bottom sheets; under 640px every dialog except the command palette becomes a bottom sheet with a grabber, safe-area padding, and full-width buttons where a third action pushes the primary onto its own bottom row.
+- **Database picker:** in the connect dialog the database field carries a "browse" secondary button; the server's databases list beneath it as 44px rows (database icon, mono name at the reading start, size and owner muted at the end). The chosen row takes the accent border and a 8% accent fill; rows without CONNECT are disabled; a second click on the chosen row connects. Submitting with an empty database opens the list instead of failing.
+- **Toast:** a manual popover in the top layer (re-shown on every message), ink pill centered 24px above the bottom (84px on phones), so it is never hidden behind an open dialog.
+- **Command palette:** top-anchored (12vh), 600px, a 52px borderless search line, commands then matching tables.
 
-**Do:** reuse these item, field and card shapes for any new overlay. **Don't:** add a new radius, a saturated notice, a black code block in light mode, or a modal for a task that a menu or the inspector can carry.
-
-### Template v2: modal or sidebar
-
-One decision rule: **a short task is a modal; anything with a lot of content is a sidebar.**
-
-- **Modals** are centered and come in three widths: 420px (confirmations), 520–560px (forms), 760px (side-by-side previews). The header is a 20px title plus a one-line 14px description; the body is a single column with 20px between fields; the footer holds a 13px hint at the start and the actions at the end, primary action outermost. The backdrop dims and blurs the map.
-- **Sidebars** (`.sheet`: draft review, hand-off prompt, topic manager, code analysis, full-table view, AI conversation, and the inspector) all dock in the same slot: the start edge, between the top chrome and the bottom pills (76px inset), 16px from the edge, 420px wide or 640px with `.wide`. They share the modal's header, body and footer, slide in 14px from the edge in 220ms, and use a transparent backdrop so the map stays readable. On screens under 900px they become bottom sheets.
-- **Fields:** 44px high, a visible 1.5px outline, 14px/600 label above, 15px text; identifiers stay mono and LTR but align to the reading start. Choices among two or three options are one bordered list, not separate cards.
-- **Notices:** information is a plain line of text. Only success, warning and error get a tinted box. SQL previews are collapsed behind a "معاينة SQL" disclosure.
+**Do:** build new overlays from `modalHeader()` + `headerIcon()` + `.modal-body` + `modalFooter()`. **Don't:** add a new radius, a second close button, a saturated notice for plain information, or keyframe animations on dialogs.

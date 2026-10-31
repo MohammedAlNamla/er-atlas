@@ -93,6 +93,25 @@ export function applyOperation(schema, operation) {
       next.relations = next.relations.filter(item => item.id !== operation.relationId);
       break;
     }
+    case 'addIndex': {
+      const table = tableById(next, operation.tableId), index = operation.index || {};
+      validName(index.name);
+      if (!Array.isArray(index.columns) || !index.columns.length) throw new Error('اختر عمودًا واحدًا على الأقل للفهرس');
+      for (const name of index.columns) columnByName(table, name);
+      if (new Set(index.columns).size !== index.columns.length) throw new Error('لا تكرر العمود في الفهرس');
+      if (next.tables.some(item => (item.draftIndexes || []).some(existing => existing.name === index.name))) throw new Error('اسم الفهرس مستخدم');
+      (table.draftIndexes ||= []).push({ name: index.name, columns: [...index.columns], unique: Boolean(index.unique), concurrently: Boolean(index.concurrently) });
+      // Known indexes (read from the database) gain the new one, so index-aware checks stop flagging it.
+      if (Array.isArray(table.indexes)) table.indexes.push([...index.columns]);
+      if (index.unique) (table.uniqueKeys ||= []).push([...index.columns]);
+      break;
+    }
+    case 'dropTable': {
+      tableById(next, operation.tableId);
+      next.tables = next.tables.filter(table => table.id !== operation.tableId);
+      next.relations = next.relations.filter(relation => relation.source !== operation.tableId && relation.target !== operation.tableId);
+      break;
+    }
     default: throw new Error('نوع تغيير غير معروف');
   }
   refreshForeignFlags(next);
@@ -112,7 +131,12 @@ export function describeOperation(operation, schema) {
     case 'updateColumn': return `تعديل ${name(operation.tableId)}.${operation.columnName}`;
     case 'dropColumn': return `حذف ${name(operation.tableId)}.${operation.columnName}`;
     case 'addRelation': return `ربط ${name(operation.relation.source)} مع ${name(operation.relation.target)}`;
-    case 'dropRelation': return 'حذف علاقة';
+    case 'dropRelation': {
+      const relation = schema.relations.find(item => item.id === operation.relationId);
+      return relation ? `حذف علاقة ${name(relation.source)}.${relation.pairs.map(pair => pair.source).join(', ')} → ${name(relation.target)}` : 'حذف علاقة';
+    }
+    case 'dropTable': return `حذف جدول ${name(operation.tableId)}`;
+    case 'addIndex': return `${operation.index?.unique ? 'فهرس فريد' : 'فهرس'} على ${name(operation.tableId)} (${(operation.index?.columns || []).join(', ')})`;
     default: return 'تغيير';
   }
 }

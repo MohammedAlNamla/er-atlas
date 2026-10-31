@@ -1,0 +1,1806 @@
+{
+  "format": "eratlas.workspace",
+  "version": 1,
+  "exportedAt": "2026-10-14T14:17:03.671Z",
+  "name": "Sufra · Supply v3 (مقترح)",
+  "kind": "ideas",
+  "schema": {
+    "database": "Sufra Supply · الجداول المقترحة (supply_*) + الموجود الذي تعيد استخدامه",
+    "tables": [
+      {
+        "id": "currencies",
+        "schema": "public",
+        "name": "currencies",
+        "description": "موجود: عملات المنصة. الصنف يختار منها فقط (BR-46) عبر scopeActive().",
+        "approxRows": 0,
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "code",
+            "type": "varchar(3)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 4,
+            "name": "name",
+            "type": "varchar",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "symbol",
+            "type": "varchar(10)",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "is_active",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 7,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "administrators",
+        "schema": "public",
+        "name": "administrators",
+        "description": "موجود: فريق سوفرة. يعتمد الشركات ويدير التصنيفات والمناطق (guard الأدمن الحالي).",
+        "approxRows": 0,
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "name",
+            "type": "varchar",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 4,
+            "name": "email",
+            "type": "varchar",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "areas",
+        "schema": "public",
+        "name": "areas",
+        "description": "مقترح، عام للمنصة وليس خاصًا بـ Supply: المدن والمناطق ينشئها الأدمن فقط. لا نص حر (BR-23). المدينة أب والمنطقة ابن. غير مرتبط بـ dining_areas",
+        "approxRows": 0,
+        "kind": "proposed",
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "parent_id",
+            "type": "bigint",
+            "nullable": true,
+            "default": null,
+            "description": "المدينة الأب إن كان السجل منطقة",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 4,
+            "name": "name",
+            "type": "varchar(120)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "translations",
+            "type": "jsonb",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "is_active",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 7,
+            "name": "sort",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 9,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_units",
+        "schema": "public",
+        "name": "supply_units",
+        "description": "مقترح: وحدات البيع والمحتويات (كرتونة، كيلو، حبة…) يديرها الأدمن.",
+        "approxRows": 0,
+        "kind": "proposed",
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "name",
+            "type": "varchar(60)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 4,
+            "name": "translations",
+            "type": "jsonb",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "is_active",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "sort",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 7,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_categories",
+        "schema": "public",
+        "name": "supply_categories",
+        "description": "مقترح: التصنيفات المركزية. طلب التصنيف هو سجل هنا بحالة pending، فلا جدول طلبات منفصل. الإيقاف يخفي أصنافها دون حذف (BR-40).",
+        "approxRows": 0,
+        "kind": "proposed",
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "name",
+            "type": "varchar(120)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 4,
+            "name": "translations",
+            "type": "jsonb",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "status",
+            "type": "varchar(10)",
+            "nullable": false,
+            "default": null,
+            "description": "active / inactive / pending / rejected",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "requested_by_company_id",
+            "type": "bigint",
+            "nullable": true,
+            "default": null,
+            "description": "الشركة التي اقترحته. فارغ إذا أنشأه الأدمن",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 7,
+            "name": "rejection_reason",
+            "type": "text",
+            "nullable": true,
+            "default": null,
+            "description": "إلزامي عند الرفض (BR-37)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "sort",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 9,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 10,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_companies",
+        "schema": "public",
+        "name": "supply_companies",
+        "description": "مقترح: شركة التوريد. محوران للحالة: الاعتماد (الأدمن) والنشر (الشركة). التواصل وساعات العمل داخل الجدول. الصور عبر نظام الملفات الحالي.",
+        "approxRows": 0,
+        "kind": "proposed",
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "name",
+            "type": "varchar(160)",
+            "nullable": false,
+            "default": null,
+            "description": "إلزامي للنشر (BR-15)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 4,
+            "name": "slug",
+            "type": "varchar(40)",
+            "nullable": false,
+            "default": null,
+            "description": "الرابط العام. التعديل في مكانه بدون سجل قديم. تفرد + قائمة محجوزة (BR-26)",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "description",
+            "type": "text",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "tagline",
+            "type": "varchar(255)",
+            "nullable": true,
+            "default": null,
+            "description": "الرسالة التعريفية القصيرة (BR-22)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 7,
+            "name": "address",
+            "type": "varchar(255)",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "contacts",
+            "type": "jsonb",
+            "nullable": false,
+            "default": null,
+            "description": "[{type: phone|whatsapp|email|website|facebook|instagram|…, value, label}] (BR-21)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 9,
+            "name": "working_hours",
+            "type": "jsonb",
+            "nullable": true,
+            "default": null,
+            "description": "{ \"0\": {closed, from, to}, … } لكل يوم (BR-24)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 10,
+            "name": "template",
+            "type": "varchar(20)",
+            "nullable": false,
+            "default": null,
+            "description": "catalog / brand / price_list (BR-30)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 11,
+            "name": "primary_color",
+            "type": "varchar(7)",
+            "nullable": true,
+            "default": null,
+            "description": "لون أساسي واحد (BR-31)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 12,
+            "name": "review_status",
+            "type": "varchar(20)",
+            "nullable": false,
+            "default": null,
+            "description": "draft / pending_review / approved / rejected / suspended",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 13,
+            "name": "publish_status",
+            "type": "varchar(20)",
+            "nullable": false,
+            "default": null,
+            "description": "published / unpublished (تتحكم بها الشركة)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 14,
+            "name": "status_reason",
+            "type": "text",
+            "nullable": true,
+            "default": null,
+            "description": "سبب الرفض أو الإيقاف. إلزامي عند أي منهما (BR-16)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 15,
+            "name": "submitted_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 16,
+            "name": "reviewed_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 17,
+            "name": "reviewed_by_admin_id",
+            "type": "bigint",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 18,
+            "name": "prices_updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "آخر تغيير سعر لأي صنف. للترتيب الافتراضي (BR-56)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 19,
+            "name": "search_name",
+            "type": "varchar(255)",
+            "nullable": false,
+            "default": null,
+            "description": "اسم مطبّع عربيًا للبحث",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 20,
+            "name": "deleted_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 21,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 22,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_users",
+        "schema": "public",
+        "name": "supply_users",
+        "description": "مقترح: مستخدمو البوابة. جدول وguard منفصلان عن المطاعم والأدمن (BR-63). تأكيد الإيميل شرط للإرسال للمراجعة.",
+        "approxRows": 0,
+        "kind": "proposed",
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "name",
+            "type": "varchar(120)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 4,
+            "name": "email",
+            "type": "varchar(190)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "password",
+            "type": "varchar(255)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "email_verified_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 7,
+            "name": "remember_token",
+            "type": "varchar(100)",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "last_login_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 9,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 10,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_members",
+        "schema": "public",
+        "name": "supply_members",
+        "description": "مقترح: ربط المستخدم بالشركة، بنفس فكرة store_members. مستخدم واحد الآن، والتصميم يسمح بعدة مستخدمين وصلاحيات لاحقًا (BR-20).",
+        "approxRows": 0,
+        "kind": "proposed",
+        "uniqueKeys": [
+          [
+            "company_id",
+            "user_id"
+          ]
+        ],
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "company_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 3,
+            "name": "user_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 4,
+            "name": "role",
+            "type": "varchar(20)",
+            "nullable": false,
+            "default": null,
+            "description": "owner الآن",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_company_areas",
+        "schema": "public",
+        "name": "supply_company_areas",
+        "description": "مقترح: مناطق تغطية الشركة من القائمة المركزية فقط (BR-23). جدول ربط بلا أعمدة إضافية.",
+        "approxRows": 0,
+        "kind": "proposed",
+        "uniqueKeys": [
+          [
+            "company_id",
+            "area_id"
+          ]
+        ],
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "company_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 3,
+            "name": "area_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          }
+        ]
+      },
+      {
+        "id": "supply_items",
+        "schema": "public",
+        "name": "supply_items",
+        "description": "مقترح: الصنف. السعر إلزامي وظاهر للجميع (BR-44/45). تصنيفات الشركة مشتقة من أصنافها فلا جدول ربط للتصنيفات. الصور عبر files.",
+        "approxRows": 0,
+        "kind": "proposed",
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "uuid",
+            "type": "uuid",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": true,
+            "foreign": false
+          },
+          {
+            "number": 3,
+            "name": "company_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 4,
+            "name": "category_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "تصنيف فعّال فقط (BR-38)",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 5,
+            "name": "name",
+            "type": "varchar(200)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "description",
+            "type": "text",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 7,
+            "name": "price",
+            "type": "numeric(14,3)",
+            "nullable": false,
+            "default": null,
+            "description": "سعر وحدة البيع. تغييره يكتب في السجل (BR-48)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "currency_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "عملة واحدة لكل صنف (BR-46)",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 9,
+            "name": "unit_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "وحدة البيع التي تحددها الشركة",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 10,
+            "name": "contents_quantity",
+            "type": "numeric(14,3)",
+            "nullable": true,
+            "default": null,
+            "description": "مثل 8 حبات في الكرتونة",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 11,
+            "name": "contents_unit_id",
+            "type": "bigint",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 12,
+            "name": "show_unit_price",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "سعر الوحدة الداخلية يُحسب دائمًا (BR-47) ويُعرض بهذا الخيار",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 13,
+            "name": "is_visible",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "false = مخفي ولا يظهر نهائيًا",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 14,
+            "name": "is_available",
+            "type": "boolean",
+            "nullable": false,
+            "default": null,
+            "description": "false = يظهر بشارة «غير متوفر حاليًا»",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 15,
+            "name": "admin_locked_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "قفل إداري لا تلغيه الشركة",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 16,
+            "name": "admin_lock_reason",
+            "type": "text",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 17,
+            "name": "sort",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 18,
+            "name": "price_updated_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": null,
+            "description": "آخر تغيير سعر فعلي. أساس مؤشر الحداثة (BR-51)",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 19,
+            "name": "search_name",
+            "type": "varchar(255)",
+            "nullable": false,
+            "default": null,
+            "description": "اسم مطبّع للبحث",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 20,
+            "name": "deleted_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "حذف منطقي يحفظ السجل والإحصاءات",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 21,
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 22,
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_price_history",
+        "schema": "public",
+        "name": "supply_price_history",
+        "description": "مقترح: سجل الأسعار للشركة فقط (BR-49). إضافة فقط: لا تعديل ولا حذف (BR-50).",
+        "approxRows": 0,
+        "kind": "proposed",
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "item_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 3,
+            "name": "previous_price",
+            "type": "numeric(14,3)",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 4,
+            "name": "price",
+            "type": "numeric(14,3)",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "currency_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 6,
+            "name": "unit_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 7,
+            "name": "contents_quantity",
+            "type": "numeric(14,3)",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "contents_unit_id",
+            "type": "bigint",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 9,
+            "name": "changed_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      },
+      {
+        "id": "supply_daily_stats",
+        "schema": "public",
+        "name": "supply_daily_stats",
+        "description": "مقترح: عدّادات يومية: مشاهدة ملف أو صنف، نقرات تواصل، ومسح QR (القسم 13).",
+        "approxRows": 0,
+        "kind": "proposed",
+        "uniqueKeys": [
+          [
+            "company_id",
+            "item_id",
+            "metric",
+            "contact_type",
+            "source",
+            "stat_date"
+          ]
+        ],
+        "columns": [
+          {
+            "number": 1,
+            "name": "id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": true,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 2,
+            "name": "company_id",
+            "type": "bigint",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 3,
+            "name": "item_id",
+            "type": "bigint",
+            "nullable": true,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": true
+          },
+          {
+            "number": 4,
+            "name": "metric",
+            "type": "varchar(20)",
+            "nullable": false,
+            "default": null,
+            "description": "profile_view / item_view / contact_click",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 5,
+            "name": "contact_type",
+            "type": "varchar(20)",
+            "nullable": true,
+            "default": null,
+            "description": "phone / whatsapp / email",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 6,
+            "name": "source",
+            "type": "varchar(10)",
+            "nullable": false,
+            "default": null,
+            "description": "direct / qr",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 7,
+            "name": "stat_date",
+            "type": "date",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          },
+          {
+            "number": 8,
+            "name": "count",
+            "type": "integer",
+            "nullable": false,
+            "default": null,
+            "description": "",
+            "primary": false,
+            "unique": false,
+            "foreign": false
+          }
+        ]
+      }
+    ],
+    "relations": [
+      {
+        "id": "areas.parent_id",
+        "name": "areas_parent_id_foreign",
+        "source": "areas",
+        "target": "areas",
+        "pairs": [
+          {
+            "source": "parent_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_companies.reviewed_by_admin_id",
+        "name": "supply_companies_reviewed_by_admin_id_foreign",
+        "source": "supply_companies",
+        "target": "administrators",
+        "pairs": [
+          {
+            "source": "reviewed_by_admin_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "n",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_categories.requested_by_company_id",
+        "name": "supply_categories_requested_by_company_id_foreign",
+        "source": "supply_categories",
+        "target": "supply_companies",
+        "pairs": [
+          {
+            "source": "requested_by_company_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "n",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_members.company_id",
+        "name": "supply_members_company_id_foreign",
+        "source": "supply_members",
+        "target": "supply_companies",
+        "pairs": [
+          {
+            "source": "company_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "c",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_members.user_id",
+        "name": "supply_members_user_id_foreign",
+        "source": "supply_members",
+        "target": "supply_users",
+        "pairs": [
+          {
+            "source": "user_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "c",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_company_areas.company_id",
+        "name": "supply_company_areas_company_id_foreign",
+        "source": "supply_company_areas",
+        "target": "supply_companies",
+        "pairs": [
+          {
+            "source": "company_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "c",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_company_areas.area_id",
+        "name": "supply_company_areas_area_id_foreign",
+        "source": "supply_company_areas",
+        "target": "areas",
+        "pairs": [
+          {
+            "source": "area_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_items.company_id",
+        "name": "supply_items_company_id_foreign",
+        "source": "supply_items",
+        "target": "supply_companies",
+        "pairs": [
+          {
+            "source": "company_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_items.category_id",
+        "name": "supply_items_category_id_foreign",
+        "source": "supply_items",
+        "target": "supply_categories",
+        "pairs": [
+          {
+            "source": "category_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_items.currency_id",
+        "name": "supply_items_currency_id_foreign",
+        "source": "supply_items",
+        "target": "currencies",
+        "pairs": [
+          {
+            "source": "currency_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_items.unit_id",
+        "name": "supply_items_unit_id_foreign",
+        "source": "supply_items",
+        "target": "supply_units",
+        "pairs": [
+          {
+            "source": "unit_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_items.contents_unit_id",
+        "name": "supply_items_contents_unit_id_foreign",
+        "source": "supply_items",
+        "target": "supply_units",
+        "pairs": [
+          {
+            "source": "contents_unit_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_price_history.item_id",
+        "name": "supply_price_history_item_id_foreign",
+        "source": "supply_price_history",
+        "target": "supply_items",
+        "pairs": [
+          {
+            "source": "item_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_price_history.currency_id",
+        "name": "supply_price_history_currency_id_foreign",
+        "source": "supply_price_history",
+        "target": "currencies",
+        "pairs": [
+          {
+            "source": "currency_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_price_history.unit_id",
+        "name": "supply_price_history_unit_id_foreign",
+        "source": "supply_price_history",
+        "target": "supply_units",
+        "pairs": [
+          {
+            "source": "unit_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_price_history.contents_unit_id",
+        "name": "supply_price_history_contents_unit_id_foreign",
+        "source": "supply_price_history",
+        "target": "supply_units",
+        "pairs": [
+          {
+            "source": "contents_unit_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "r",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_daily_stats.company_id",
+        "name": "supply_daily_stats_company_id_foreign",
+        "source": "supply_daily_stats",
+        "target": "supply_companies",
+        "pairs": [
+          {
+            "source": "company_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "c",
+        "onUpdate": "a",
+        "kind": "proposed"
+      },
+      {
+        "id": "supply_daily_stats.item_id",
+        "name": "supply_daily_stats_item_id_foreign",
+        "source": "supply_daily_stats",
+        "target": "supply_items",
+        "pairs": [
+          {
+            "source": "item_id",
+            "target": "id"
+          }
+        ],
+        "onDelete": "c",
+        "onUpdate": "a",
+        "kind": "proposed"
+      }
+    ],
+    "readOnly": true
+  },
+  "topics": [
+    {
+      "id": "supply-company",
+      "label": "الشركة والمستخدمون · مقترح",
+      "color": "#6551C7",
+      "ids": [
+        "supply_companies",
+        "supply_users",
+        "supply_members",
+        "supply_company_areas",
+        "areas",
+        "administrators"
+      ]
+    },
+    {
+      "id": "supply-catalog",
+      "label": "التصنيفات والأصناف · مقترح",
+      "color": "#C67966",
+      "ids": [
+        "supply_categories",
+        "supply_items",
+        "supply_units",
+        "supply_companies"
+      ]
+    },
+    {
+      "id": "supply-prices",
+      "label": "الأسعار وسجلها · مقترح",
+      "color": "#7B9A78",
+      "ids": [
+        "supply_items",
+        "supply_price_history",
+        "supply_units",
+        "currencies"
+      ]
+    },
+    {
+      "id": "supply-stats",
+      "label": "الإحصاءات · مقترح",
+      "color": "#B69060",
+      "ids": [
+        "supply_daily_stats",
+        "supply_companies",
+        "supply_items"
+      ]
+    }
+  ],
+  "positions": {},
+  "operations": [],
+  "cursor": 0
+}

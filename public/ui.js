@@ -4,34 +4,23 @@ export function element(tag, className = "", text) {
   if (text !== undefined) node.textContent = text;
   return node;
 }
+const SVG_NS = "http://www.w3.org/2000/svg";
 const icons = {
-  pointer: 'pointer.svg',
-  fit: "main-context-03a3a.svg",
-  minus: "main-context-0fdd0.svg",
-  plus: "main-context-daafe.svg",
-  arrange: "main-context-25196.svg",
-  link: "main-context-1ada5.svg",
-  tableWhite: "main-context-7c0a3.svg",
-  key: "main-context-3fe06.svg",
-  more: "main-context-65531.svg",
-  table: "main-context-71774.svg",
-  chevron: "main-context-46da4.svg",
-  source: "main-context-93bef.svg",
-  search: "main-context-cdbec.svg",
-  tools: "main-context-7a999.svg",
-  ai: "main-context-e5ddb.svg",
-  close: "add-table-41175.svg",
-  add: "main-context-daafe.svg",
-  info: "add-table-7b30a.svg",
-  check: "organize-topics-ce7c7.svg",
+  pointer: "pointer", fit: "fit", minus: "minus", plus: "plus", add: "plus", arrange: "arrange",
+  link: "relation", table: "table", tableWhite: "table", inspect: "table", key: "key", more: "more",
+  chevron: "chevron", source: "code", search: "search", tools: "edit", edit: "edit", ai: "sparkle",
+  close: "close", trash: "trash", info: "info", check: "check", database: "database",
 };
 export function icon(name) {
   const slot = element("span", `figma-icon icon-${name}`);
   slot.setAttribute("aria-hidden", "true");
-  const img = element("img");
-  img.alt = "";
-  img.src = `/assets/figma/${icons[name] || icons.table}`;
-  slot.append(img);
+  const svg = document.createElementNS(SVG_NS, "svg"), use = document.createElementNS(SVG_NS, "use");
+  svg.setAttribute("class", "i");
+  svg.setAttribute("focusable", "false");
+  svg.style.cssText = "width:100%;height:100%";
+  use.setAttribute("href", `#i-${(Object.hasOwn(icons, name) && icons[name]) || "table"}`);
+  svg.append(use);
+  slot.append(svg);
   return slot;
 }
 export function hydrateIcons(root = document) {

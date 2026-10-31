@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check code-context.js && node --check local-ai.js && node --check ai-prompts.js && node --check planner.js && node --check public/app.js && node --check public/storage.js && node --check public/workspace-io.js && node --check public/ui.js && node --check public/topics.js && node --check public/router.js && node --check public/route-worker.js && node --test test/*.test.js"
+    "check": "node --check server.js && node --check code-context.js && node --check local-ai.js && node --check ai-prompts.js && node --check planner.js && node --check pg-schema.js && node --check mysql-schema.js && node --check public/app.js && node --check public/storage.js && node --check public/workspace-io.js && node --check public/ui.js && node --check public/topics.js && node --check public/router.js && node --check public/route-worker.js && node --check public/lint.js && node --check public/exporters.js && node --check public/core.js && node --check public/chrome.js && node --check public/workspaces.js && node --check public/morphs.js && node --check public/dialect.js && node --check public/views.js && node --check public/layout.js && node --check public/canvas.js && node --check public/edges.js && node --check public/inspector.js && node --check public/notes.js && node --check public/editor.js && node --check public/groups.js && node --check public/chat.js && node --check public/ai.js && node --check public/sheets.js && node --check public/commands.js && node --check public/connect.js && node --check public/review.js && node --check review/catalog.js && node --check review/skills.js && node --check review/ai-review.js && node --check review/code-facts.js && node --check review/engine.js && node --check review/checks/util.js && node --check review/checks/schema.js && node --check review/checks/code.js && node --check review/checks/draft.js && node --test test/*.test.js"
   },
   "dependencies": {
+    "mysql2": "^3.24.6",
     "pg": "^8.16.3",
     "php-parser": "^3.7.0"
   }

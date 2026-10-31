@@ -2,6 +2,7 @@ import Parser from 'php-parser';
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
+import { collectReviewFacts, mergeReviewFacts } from './review/code-facts.js';
 
 const parser = new Parser({ parser: { version: '8.3' }, ast: { withPositions: true } });
 const cache = new Map();
@@ -89,10 +90,11 @@ export function extractPhpFacts(code, file, tables) {
           symbol.tableId = lookup(explicit || defaultName);
           if (symbol.tableId) symbol.tableMapping = explicit ? `$table = '${explicit}'` : `Eloquent convention: ${textName(node.name)} → ${defaultName}`;
         }
+        let method = '';
         walk(node, child => {
           if (child.kind === 'usegroup') return false;
           if (child.kind === 'name') symbol.dependencies.add(resolveName(child, namespace, imports));
-          if (child.kind === 'method') symbol.methods.push({ name: textName(child.name), line: child.loc.start.line });
+          if (child.kind === 'method') { method = textName(child.name); symbol.methods.push({ name: method, line: child.loc.start.line }); }
           if (child.kind === 'traituse' && child.traits.some(trait => tail(resolveName(trait, namespace, imports)) === 'HasStoreScope')) symbol.storeScoped = true;
           if (child.kind !== 'call') return;
           const call = facadeCall(child, namespace, imports);
@@ -100,9 +102,12 @@ export function extractPhpFacts(code, file, tables) {
             const tableId = lookup(child.arguments[0].value);
             if (tableId) symbol.directTables.add(tableId);
           }
-          if (['belongsTo', 'hasMany', 'hasOne', 'belongsToMany', 'morphMany', 'morphOne', 'morphToMany', 'hasManyThrough', 'hasOneThrough'].includes(call)) {
+          if (['belongsTo', 'hasMany', 'hasOne', 'belongsToMany', 'morphTo', 'morphMany', 'morphOne', 'morphToMany', 'morphedByMany', 'hasManyThrough', 'hasOneThrough'].includes(call)) {
             const targets = child.arguments.map(arg => modelArgument(arg, namespace, imports)).filter(Boolean);
-            symbol.relations.push({ method: call, targets, line: child.loc.start.line, keys: child.arguments.filter(arg => arg.kind === 'string').map(arg => arg.value).filter(key => /^[\w.]+$/.test(key)) });
+            const keys = child.arguments.filter(arg => arg.kind === 'string').map(arg => arg.value).filter(key => /^[\w.]+$/.test(key));
+            // morphTo() takes its morph name from the method that returns it (eventable() → eventable_type/_id).
+            if (call === 'morphTo' && !keys.length && method) keys.push(snake(method));
+            symbol.relations.push({ method: call, targets, line: child.loc.start.line, keys });
           }
         });
         symbol.dependencies.delete(name);
@@ -134,7 +139,24 @@ export function extractPhpFacts(code, file, tables) {
     });
   };
   inspect(ast.children);
-  return { symbols, migrations, routes };
+  // Relation::morphMap / enforceMorphMap: the aliases stored in *_type columns instead of class names.
+  const morphMaps = [];
+  const scanMorphMaps = (nodes, namespace = '') => {
+    const imports = importsFor(nodes);
+    for (const node of nodes) {
+      if (node.kind === 'namespace') { scanMorphMaps(node.children, textName(node.name)); continue; }
+      walk(node, child => {
+        if (child.kind !== 'call' || !/::(?:morphMap|enforceMorphMap)$/.test(callName(child)) || child.arguments[0]?.kind !== 'array') return;
+        for (const item of child.arguments[0].items || []) {
+          const model = modelArgument(item?.value, namespace, imports);
+          if (item?.key?.kind === 'string' && model) morphMaps.push({ alias: item.key.value, model, file, line: item.loc?.start.line || child.loc.start.line });
+        }
+      });
+    }
+  };
+  scanMorphMaps(ast.children);
+  const review = collectReviewFacts(ast, code, file, { lookup, resolveName, importsFor, plural, snake });
+  return { symbols, migrations, routes, morphMaps, review };
 }
 
 function moduleFor(file) {
@@ -154,6 +176,19 @@ export function buildCodeContext(facts, tables, stats = {}) {
   const modelSupport = new Map(), tableEvidence = new Map(tables.map(table => [table.id, []]));
   const evidence = (tableId, item) => { const items = tableEvidence.get(tableId); if (items && !items.some(existing => existing.file === item.file && existing.line === item.line)) items.push(item); };
   for (const migration of migrations) evidence(migration.tableId, { file: migration.file, line: migration.line, syntax: migration.syntax });
+  // Polymorphic links have no foreign key, so the code is the only record of who owns a morph table.
+  const morphs = new Map();
+  const morph = (tableId, name, ownerId, item) => {
+    if (!tableId || !name) return;
+    const key = `${tableId}|${name}`;
+    if (!morphs.has(key)) morphs.set(key, { tableId, name, ownerTableIds: new Set(), evidence: [] });
+    const entry = morphs.get(key);
+    if (ownerId && ownerId !== tableId) entry.ownerTableIds.add(ownerId);
+    if (item && !entry.evidence.some(existing => existing.file === item.file && existing.line === item.line)) entry.evidence.push(item);
+  };
+  // morphToMany/morphedByMany keep the link in a pivot: an explicit table argument, else the plural of the morph name.
+  const morphPivot = keys => lookup(keys[1] || '') || lookup(plural(keys[0] || ''));
+  for (const migration of migrations) for (const column of migration.columns) if (/morphs$/i.test(column.method)) morph(migration.tableId, column.name, null, null);
   for (const model of symbols.values()) if (model.tableId) {
     evidence(model.tableId, { file: model.file, line: model.line, syntax: model.tableMapping });
     const related = [model, ...model.dependencies.map(dep => symbols.get(dep)).filter(symbol => symbol?.kind === 'trait')];
@@ -164,6 +199,11 @@ export function buildCodeContext(facts, tables, stats = {}) {
         const targetIds = relation.targets.map(target => symbols.get(target)?.tableId).filter(Boolean);
         for (const id of targetIds) if (id === storeId) support.add(id);
         if (['belongsToMany', 'morphToMany'].includes(relation.method)) for (const key of relation.keys) if (lookup(key)) support.add(lookup(key));
+        const item = { file: symbol.file, line: relation.line, syntax: `${tail(model.name)}::${relation.method}(${[...relation.targets.map(tail), ...relation.keys.map(key => `'${key}'`)].join(', ')})` };
+        if (['morphMany', 'morphOne'].includes(relation.method)) for (const id of targetIds) { morph(id, relation.keys[0], model.tableId, item); support.add(id); }
+        if (relation.method === 'morphToMany') { const pivot = morphPivot(relation.keys); if (pivot) { morph(pivot, relation.keys[0], model.tableId, item); support.add(pivot); } }
+        if (relation.method === 'morphedByMany') { const pivot = morphPivot(relation.keys); if (pivot) { for (const id of targetIds) morph(pivot, relation.keys[0], id, item); support.add(pivot); } }
+        if (relation.method === 'morphTo') morph(model.tableId, relation.keys[0], null, item);
         if (targetIds.length) evidence(model.tableId, { file: symbol.file, line: relation.line, syntax: `${tail(model.name)}::${relation.method}(${relation.targets.map(tail).join(', ')})`, relatedTableIds: targetIds });
       }
     }
@@ -195,11 +235,17 @@ export function buildCodeContext(facts, tables, stats = {}) {
   }
   const moduleList = [...modules.values()].sort((a, b) => a.id.localeCompare(b.id)).map(module => ({ ...module, tableIds: [...module.tableIds], sources: module.sources.sort((a, b) => (a.file.startsWith('app/Services/') ? 0 : 1) - (b.file.startsWith('app/Services/') ? 0 : 1)) }));
   const matched = new Set([...tableEvidence].filter(([, items]) => items.length).map(([id]) => id));
+  // What a *_type column may hold: a morphMap alias or a model class name, each resolved to its table.
+  const morphMap = Object.fromEntries(facts.flatMap(fact => fact.morphMaps || []).map(entry => [entry.alias, symbols.get(entry.model)?.tableId]).filter(([, id]) => id));
+  const modelTables = Object.fromEntries([...symbols.values()].filter(symbol => symbol.tableId && symbol.kind === 'class').map(symbol => [symbol.name, symbol.tableId]));
   return { language: 'PHP / Laravel', analysis: 'AST: model mappings, Eloquent relations, constructor types, service/repository references, migrations and routes', ...stats,
+    morphs: [...morphs.values()].map(entry => ({ ...entry, ownerTableIds: [...entry.ownerTableIds] })), morphMap, modelTables,
     matchedTableIds: [...matched], unmatchedTableIds: tables.map(table => table.id).filter(id => !matched.has(id)),
     sharedTableIds: tables.filter(table => moduleList.filter(module => module.tableIds.includes(table.id)).length > 1).map(table => table.id),
     modules: moduleList,
-    tables: tables.filter(table => matched.has(table.id)).map(table => ({ tableId: table.id, evidence: tableEvidence.get(table.id) })) };
+    tables: tables.filter(table => matched.has(table.id)).map(table => ({ tableId: table.id, evidence: tableEvidence.get(table.id) })),
+    // Review-engine facts (see review/engine.js); not part of compactCodeContext or the topics prompt.
+    facts: mergeReviewFacts(facts.map(fact => fact.review).filter(Boolean)) };
 }
 
 async function sourceFiles(root) {
@@ -259,8 +305,19 @@ export function compactCodeContext(context) {
   };
   return { language: context.language, analysis: context.analysis, project: context.project, parsedFiles: context.parsedFiles, matchedTableIds: context.matchedTableIds,
     unmatchedTableIds: context.unmatchedTableIds, sharedTableIds: context.sharedTableIds,
+    morphs: (context.morphs || []).filter(entry => entry.ownerTableIds.length).map(({ tableId, name, ownerTableIds }) => ({ tableId, name, ownerTableIds })),
     modules: context.modules.map(module => ({ ...module, sources: selectSources(module.sources), omittedSources: Math.max(0, module.sources.length - 4) })),
     tables: context.tables.map(table => ({ tableId: table.tableId, evidence: [...table.evidence].sort((a, b) => Number(a.syntax.startsWith('Schema::')) - Number(b.syntax.startsWith('Schema::'))).slice(0, 4) })) };
+}
+
+// A polymorphic table (events, comments, media) belongs wherever one of its owners is.
+export function attachMorphTables(topics, morphs = [], key = 'ids') {
+  for (const entry of morphs) for (const topic of topics) {
+    const ids = topic[key], has = id => ids instanceof Set ? ids.has(id) : ids.includes(id);
+    if (has(entry.tableId) || !entry.ownerTableIds.some(has)) continue;
+    if (ids instanceof Set) ids.add(entry.tableId); else ids.push(entry.tableId);
+  }
+  return topics;
 }
 
 export function groundTopicSuggestions(answer, context, tables) {
@@ -280,6 +337,7 @@ export function groundTopicSuggestions(answer, context, tables) {
       evidence: evidence.map(({ file, line, symbol }) => ({ file, line, symbol })) };
   }).filter(row => row.tableIds.length);
   if (!result.length) throw new Error('لم يرجع المساعد مواضيع تحتوي جداول موثقة في الكود');
+  attachMorphTables(result, context.morphs, 'tableIds');
   const covered = new Set(result.flatMap(row => row.tableIds));
   const remaining = tables.map(table => table.id).filter(id => !covered.has(id));
   if (remaining.length) result.push({ name: 'جداول تحتاج مراجعة', tableIds: remaining, reason: 'لم يتوفر استخدام كافٍ لهذه الجداول ضمن مصادر المواضيع المختارة؛ بقيت متاحة للمراجعة اليدوية.', moduleIds: [], evidence: [] });
